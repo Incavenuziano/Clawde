@@ -20,6 +20,7 @@ import { TasksRepo } from "@clawde/db/repositories/tasks";
 import { createLogger, resetLogSink, setLogSink } from "@clawde/log";
 import { DEFAULT_TRACKER_CONFIG, QuotaTracker } from "@clawde/quota";
 import { type ReceiverHandle, TokenBucketRateLimiter, createReceiver } from "@clawde/receiver";
+import { NoopWorkerTrigger } from "@clawde/receiver";
 import { makeEnqueueHandler } from "@clawde/receiver/routes/enqueue";
 import { makeHealthHandler } from "@clawde/receiver/routes/health";
 import { LeaseManager, type RunnerDeps, processNextPending } from "@clawde/worker";
@@ -85,6 +86,7 @@ function startE2E(): E2ESetup {
       eventsRepo,
       rateLimiter: new TokenBucketRateLimiter({ perMinute: 100, perHour: 1000 }),
       logger,
+      workerTrigger: new NoopWorkerTrigger(),
     }),
   );
 

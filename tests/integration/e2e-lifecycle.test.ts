@@ -21,6 +21,7 @@ import { TasksRepo } from "@clawde/db/repositories/tasks";
 import { createLogger, resetLogSink, setLogSink } from "@clawde/log";
 import { DEFAULT_TRACKER_CONFIG, QuotaTracker } from "@clawde/quota";
 import {
+  NoopWorkerTrigger,
   type ReceiverHandle,
   TokenBucketRateLimiter,
   createReceiver,
@@ -66,7 +67,13 @@ async function setup(): Promise<E2E> {
   const receiver = createReceiver({ listenTcp: tcp, logger });
   receiver.registerRoute(
     { method: "POST", path: "/enqueue" },
-    makeEnqueueHandler({ tasksRepo, eventsRepo, rateLimiter, logger }),
+    makeEnqueueHandler({
+      tasksRepo,
+      eventsRepo,
+      rateLimiter,
+      logger,
+      workerTrigger: new NoopWorkerTrigger(),
+    }),
   );
 
   const mockClient = new MockAgentClient();

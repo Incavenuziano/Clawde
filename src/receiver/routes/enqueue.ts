@@ -16,6 +16,7 @@ import { z } from "zod";
 import type { TokenBucketRateLimiter } from "../auth/rate-limit.ts";
 import { insertWithDedup } from "../dedup.ts";
 import type { RouteHandler } from "../server.ts";
+import type { WorkerTrigger } from "../trigger.ts";
 
 const PRIORITY = z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]).default("NORMAL");
 
@@ -36,6 +37,7 @@ export interface EnqueueRouteDeps {
   readonly eventsRepo: EventsRepo;
   readonly rateLimiter: TokenBucketRateLimiter;
   readonly logger: Logger;
+  readonly workerTrigger: WorkerTrigger;
 }
 
 function jsonResponse(
@@ -131,6 +133,16 @@ export function makeEnqueueHandler(deps: EnqueueRouteDeps): RouteHandler {
 
     if (result.deduped) {
       return jsonResponse({ taskId: result.task.id, traceId, deduped: true }, 409, traceHeaders);
+    }
+
+    try {
+      await deps.workerTrigger.trigger(traceId);
+    } catch (err) {
+      deps.logger.warn("worker trigger failed after enqueue", {
+        trace_id: traceId,
+        task_id: result.task.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
 
     return jsonResponse({ taskId: result.task.id, traceId, deduped: false }, 202, traceHeaders);
