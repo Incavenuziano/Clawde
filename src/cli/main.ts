@@ -12,8 +12,8 @@
 import type { EventKind } from "@clawde/domain/event";
 import { runLogs } from "./commands/logs.ts";
 import { runMigrate } from "./commands/migrate.ts";
-import { runQuota } from "./commands/quota.ts";
 import { runQueue } from "./commands/queue.ts";
+import { runQuota } from "./commands/quota.ts";
 import { runSmokeTest } from "./commands/smoke-test.ts";
 import { runTrace } from "./commands/trace.ts";
 import { type OutputFormat, emit, emitErr } from "./output.ts";
@@ -77,9 +77,7 @@ function getOutputFormat(parsed: ParsedArgs): OutputFormat {
 
 function getDbPath(parsed: ParsedArgs): string {
   return (
-    getFlag(parsed, "db") ??
-    process.env.CLAWDE_DB ??
-    `${process.env.HOME ?? ""}/.clawde/state.db`
+    getFlag(parsed, "db") ?? process.env.CLAWDE_DB ?? `${process.env.HOME ?? ""}/.clawde/state.db`
   );
 }
 
@@ -109,15 +107,22 @@ export async function runMain(argv: ReadonlyArray<string>): Promise<number> {
   }
 
   if (parsed.command === "version") {
-    emit(getOutputFormat(parsed), { version: "0.0.1" }, (d) => `clawde ${(d as { version: string }).version}`);
+    emit(
+      getOutputFormat(parsed),
+      { version: "0.0.1" },
+      (d) => `clawde ${(d as { version: string }).version}`,
+    );
     return 0;
   }
 
   if (parsed.command === "smoke-test") {
-    return runSmokeTest({
+    const opts: Parameters<typeof runSmokeTest>[0] = {
       dbPath: getDbPath(parsed),
       format: getOutputFormat(parsed),
-    });
+    };
+    const recv = getFlag(parsed, "receiver-url");
+    if (recv !== undefined) Object.assign(opts, { receiverUrl: recv });
+    return await runSmokeTest(opts);
   }
 
   if (parsed.command === "migrate") {
@@ -141,19 +146,23 @@ export async function runMain(argv: ReadonlyArray<string>): Promise<number> {
       emitErr("error: prompt required (clawde queue <prompt>)");
       return 1;
     }
-    return await runQueue({
+    const queueOpts: Parameters<typeof runQueue>[0] = {
       prompt,
       priority: getFlag(parsed, "priority", "NORMAL") ?? "NORMAL",
       agent: getFlag(parsed, "agent", "default") ?? "default",
-      sessionId: getFlag(parsed, "session-id"),
-      workingDir: getFlag(parsed, "working-dir"),
-      dedupKey: getFlag(parsed, "dedup-key"),
       receiverUrl:
         getFlag(parsed, "receiver-url") ??
         process.env.CLAWDE_RECEIVER_URL ??
         "http://127.0.0.1:18790",
       format: getOutputFormat(parsed),
-    });
+    };
+    const sid = getFlag(parsed, "session-id");
+    if (sid !== undefined) Object.assign(queueOpts, { sessionId: sid });
+    const wd = getFlag(parsed, "working-dir");
+    if (wd !== undefined) Object.assign(queueOpts, { workingDir: wd });
+    const dk = getFlag(parsed, "dedup-key");
+    if (dk !== undefined) Object.assign(queueOpts, { dedupKey: dk });
+    return await runQueue(queueOpts);
   }
 
   if (parsed.command === "logs") {

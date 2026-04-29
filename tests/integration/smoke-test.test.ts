@@ -6,7 +6,11 @@ import { runSmokeTest } from "@clawde/cli/commands/smoke-test";
 import { closeDb, openDb } from "@clawde/db/client";
 import { applyPending, defaultMigrationsDir } from "@clawde/db/migrations";
 
-function captureOutput(fn: () => number): { exit: number; stdout: string; stderr: string } {
+function captureOutput(fn: () => Promise<number> | number): Promise<{
+  exit: number;
+  stdout: string;
+  stderr: string;
+}> {
   const origStdoutWrite = process.stdout.write.bind(process.stdout);
   const origStderrWrite = process.stderr.write.bind(process.stderr);
   let stdout = "";
@@ -19,13 +23,12 @@ function captureOutput(fn: () => number): { exit: number; stdout: string; stderr
     stderr += String(chunk);
     return true;
   }) as typeof process.stderr.write;
-  try {
-    const exit = fn();
-    return { exit, stdout, stderr };
-  } finally {
-    process.stdout.write = origStdoutWrite;
-    process.stderr.write = origStderrWrite;
-  }
+  return Promise.resolve(fn())
+    .then((exit) => ({ exit, stdout, stderr }))
+    .finally(() => {
+      process.stdout.write = origStdoutWrite;
+      process.stderr.write = origStderrWrite;
+    });
 }
 
 describe("cli/smoke-test", () => {
@@ -40,36 +43,36 @@ describe("cli/smoke-test", () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  test("DB com schema atualizado: exit 0, todos OK", () => {
+  test("DB com schema atualizado: exit 0, todos OK", async () => {
     const db = openDb(dbPath);
     applyPending(db, defaultMigrationsDir());
     closeDb(db);
 
-    const { exit, stdout } = captureOutput(() => runSmokeTest({ dbPath, format: "text" }));
+    const { exit, stdout } = await captureOutput(() => runSmokeTest({ dbPath, format: "text" }));
     expect(exit).toBe(0);
     expect(stdout).toContain("[OK ] db.integrity_check");
     expect(stdout).toContain("[OK ] db.migrations");
     expect(stdout).toContain("overall: OK");
   });
 
-  test("DB sem migrations aplicadas: exit 1, integrity ok mas migrations FAIL", () => {
+  test("DB sem migrations aplicadas: exit 1, integrity ok mas migrations FAIL", async () => {
     // openDb cria DB vazia sem schema.
     const db = openDb(dbPath);
     closeDb(db);
 
-    const { exit, stdout } = captureOutput(() => runSmokeTest({ dbPath, format: "text" }));
+    const { exit, stdout } = await captureOutput(() => runSmokeTest({ dbPath, format: "text" }));
     expect(exit).toBe(1);
     expect(stdout).toContain("[FAIL] db.migrations");
     expect(stdout).toContain("pending: 1");
     expect(stdout).toContain("overall: FAIL");
   });
 
-  test("output JSON parseável", () => {
+  test("output JSON parseável", async () => {
     const db = openDb(dbPath);
     applyPending(db, defaultMigrationsDir());
     closeDb(db);
 
-    const { exit, stdout } = captureOutput(() => runSmokeTest({ dbPath, format: "json" }));
+    const { exit, stdout } = await captureOutput(() => runSmokeTest({ dbPath, format: "json" }));
     expect(exit).toBe(0);
     const parsed = JSON.parse(stdout);
     expect(parsed.ok).toBe(true);
@@ -77,11 +80,28 @@ describe("cli/smoke-test", () => {
     expect(parsed.checks[0].name).toBe("db.integrity_check");
   });
 
-  test("DB inacessível retorna exit 2 + stderr", () => {
-    const { exit, stderr } = captureOutput(() =>
+  test("DB inacessível retorna exit 2 + stderr", async () => {
+    const { exit, stderr } = await captureOutput(() =>
       runSmokeTest({ dbPath: "/nonexistent/dir/state.db", format: "text" }),
     );
     expect(exit).toBe(2);
     expect(stderr).toContain("error opening db");
+  });
+
+  test("--receiver-url ausente (porta morta) → check FAIL", async () => {
+    const db = openDb(dbPath);
+    applyPending(db, defaultMigrationsDir());
+    closeDb(db);
+
+    const { exit, stdout } = await captureOutput(() =>
+      runSmokeTest({
+        dbPath,
+        format: "text",
+        receiverUrl: "http://127.0.0.1:1",
+        receiverTimeoutMs: 200,
+      }),
+    );
+    expect(exit).toBe(1);
+    expect(stdout).toContain("[FAIL] receiver.health");
   });
 });

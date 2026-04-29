@@ -1,12 +1,12 @@
 /**
  * `clawde smoke-test` — verificações de saúde diárias (BEST_PRACTICES §5.5).
  *
- * Versão Fase 2 (subset realizável):
+ * Checks (Fase 3):
  *   1. DB acessível + integrity_check ok
  *   2. Migrations atualizadas (current == latest)
- *   3. Config válida (já implícita no boot)
+ *   3. Receiver health (opcional, se --receiver-url passado)
  *
- * Receiver health + worker dry-run + CLI version vêm em fases posteriores.
+ * Worker dry-run + CLI version checks vêm em fases posteriores.
  */
 
 import { type ClawdeDatabase, closeDb, openDb } from "@clawde/db/client";
@@ -16,6 +16,10 @@ import { type OutputFormat, emit, emitErr } from "../output.ts";
 export interface SmokeTestOptions {
   readonly dbPath: string;
   readonly format: OutputFormat;
+  /** Se definido, checa GET /health. */
+  readonly receiverUrl?: string;
+  /** Timeout pra check de receiver. */
+  readonly receiverTimeoutMs?: number;
 }
 
 interface CheckResult {
@@ -65,7 +69,39 @@ function checkMigrations(db: ClawdeDatabase): CheckResult {
   }
 }
 
-export function runSmokeTest(options: SmokeTestOptions): number {
+async function checkReceiverHealth(url: string, timeoutMs: number): Promise<CheckResult> {
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    let response: Response;
+    try {
+      response = await fetch(`${url}/health`, { signal: ctrl.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+    if (response.status === 200) {
+      const body = (await response.json()) as { quota?: string; version?: string };
+      return {
+        name: "receiver.health",
+        ok: true,
+        detail: `quota=${body.quota ?? "?"} version=${body.version ?? "?"}`,
+      };
+    }
+    return {
+      name: "receiver.health",
+      ok: false,
+      detail: `HTTP ${response.status}`,
+    };
+  } catch (err) {
+    return {
+      name: "receiver.health",
+      ok: false,
+      detail: (err as Error).message,
+    };
+  }
+}
+
+export async function runSmokeTest(options: SmokeTestOptions): Promise<number> {
   let db: ClawdeDatabase;
   try {
     db = openDb(options.dbPath);
@@ -80,6 +116,10 @@ export function runSmokeTest(options: SmokeTestOptions): number {
     checks.push(checkMigrations(db));
   } finally {
     closeDb(db);
+  }
+
+  if (options.receiverUrl !== undefined && options.receiverUrl.length > 0) {
+    checks.push(await checkReceiverHealth(options.receiverUrl, options.receiverTimeoutMs ?? 2000));
   }
 
   const allOk = checks.every((c) => c.ok);
