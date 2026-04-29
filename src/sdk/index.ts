@@ -24,4 +24,4 @@ export type {
   ToolResultBlock,
   ToolUseBlock,
 } from "./types.ts";
-export { SdkAuthError, SdkNetworkError, SdkRateLimitError, SdkSchemaError } from "./types.ts";
+export { SdkAuthError, SdkNetworkError, SdkRateLimitError } from "./types.ts";

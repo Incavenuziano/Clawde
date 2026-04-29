@@ -141,7 +141,7 @@ export async function processTask(deps: RunnerDeps, task: Task): Promise<Process
       task,
       run,
       agentResult: {
-        stopReason: "completed",
+        stopReason: "deferred",
         msgsConsumed: 0,
         totalTurns: 0,
         finalText: "",
