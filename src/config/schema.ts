@@ -79,6 +79,24 @@ export const AuthSchema = z.object({
   oauth_auto_refresh: z.boolean().default(true),
 });
 
+export const TelegramConfigSchema = z.object({
+  secret: z.string().min(1),
+  allowed_user_ids: z.array(z.number().int().positive()).default([]),
+  default_priority: z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]).default("NORMAL"),
+  default_agent: z.string().default("telegram-bot"),
+});
+
+export const ReviewConfigSchema = z.object({
+  review_required: z.boolean().default(false),
+  stages: z.array(z.string()).default(["implementer", "spec-reviewer", "code-quality-reviewer"]),
+  max_retries_per_stage: z.number().int().nonnegative().default(2),
+});
+
+export const ReplicaConfigSchema = z.object({
+  expected_replicas: z.array(z.string()).default([]),
+  max_age_minutes: z.number().int().positive().default(90),
+});
+
 export const ClawdeConfigSchema = z.object({
   clawde: ClawdeBaseSchema.default(() => ClawdeBaseSchema.parse({})),
   worker: WorkerSchema.default(() => WorkerSchema.parse({})),
@@ -87,6 +105,9 @@ export const ClawdeConfigSchema = z.object({
   sandbox: SandboxSchema.default(() => SandboxSchema.parse({})),
   memory: MemorySchema.default(() => MemorySchema.parse({})),
   auth: AuthSchema.default(() => AuthSchema.parse({})),
+  telegram: TelegramConfigSchema.optional(),
+  review: ReviewConfigSchema.optional(),
+  replica: ReplicaConfigSchema.optional(),
 });
 
 export type ClawdeConfig = z.infer<typeof ClawdeConfigSchema>;

@@ -47,12 +47,44 @@ max_parallel = 4
     expect(cfg.worker.cli_path).toBe("/usr/local/bin/claude");
   });
 
-  test("config-example completo é válido", () => {
-    const examplePath = join(import.meta.dirname, "../../../deploy/config-example/clawde.toml");
+  test("config/clawde.toml.example é válido", () => {
+    const examplePath = join(import.meta.dirname, "../../../config/clawde.toml.example");
     const cfg = loadConfig({ path: examplePath, env: {} });
     expect(cfg.quota.plan).toBe("max5x");
     expect(cfg.quota.peak_multiplier).toBe(1.7);
     expect(cfg.sandbox.default_level).toBe(1);
+  });
+
+  test("subseções opcionais telegram/review/replica validam tipos", () => {
+    writeFileSync(
+      path,
+      `
+[telegram]
+secret = "hook-secret"
+allowed_user_ids = [42, 1234]
+default_priority = "HIGH"
+default_agent = "telegram-bot"
+
+[review]
+review_required = true
+stages = ["implementer", "spec-reviewer", "code-quality-reviewer"]
+max_retries_per_stage = 3
+
+[replica]
+expected_replicas = ["b2", "local"]
+max_age_minutes = 45
+`,
+    );
+
+    const cfg = loadConfig({ path, env: {} });
+    expect(cfg.telegram?.secret).toBe("hook-secret");
+    expect(cfg.telegram?.allowed_user_ids).toEqual([42, 1234]);
+    expect(cfg.telegram?.default_priority).toBe("HIGH");
+    expect(cfg.review?.review_required).toBe(true);
+    expect(cfg.review?.stages).toEqual(["implementer", "spec-reviewer", "code-quality-reviewer"]);
+    expect(cfg.review?.max_retries_per_stage).toBe(3);
+    expect(cfg.replica?.expected_replicas).toEqual(["b2", "local"]);
+    expect(cfg.replica?.max_age_minutes).toBe(45);
   });
 
   test("valor inválido lança ConfigError com path", () => {
