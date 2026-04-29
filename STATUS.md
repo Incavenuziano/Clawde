@@ -33,7 +33,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | Sub-fase | Branch | Tasks | Implementer | Reviewer | Estado | PR |
 |----------|--------|-------|-------------|----------|--------|----|
 | P0.1 | `task/P0.1-entrypoints` | T-001..T-013 | claude | codex | merged, PR #2, 2026-04-29 | #2 |
-| P0.2 | `task/P0.2-trigger` | T-014..T-018 | codex | claude | in-review, PR #3 | #3 |
+| P0.2 | `task/P0.2-trigger` | T-014..T-018 | codex | claude | merged, PR #3, 2026-04-29 | #3 |
 | P0.3 | `task/P0.3-config-schema` | T-019 | codex | claude | merged, PR #1, 2026-04-29 | #1 |
 | P1.1 | `task/P1.1-dequeue-retry` | T-020..T-023 | codex | claude | pending | — |
 | P1.2 | `task/P1.2-quota-not-before` | T-024..T-033 | codex | claude | pending | — |
@@ -85,11 +85,11 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 - [x] T-013 — merged, PR #2, 2026-04-29
 
 ### P0.2 — Trigger event-driven
-- [x] T-014 — in-review, PR #3
-- [x] T-015 — in-review, PR #3
-- [x] T-016 — in-review, PR #3
-- [x] T-017 — in-review, PR #3
-- [x] T-018 — in-review, PR #3
+- [x] T-014 — merged, PR #3, 2026-04-29
+- [x] T-015 — merged, PR #3, 2026-04-29
+- [x] T-016 — merged, PR #3, 2026-04-29
+- [x] T-017 — merged, PR #3, 2026-04-29
+- [x] T-018 — merged, PR #3, 2026-04-29
 
 ### P0.3 — Schema config
 - [x] T-019 — merged, PR #1, 2026-04-29
