@@ -34,7 +34,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 |----------|--------|-------|-------------|----------|--------|----|
 | P0.1 | `task/P0.1-entrypoints` | T-001..T-013 | claude | codex | pending | — |
 | P0.2 | `task/P0.2-trigger` | T-014..T-018 | codex | claude | pending | — |
-| P0.3 | `task/P0.3-config-schema` | T-019 | codex | claude | pending | — |
+| P0.3 | `task/P0.3-config-schema` | T-019 | codex | claude | in-progress, codex | — |
 | P1.1 | `task/P1.1-dequeue-retry` | T-020..T-023 | codex | claude | pending | — |
 | P1.2 | `task/P1.2-quota-not-before` | T-024..T-033 | codex | claude | pending | — |
 | P1.3 | `task/P1.3-sdk-errors` | T-034..T-040 | codex | claude | pending | — |
@@ -92,7 +92,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 - [ ] T-018 — pending
 
 ### P0.3 — Schema config
-- [ ] T-019 — pending
+- [ ] T-019 — in-progress (codex)
 
 ---
 
