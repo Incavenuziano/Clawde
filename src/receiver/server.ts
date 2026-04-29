@@ -10,8 +10,8 @@
  *   - SIGHUP: reload config (handler injetado pelo main).
  */
 
-import type { Server } from "bun";
 import type { Logger } from "@clawde/log";
+import type { Server } from "bun";
 
 export interface RouteContext {
   readonly request: Request;
@@ -33,8 +33,8 @@ export interface ReceiverConfig {
 }
 
 export interface ReceiverHandle {
-  readonly tcpServer?: Server;
-  readonly unixServer?: Server;
+  readonly tcpServer?: Server<unknown>;
+  readonly unixServer?: Server<unknown>;
   stop(): Promise<void>;
   setDraining(value: boolean): void;
   isDraining(): boolean;
@@ -95,16 +95,15 @@ export function createReceiver(config: ReceiverConfig): ReceiverHandle {
     }
   }
 
-  let tcpServer: Server | undefined;
-  let unixServer: Server | undefined;
+  let tcpServer: Server<unknown> | undefined;
+  let unixServer: Server<unknown> | undefined;
 
   if (config.listenTcp !== undefined) {
     const { hostname, port } = parseHostPort(config.listenTcp);
     tcpServer = Bun.serve({
       hostname,
       port,
-      fetch: (req, server) =>
-        dispatch(req, server.requestIP(req)?.address ?? "unknown"),
+      fetch: (req, server) => dispatch(req, server.requestIP(req)?.address ?? "unknown"),
     });
     config.logger.info("receiver TCP listening", { addr: config.listenTcp });
   }
@@ -117,9 +116,9 @@ export function createReceiver(config: ReceiverConfig): ReceiverHandle {
     config.logger.info("receiver unix socket listening", { path: config.listenUnix });
   }
 
-  return {
-    tcpServer,
-    unixServer,
+  const handle: ReceiverHandle = {
+    ...(tcpServer !== undefined && { tcpServer }),
+    ...(unixServer !== undefined && { unixServer }),
     registerRoute(key: RouteKey, handler: RouteHandler): void {
       routes.set(routeKey(key.method, key.path), handler);
     },
@@ -138,4 +137,5 @@ export function createReceiver(config: ReceiverConfig): ReceiverHandle {
       config.logger.info("receiver stopped");
     },
   };
+  return handle;
 }

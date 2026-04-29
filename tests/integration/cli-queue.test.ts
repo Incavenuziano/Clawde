@@ -6,15 +6,9 @@ import { parseArgs, runMain } from "@clawde/cli/main";
 import { type ClawdeDatabase, closeDb, openDb } from "@clawde/db/client";
 import { applyPending, defaultMigrationsDir } from "@clawde/db/migrations";
 import { EventsRepo } from "@clawde/db/repositories/events";
-import { QuotaLedgerRepo } from "@clawde/db/repositories/quota-ledger";
 import { TasksRepo } from "@clawde/db/repositories/tasks";
 import { createLogger, resetLogSink, setLogSink } from "@clawde/log";
-import { DEFAULT_TRACKER_CONFIG, QuotaTracker } from "@clawde/quota";
-import {
-  TokenBucketRateLimiter,
-  type ReceiverHandle,
-  createReceiver,
-} from "@clawde/receiver";
+import { type ReceiverHandle, TokenBucketRateLimiter, createReceiver } from "@clawde/receiver";
 import { makeEnqueueHandler } from "@clawde/receiver/routes/enqueue";
 
 function captureOutput(fn: () => Promise<number> | number): Promise<{
@@ -156,15 +150,7 @@ describe("cli queue → receiver E2E", () => {
 
   test("clawde queue 'test prompt' enfileira via receiver", async () => {
     const { exit, stdout } = await captureOutput(() =>
-      runMain([
-        "queue",
-        "test",
-        "prompt",
-        "--receiver-url",
-        setup.baseUrl,
-        "--db",
-        setup.dbPath,
-      ]),
+      runMain(["queue", "test", "prompt", "--receiver-url", setup.baseUrl, "--db", setup.dbPath]),
     );
     expect(exit).toBe(0);
     expect(stdout).toContain("taskId=");
@@ -181,14 +167,7 @@ describe("cli queue → receiver E2E", () => {
 
   test("--priority URGENT respeitado", async () => {
     await captureOutput(() =>
-      runMain([
-        "queue",
-        "p",
-        "--priority",
-        "URGENT",
-        "--receiver-url",
-        setup.baseUrl,
-      ]),
+      runMain(["queue", "p", "--priority", "URGENT", "--receiver-url", setup.baseUrl]),
     );
     const row = setup.db.query("SELECT priority FROM tasks LIMIT 1").get() as {
       priority: string;
@@ -198,24 +177,10 @@ describe("cli queue → receiver E2E", () => {
 
   test("dedupKey duplicada exit 0 com (deduped) em output", async () => {
     await captureOutput(() =>
-      runMain([
-        "queue",
-        "p",
-        "--dedup-key",
-        "k1",
-        "--receiver-url",
-        setup.baseUrl,
-      ]),
+      runMain(["queue", "p", "--dedup-key", "k1", "--receiver-url", setup.baseUrl]),
     );
     const { exit, stdout } = await captureOutput(() =>
-      runMain([
-        "queue",
-        "p",
-        "--dedup-key",
-        "k1",
-        "--receiver-url",
-        setup.baseUrl,
-      ]),
+      runMain(["queue", "p", "--dedup-key", "k1", "--receiver-url", setup.baseUrl]),
     );
     expect(exit).toBe(0);
     expect(stdout).toContain("(deduped)");

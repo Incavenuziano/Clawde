@@ -7,12 +7,12 @@
  * Trace ID: gerado se ausente no header X-Clawde-Trace-Id; ecoa em response.
  */
 
-import { z } from "zod";
 import type { EventsRepo } from "@clawde/db/repositories/events";
 import type { TasksRepo } from "@clawde/db/repositories/tasks";
 import type { NewTask } from "@clawde/domain/task";
 import type { Logger } from "@clawde/log";
 import { newTraceId } from "@clawde/log";
+import { z } from "zod";
 import type { TokenBucketRateLimiter } from "../auth/rate-limit.ts";
 import { insertWithDedup } from "../dedup.ts";
 import type { RouteHandler } from "../server.ts";
@@ -53,7 +53,8 @@ export function makeEnqueueHandler(deps: EnqueueRouteDeps): RouteHandler {
   return async (ctx) => {
     // Trace ID propaga no response.
     const incomingTrace = ctx.request.headers.get("X-Clawde-Trace-Id");
-    const traceId = incomingTrace !== null && incomingTrace.length > 0 ? incomingTrace : newTraceId();
+    const traceId =
+      incomingTrace !== null && incomingTrace.length > 0 ? incomingTrace : newTraceId();
     const traceHeaders = { "X-Clawde-Trace-Id": traceId };
 
     // Rate limit por origem.
@@ -67,22 +68,17 @@ export function makeEnqueueHandler(deps: EnqueueRouteDeps): RouteHandler {
         kind: "rate_limit_hit",
         payload: { remote_addr: ctx.remoteAddr, reason: rate.reason ?? "" },
       });
-      return jsonResponse(
-        { error: rate.reason ?? "rate limited" },
-        429,
-        { ...traceHeaders, "Retry-After": String(rate.retryAfterSeconds) },
-      );
+      return jsonResponse({ error: rate.reason ?? "rate limited" }, 429, {
+        ...traceHeaders,
+        "Retry-After": String(rate.retryAfterSeconds),
+      });
     }
 
     let body: unknown;
     try {
       body = await ctx.request.json();
     } catch (err) {
-      return jsonResponse(
-        { error: `invalid JSON: ${(err as Error).message}` },
-        400,
-        traceHeaders,
-      );
+      return jsonResponse({ error: `invalid JSON: ${(err as Error).message}` }, 400, traceHeaders);
     }
 
     const parsed = EnqueueRequestSchema.safeParse(body);
@@ -102,7 +98,8 @@ export function makeEnqueueHandler(deps: EnqueueRouteDeps): RouteHandler {
 
     // Header X-Idempotency-Key como alternativa a body.dedupKey.
     const headerKey = ctx.request.headers.get("X-Idempotency-Key");
-    const dedupKey = parsed.data.dedupKey ?? (headerKey !== null && headerKey.length > 0 ? headerKey : null);
+    const dedupKey =
+      parsed.data.dedupKey ?? (headerKey !== null && headerKey.length > 0 ? headerKey : null);
 
     // source determinado pelo endpoint — /enqueue assume CLI.
     const newTask: NewTask = {
@@ -133,17 +130,9 @@ export function makeEnqueueHandler(deps: EnqueueRouteDeps): RouteHandler {
     });
 
     if (result.deduped) {
-      return jsonResponse(
-        { taskId: result.task.id, traceId, deduped: true },
-        409,
-        traceHeaders,
-      );
+      return jsonResponse({ taskId: result.task.id, traceId, deduped: true }, 409, traceHeaders);
     }
 
-    return jsonResponse(
-      { taskId: result.task.id, traceId, deduped: false },
-      202,
-      traceHeaders,
-    );
+    return jsonResponse({ taskId: result.task.id, traceId, deduped: false }, 202, traceHeaders);
   };
 }

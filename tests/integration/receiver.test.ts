@@ -15,9 +15,9 @@ import {
   verifyGitHubHmac,
   verifyTelegramSecret,
 } from "@clawde/receiver";
+import { type ReceiverHandle, createReceiver } from "@clawde/receiver";
 import { makeEnqueueHandler } from "@clawde/receiver/routes/enqueue";
 import { makeHealthHandler } from "@clawde/receiver/routes/health";
-import { type ReceiverHandle, createReceiver } from "@clawde/receiver";
 
 interface Setup {
   readonly db: ClawdeDatabase;

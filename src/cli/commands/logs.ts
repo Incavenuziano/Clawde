@@ -32,11 +32,16 @@ function parseSinceToMs(since: string): number | null {
   const n = Number.parseInt(m[1] ?? "0", 10);
   const unit = m[2];
   switch (unit) {
-    case "s": return n * 1000;
-    case "m": return n * 60_000;
-    case "h": return n * 3_600_000;
-    case "d": return n * 86_400_000;
-    default: return null;
+    case "s":
+      return n * 1000;
+    case "m":
+      return n * 60_000;
+    case "h":
+      return n * 3_600_000;
+    case "d":
+      return n * 86_400_000;
+    default:
+      return null;
   }
 }
 
@@ -73,18 +78,19 @@ export function runLogs(options: LogsOptions): number {
       }
       const cutoff = new Date(Date.now() - ms).toISOString();
       events = db
-        .query<{
-          id: number;
-          ts: string;
-          task_run_id: number | null;
-          session_id: string | null;
-          trace_id: string | null;
-          span_id: string | null;
-          kind: EventKind;
-          payload: string;
-        }, [string, number]>(
-          "SELECT * FROM events WHERE ts >= ? ORDER BY ts DESC LIMIT ?",
-        )
+        .query<
+          {
+            id: number;
+            ts: string;
+            task_run_id: number | null;
+            session_id: string | null;
+            trace_id: string | null;
+            span_id: string | null;
+            kind: EventKind;
+            payload: string;
+          },
+          [string, number]
+        >("SELECT * FROM events WHERE ts >= ? ORDER BY ts DESC LIMIT ?")
         .all(cutoff, options.limit)
         .map((r) => ({
           id: r.id,

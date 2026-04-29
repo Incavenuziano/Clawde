@@ -79,9 +79,7 @@ describe("cli logs", () => {
     setup.db.exec(
       `INSERT INTO task_runs (task_id, worker_id, status) VALUES (${task.id}, 'w1', 'pending')`,
     );
-    const runId = (
-      setup.db.query("SELECT last_insert_rowid() AS id").get() as { id: number }
-    ).id;
+    const runId = (setup.db.query("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
     events.insert({
       taskRunId: runId,
       sessionId: null,
@@ -163,9 +161,7 @@ describe("cli logs", () => {
   });
 
   test("sem flag de filtro retorna 1", async () => {
-    const { exit, stderr } = await captureOutput(() =>
-      runMain(["logs", "--db", setup.dbPath]),
-    );
+    const { exit, stderr } = await captureOutput(() => runMain(["logs", "--db", setup.dbPath]));
     expect(exit).toBe(1);
     expect(stderr).toContain("at least one of");
   });
@@ -221,9 +217,7 @@ describe("cli trace", () => {
   });
 
   test("trace sem id retorna 1", async () => {
-    const { exit, stderr } = await captureOutput(() =>
-      runMain(["trace", "--db", setup.dbPath]),
-    );
+    const { exit, stderr } = await captureOutput(() => runMain(["trace", "--db", setup.dbPath]));
     expect(exit).toBe(1);
     expect(stderr).toContain("trace ID required");
   });

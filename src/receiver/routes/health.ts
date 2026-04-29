@@ -41,9 +41,7 @@ export function makeHealthHandler(deps: HealthRouteDeps): RouteHandler {
     let integrityOk = true;
     let integrityDetail: string | null = null;
     try {
-      const row = deps.db
-        .query<{ integrity_check: string }, []>("PRAGMA integrity_check")
-        .get();
+      const row = deps.db.query<{ integrity_check: string }, []>("PRAGMA integrity_check").get();
       integrityDetail = row?.integrity_check ?? "unknown";
       integrityOk = integrityDetail === "ok";
     } catch (err) {

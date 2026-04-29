@@ -48,9 +48,7 @@ export async function runQueue(options: QueueOptions): Promise<number> {
       body: JSON.stringify(body),
     });
   } catch (err) {
-    emitErr(
-      `error: receiver unreachable at ${options.receiverUrl} (${(err as Error).message})`,
-    );
+    emitErr(`error: receiver unreachable at ${options.receiverUrl} (${(err as Error).message})`);
     return 2;
   }
 
