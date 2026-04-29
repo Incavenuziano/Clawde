@@ -65,3 +65,7 @@ export async function bootstrap(): Promise<ReceiverHandle> {
   });
   return handle;
 }
+
+if (import.meta.main) {
+  await bootstrap();
+}
