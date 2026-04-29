@@ -10,14 +10,47 @@ import { TasksRepo } from "@clawde/db/repositories/tasks";
 import { createLogger, setMinLevel } from "@clawde/log";
 import { QuotaTracker, makeQuotaPolicy } from "@clawde/quota";
 import { RealAgentClient } from "@clawde/sdk";
-import { LeaseManager, makeReconciler, processNextPending } from "./index.ts";
+import { LeaseManager, type RunnerDeps, makeReconciler, processNextPending } from "./index.ts";
+
+const DEFAULT_MAX_TASKS = 50;
 
 function expandHome(p: string): string {
   if (p.startsWith("~/") || p === "~") return p.replace(/^~/, homedir());
   return p;
 }
 
-export async function bootstrap(): Promise<void> {
+export function parseMaxTasks(argv: ReadonlyArray<string>, fallback = DEFAULT_MAX_TASKS): number {
+  const idx = argv.indexOf("--max-tasks");
+  if (idx < 0 || idx + 1 >= argv.length) return fallback;
+  const raw = argv[idx + 1];
+  if (raw === undefined) return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+export type LoopExitReason = "empty" | "deferred" | "max_tasks";
+
+export interface LoopResult {
+  readonly processed: number;
+  readonly exitReason: LoopExitReason;
+}
+
+export async function runProcessLoop(deps: RunnerDeps, maxTasks: number): Promise<LoopResult> {
+  let processed = 0;
+  while (processed < maxTasks) {
+    const result = await processNextPending(deps);
+    if (result === null) return { processed, exitReason: "empty" };
+    if (result.agentResult.stopReason === "deferred") {
+      return { processed, exitReason: "deferred" };
+    }
+    processed += 1;
+  }
+  return { processed, exitReason: "max_tasks" };
+}
+
+export async function bootstrap(
+  argv: ReadonlyArray<string> = process.argv.slice(2),
+): Promise<void> {
   const config = loadConfig();
   setMinLevel(config.clawde.log_level);
   const logger = createLogger({ service: "worker" });
@@ -46,10 +79,9 @@ export async function bootstrap(): Promise<void> {
       reenqueued_count: reconcileResult.reenqueued.length,
       cleaned_orphans: reconcileResult.cleanedOrphans,
     });
-    const maxTasks = 50;
-    let processed = 0;
-    while (processed < maxTasks) {
-      const result = await processNextPending({
+    const maxTasks = parseMaxTasks(argv);
+    const loop = await runProcessLoop(
+      {
         tasksRepo,
         runsRepo,
         eventsRepo,
@@ -60,11 +92,14 @@ export async function bootstrap(): Promise<void> {
         logger,
         workerId,
         workspaceConfig: { tmpRoot: "/tmp", baseBranch: "main" },
-      });
-      if (result === null) break;
-      processed += 1;
-    }
-    logger.info("worker idle", { processed });
+      },
+      maxTasks,
+    );
+    logger.info("worker idle", {
+      processed: loop.processed,
+      max_tasks: maxTasks,
+      exit_reason: loop.exitReason,
+    });
   } finally {
     closeDb(db);
   }
