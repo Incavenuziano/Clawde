@@ -19,6 +19,7 @@ Registros das decisões arquiteturais não-triviais do Clawde. Formato baseado e
 | [0010](0010-embedding-strategy.md) | Accepted | Embedding strategy: multilingual-e5-small via @xenova (sem API externa) |
 | [0011](0011-clawde-not-replacement-for-claude-code.md) | Accepted | Clawde não substitui Claude Code (split síncrono/assíncrono) |
 | [0012](0012-single-provider-anthropic.md) | Accepted | Single-provider Anthropic + risco aceito |
+| [0013](0013-sandbox-bwrap-implementation.md) | Accepted | Sandbox Nível 2/3: implementação via bubblewrap |
 
 ## Convenções
 
