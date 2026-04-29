@@ -4,6 +4,10 @@
   "description": "Personal task daemon using Claude Code headless via Max subscription",
   "private": true,
   "type": "module",
+  "bin": {
+    "clawde": "./dist/clawde"
+  },
+  "license": "AGPL-3.0-or-later",
   "engines": {
     "bun": ">=1.3.0"
   },

@@ -13,9 +13,35 @@
  * api.anthropic.com com Authorization: Bearer <token>; 401 quando expira.
  */
 
+import { spawn } from "node:child_process";
 import { type OAuthToken, loadOAuthToken } from "./oauth.ts";
 
 export type SetupTokenRunner = () => Promise<{ exitCode: number; stderr: string }>;
+
+/**
+ * Runner de produção: spawn `claude setup-token --headless`. Captura stderr
+ * pra mensagens de erro úteis. Não captura stdout (o token vai pro keychain
+ * gerenciado pelo CLI; nós relemos via loadOAuthToken).
+ *
+ * NÃO é o default em refreshOAuthToken pra evitar surprise side-effects em
+ * testes. Use explicitamente: `refreshOAuthToken({ runSetupToken: spawnClaudeSetupToken })`.
+ */
+export const spawnClaudeSetupToken: SetupTokenRunner = () =>
+  new Promise((resolve) => {
+    const proc = spawn("claude", ["setup-token", "--headless"], {
+      stdio: ["ignore", "ignore", "pipe"],
+    });
+    let stderr = "";
+    proc.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString("utf-8");
+    });
+    proc.on("error", (err) => {
+      resolve({ exitCode: 127, stderr: `spawn failed: ${err.message}` });
+    });
+    proc.on("close", (code) => {
+      resolve({ exitCode: code ?? -1, stderr });
+    });
+  });
 
 export interface RefreshContext {
   /** Hook pra rodar `claude setup-token --headless`. Default: stub que falha. */

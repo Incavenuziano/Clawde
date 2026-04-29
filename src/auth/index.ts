@@ -17,4 +17,5 @@ export {
   invokeWithAutoRefresh,
   isAuthError,
   refreshOAuthToken,
+  spawnClaudeSetupToken,
 } from "./refresh.ts";
