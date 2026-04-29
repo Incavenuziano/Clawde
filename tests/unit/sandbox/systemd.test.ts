@@ -1,0 +1,118 @@
+import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import {
+  HARDENING_DIRECTIVES,
+  renderPathUnit,
+  renderServiceUnit,
+  renderTimerUnit,
+} from "@clawde/sandbox";
+
+describe("sandbox/systemd renderServiceUnit", () => {
+  test("inclui hardening completo (ADR 0005 nivel 1)", () => {
+    const content = renderServiceUnit({
+      name: "clawde-worker",
+      description: "Worker test",
+      execStart: "/usr/bin/echo ok",
+      readWritePaths: ["/var/lib/clawde"],
+    });
+    for (const directive of HARDENING_DIRECTIVES) {
+      expect(content).toContain(directive);
+    }
+    expect(content).toContain("ReadWritePaths=/var/lib/clawde");
+    expect(content).toContain("ExecStart=/usr/bin/echo ok");
+    expect(content).toContain("[Install]");
+  });
+
+  test("Type default oneshot", () => {
+    const content = renderServiceUnit({
+      name: "x",
+      description: "x",
+      execStart: "/bin/true",
+    });
+    expect(content).toContain("Type=oneshot");
+  });
+
+  test("Type custom respeitado", () => {
+    const content = renderServiceUnit({
+      name: "x",
+      description: "x",
+      execStart: "/bin/true",
+      type: "simple",
+    });
+    expect(content).toContain("Type=simple");
+  });
+
+  test("After incluído quando fornecido", () => {
+    const content = renderServiceUnit({
+      name: "x",
+      description: "x",
+      execStart: "/bin/true",
+      after: ["network.target", "clawde-receiver.service"],
+    });
+    expect(content).toContain("After=network.target clawde-receiver.service");
+  });
+});
+
+describe("sandbox/systemd renderPathUnit + renderTimerUnit", () => {
+  test("renderPathUnit gera Path section com PathChanged + Unit", () => {
+    const content = renderPathUnit({
+      name: "clawde-worker",
+      description: "Worker trigger",
+      pathChanged: "%h/.clawde/state.db",
+      serviceUnit: "clawde-worker.service",
+    });
+    expect(content).toContain("[Path]");
+    expect(content).toContain("PathChanged=%h/.clawde/state.db");
+    expect(content).toContain("Unit=clawde-worker.service");
+  });
+
+  test("renderTimerUnit gera Timer section com OnCalendar", () => {
+    const content = renderTimerUnit({
+      name: "clawde-smoke",
+      description: "Daily smoke",
+      onCalendar: "*-*-* 04:00:00",
+      serviceUnit: "clawde-smoke.service",
+      persistent: true,
+    });
+    expect(content).toContain("[Timer]");
+    expect(content).toContain("OnCalendar=*-*-* 04:00:00");
+    expect(content).toContain("Persistent=true");
+  });
+
+  test("Persistent default false", () => {
+    const content = renderTimerUnit({
+      name: "x",
+      description: "x",
+      onCalendar: "hourly",
+      serviceUnit: "x.service",
+    });
+    expect(content).toContain("Persistent=false");
+  });
+});
+
+describe("deploy/systemd unit files reais", () => {
+  function readUnit(name: string): string {
+    return readFileSync(join(import.meta.dirname, "../../../deploy/systemd", name), "utf-8");
+  }
+
+  test("clawde-worker.service tem hardening completo", () => {
+    const content = readUnit("clawde-worker.service");
+    expect(content).toContain("PrivateTmp=yes");
+    expect(content).toContain("NoNewPrivileges=yes");
+    expect(content).toContain("MemoryDenyWriteExecute=yes");
+    expect(content).toContain("ReadWritePaths=%h/.clawde /tmp");
+  });
+
+  test("clawde-worker.path watcha state.db mtime", () => {
+    const content = readUnit("clawde-worker.path");
+    expect(content).toContain("PathChanged=%h/.clawde/state.db");
+    expect(content).toContain("Unit=clawde-worker.service");
+  });
+
+  test("clawde-smoke.timer roda 04:00 diariamente", () => {
+    const content = readUnit("clawde-smoke.timer");
+    expect(content).toContain("OnCalendar=*-*-* 04:00:00");
+    expect(content).toContain("Persistent=true");
+  });
+});

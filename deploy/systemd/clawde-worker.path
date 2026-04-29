@@ -1,0 +1,9 @@
+[Unit]
+Description=Clawde worker trigger (event-driven via state.db mtime)
+
+[Path]
+PathChanged=%h/.clawde/state.db
+Unit=clawde-worker.service
+
+[Install]
+WantedBy=default.target
