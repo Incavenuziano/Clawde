@@ -95,6 +95,79 @@ export class MemoryRepo {
   }
 
   /**
+   * Atualiza embedding de uma observation (Float32Array → BLOB).
+   * Migration 002 adiciona a coluna.
+   */
+  updateEmbedding(id: number, embedding: Float32Array): void {
+    const buf = Buffer.from(embedding.buffer, embedding.byteOffset, embedding.byteLength);
+    this.db.run("UPDATE memory_observations SET embedding = ? WHERE id = ?", [buf, id]);
+  }
+
+  /**
+   * Atualiza importance score de uma observation. Usado por F5.T52.
+   */
+  updateImportance(id: number, importance: number): void {
+    const clamped = Math.max(0, Math.min(1, importance));
+    this.db.run("UPDATE memory_observations SET importance = ? WHERE id = ?", [clamped, id]);
+  }
+
+  /**
+   * Marca observation como consolidada em lesson de id targetLessonId.
+   * Usado pelo reflector (F5.T51).
+   */
+  markConsolidated(id: number, targetLessonId: number): void {
+    this.db.run("UPDATE memory_observations SET consolidated_into = ? WHERE id = ?", [
+      targetLessonId,
+      id,
+    ]);
+  }
+
+  /**
+   * Lista TODAS as observations com seus embeddings parseados.
+   * Usado pelo cosine search (custo O(N), funcional pra <10k).
+   */
+  listAllWithEmbeddings(): ReadonlyArray<{
+    obs: MemoryObservation;
+    embedding: Float32Array | null;
+  }> {
+    interface RowWithEmbedding extends RawObservationRow {
+      embedding: Buffer | null;
+    }
+    const rows = this.db
+      .query<RowWithEmbedding, []>(
+        "SELECT id, session_id, source_jsonl, kind, content, importance, consolidated_into, created_at, embedding FROM memory_observations",
+      )
+      .all();
+    return rows.map((r) => ({
+      obs: rowToObservation(r),
+      embedding:
+        r.embedding === null
+          ? null
+          : new Float32Array(
+              r.embedding.buffer,
+              r.embedding.byteOffset,
+              r.embedding.byteLength / 4,
+            ),
+    }));
+  }
+
+  /**
+   * Deleta observations com importance < cutoff E created_at < cutoffDate,
+   * preservando lessons. Usado pelo pruning (F5.T54).
+   * Retorna número de rows deletadas.
+   */
+  pruneLowImportance(importanceCutoff: number, cutoffDate: string): number {
+    const result = this.db.run(
+      `DELETE FROM memory_observations
+       WHERE kind != 'lesson'
+         AND importance < ?
+         AND created_at < ?`,
+      [importanceCutoff, cutoffDate],
+    );
+    return result.changes;
+  }
+
+  /**
    * Busca FTS5 trigram em memory_fts. Retorna observations com score (rank).
    * `query` é repassada literal (FTS5 sintaxe — escape se vier de input externo).
    */

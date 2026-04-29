@@ -24,7 +24,7 @@ export interface MigrationStatus {
   readonly applied: ReadonlyArray<{ version: number; appliedAt: string }>;
 }
 
-const FILENAME_RE = /^(\d{3,})_([a-z0-9-]+)\.(up|down)\.sql$/;
+const FILENAME_RE = /^(\d{3,})_([a-z0-9_-]+)\.(up|down)\.sql$/;
 
 /**
  * Lê o diretório de migrations e retorna lista validada (up+down par a par).
