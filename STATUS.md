@@ -38,7 +38,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P1.1 | `task/P1.1-dequeue-retry` | T-020..T-023 | codex | claude | merged, PR #4, 2026-04-29 | #4 |
 | P1.2 | `task/P1.2-quota-not-before` | T-024..T-033 | codex | claude | merged, PR #5, 2026-04-29 | #5 |
 | P1.3 | `task/P1.3-sdk-errors` | T-034..T-040 | codex | claude | merged, PR #6, 2026-04-29 | #6 |
-| P2.1 | `task/P2.1-workspace-plug` | T-041..T-046 | codex | claude | pending | — |
+| P2.1 | `task/P2.1-workspace-plug` | T-041..T-046 | codex | claude | in-progress, codex | — |
 | P2.2 | `task/P2.2-sandbox-tools` | T-047..T-053 | codex | claude | pending | — |
 | P2.3 | `task/P2.3-external-input` | T-054..T-057 | claude | codex | pending | — |
 | P2.4 | `task/P2.4-review-fresh` | T-058..T-062 | claude | codex | pending | — |
@@ -130,12 +130,12 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 ## Wave 3 — Segurança core (P2.1 → P2.5)
 
 ### P2.1 — Workspace ephemeral plug
-- [ ] T-041 — pending
-- [ ] T-042 — pending
-- [ ] T-043 — pending
-- [ ] T-044 — pending
-- [ ] T-045 — pending
-- [ ] T-046 — pending
+- [ ] T-041 — in-progress, codex
+- [ ] T-042 — in-progress, codex
+- [ ] T-043 — in-progress, codex
+- [ ] T-044 — in-progress, codex
+- [ ] T-045 — in-progress, codex
+- [ ] T-046 — in-progress, codex
 
 ### P2.2 — Sandbox em tools/hooks
 - [ ] T-047 — pending
