@@ -180,137 +180,138 @@ export async function processTask(deps: RunnerDeps, task: Task): Promise<Process
     }
   }
 
-  // Memory inject opcional: prepend snippet de observations relevantes.
-  let effectivePrompt = task.prompt;
-  if (deps.memoryInject?.config.enabled) {
-    try {
-      const ctx = await deps.memoryInject.buildContext(
-        deps.memoryInject.memoryRepo,
-        task.prompt,
-        deps.memoryInject.config,
-      );
-      if (ctx.injected) {
-        effectivePrompt = `${ctx.snippet}\n\n${task.prompt}`;
-      }
-    } catch (err) {
-      log.warn("memory inject failed (continuing without)", { error: (err as Error).message });
-    }
-  }
-
-  // Emite invocation_start.
-  deps.eventsRepo.insert({
-    taskRunId: run.id,
-    sessionId: task.sessionId,
-    traceId: null,
-    spanId: null,
-    kind: "claude_invocation_start",
-    payload: { agent: task.agent, prompt_len: effectivePrompt.length },
-  });
-
-  let agentResult: AgentRunResult;
   try {
-    agentResult =
-      deps.review !== undefined
-        ? await runWithReviewPipeline(deps, task, run.id, effectivePrompt, ephemeralWorkspacePath)
-        : await runAgentWithLedger(deps, task, run.id, effectivePrompt, ephemeralWorkspacePath);
-  } catch (err) {
-    if (err instanceof SdkRateLimitError) {
-      deps.quotaTracker.markCurrentWindowExhausted();
-      const exhaustedWindow = deps.quotaTracker.currentWindow();
-      const failed = deps.leaseManager.finish(acquisition, "failed", {
-        error: err.message,
-      });
-      const deferred = deps.runsRepo.insert(task.id, deps.workerId, {
-        notBefore: exhaustedWindow.resetsAt,
-      });
-      deps.eventsRepo.insert({
-        taskRunId: failed.id,
-        sessionId: task.sessionId,
-        traceId: null,
-        spanId: null,
-        kind: "quota_429_observed",
-        payload: {
-          task_id: task.id,
-          failed_run_id: failed.id,
-          deferred_run_id: deferred.id,
-          retry_after_seconds: err.retryAfterSeconds,
-          defer_until: exhaustedWindow.resetsAt,
-        },
+    // Memory inject opcional: prepend snippet de observations relevantes.
+    let effectivePrompt = task.prompt;
+    if (deps.memoryInject?.config.enabled) {
+      try {
+        const ctx = await deps.memoryInject.buildContext(
+          deps.memoryInject.memoryRepo,
+          task.prompt,
+          deps.memoryInject.config,
+        );
+        if (ctx.injected) {
+          effectivePrompt = `${ctx.snippet}\n\n${task.prompt}`;
+        }
+      } catch (err) {
+        log.warn("memory inject failed (continuing without)", { error: (err as Error).message });
+      }
+    }
+
+    // Emite invocation_start.
+    deps.eventsRepo.insert({
+      taskRunId: run.id,
+      sessionId: task.sessionId,
+      traceId: null,
+      spanId: null,
+      kind: "claude_invocation_start",
+      payload: { agent: task.agent, prompt_len: effectivePrompt.length },
+    });
+
+    let agentResult: AgentRunResult;
+    try {
+      agentResult =
+        deps.review !== undefined
+          ? await runWithReviewPipeline(deps, task, run.id, effectivePrompt, ephemeralWorkspacePath)
+          : await runAgentWithLedger(deps, task, run.id, effectivePrompt, ephemeralWorkspacePath);
+    } catch (err) {
+      if (err instanceof SdkRateLimitError) {
+        deps.quotaTracker.markCurrentWindowExhausted();
+        const exhaustedWindow = deps.quotaTracker.currentWindow();
+        const failed = deps.leaseManager.finish(acquisition, "failed", {
+          error: err.message,
+        });
+        const deferred = deps.runsRepo.insert(task.id, deps.workerId, {
+          notBefore: exhaustedWindow.resetsAt,
+        });
+        deps.eventsRepo.insert({
+          taskRunId: failed.id,
+          sessionId: task.sessionId,
+          traceId: null,
+          spanId: null,
+          kind: "quota_429_observed",
+          payload: {
+            task_id: task.id,
+            failed_run_id: failed.id,
+            deferred_run_id: deferred.id,
+            retry_after_seconds: err.retryAfterSeconds,
+            defer_until: exhaustedWindow.resetsAt,
+          },
+        });
+        return {
+          task,
+          run: deferred,
+          agentResult: {
+            stopReason: "error",
+            msgsConsumed: 0,
+            totalTurns: 0,
+            finalText: "",
+            error: err.message,
+          },
+        };
+      }
+
+      log.error("agent invocation crashed", { error: (err as Error).message });
+      const finished = deps.leaseManager.finish(acquisition, "failed", {
+        error: (err as Error).message,
       });
       return {
         task,
-        run: deferred,
+        run: finished,
         agentResult: {
           stopReason: "error",
           msgsConsumed: 0,
           totalTurns: 0,
           finalText: "",
-          error: err.message,
+          error: (err as Error).message,
         },
       };
     }
 
-    log.error("agent invocation crashed", { error: (err as Error).message });
-    const finished = deps.leaseManager.finish(acquisition, "failed", {
-      error: (err as Error).message,
-    });
-    return {
-      task,
-      run: finished,
-      agentResult: {
-        stopReason: "error",
-        msgsConsumed: 0,
-        totalTurns: 0,
-        finalText: "",
-        error: (err as Error).message,
+    // Emite invocation_end.
+    deps.eventsRepo.insert({
+      taskRunId: run.id,
+      sessionId: task.sessionId,
+      traceId: null,
+      spanId: null,
+      kind: "claude_invocation_end",
+      payload: {
+        stop_reason: agentResult.stopReason,
+        msgs_consumed: agentResult.msgsConsumed,
+        total_turns: agentResult.totalTurns,
       },
-    };
-  }
+    });
 
-  // Emite invocation_end.
-  deps.eventsRepo.insert({
-    taskRunId: run.id,
-    sessionId: task.sessionId,
-    traceId: null,
-    spanId: null,
-    kind: "claude_invocation_end",
-    payload: {
-      stop_reason: agentResult.stopReason,
-      msgs_consumed: agentResult.msgsConsumed,
-      total_turns: agentResult.totalTurns,
-    },
-  });
+    const finalStatus = agentResult.error === null ? "succeeded" : "failed";
+    const finished = deps.leaseManager.finish(acquisition, finalStatus, {
+      result: agentResult.finalText.length > 0 ? agentResult.finalText : null,
+      error: agentResult.error,
+      msgsConsumed: agentResult.msgsConsumed,
+    } as { result?: string; error?: string; msgsConsumed?: number });
 
-  const finalStatus = agentResult.error === null ? "succeeded" : "failed";
-  const finished = deps.leaseManager.finish(acquisition, finalStatus, {
-    result: agentResult.finalText.length > 0 ? agentResult.finalText : null,
-    error: agentResult.error,
-    msgsConsumed: agentResult.msgsConsumed,
-  } as { result?: string; error?: string; msgsConsumed?: number });
-
-  log.info("task finished", { status: finalStatus, msgs: agentResult.msgsConsumed });
-
-  if (ephemeralWorkspacePath !== null && task.workingDir !== null) {
-    try {
-      await removeWorkspace(
-        {
+    log.info("task finished", { status: finalStatus, msgs: agentResult.msgsConsumed });
+    return { task, run: finished, agentResult };
+  } finally {
+    if (ephemeralWorkspacePath !== null && task.workingDir !== null) {
+      try {
+        await removeWorkspace(
+          {
+            path: ephemeralWorkspacePath,
+            baseBranch: workspaceConfig.baseBranch,
+            featureBranch: "",
+            taskRunId: run.id,
+            createdAt: "",
+          },
+          task.workingDir,
+        );
+      } catch (err) {
+        log.warn("workspace cleanup failed", {
+          error: (err as Error).message,
           path: ephemeralWorkspacePath,
-          baseBranch: workspaceConfig.baseBranch,
-          featureBranch: "",
-          taskRunId: run.id,
-          createdAt: "",
-        },
-        task.workingDir,
-      );
-    } catch (err) {
-      log.warn("workspace cleanup failed", {
-        error: (err as Error).message,
-        path: ephemeralWorkspacePath,
-      });
+        });
+      }
     }
   }
-
-  return { task, run: finished, agentResult };
 }
 
 /**
