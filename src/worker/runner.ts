@@ -35,6 +35,12 @@ import {
   SdkRateLimitError,
 } from "@clawde/sdk";
 import type { LeaseManager } from "./lease.ts";
+import {
+  type AgentDefinitionLike,
+  createWorkspace,
+  removeWorkspace,
+  shouldUseEphemeralWorkspace,
+} from "./workspace.ts";
 
 export interface MemoryInjectDeps {
   readonly memoryRepo: MemoryRepo;
@@ -57,6 +63,8 @@ export interface RunnerDeps {
   readonly agentClient: AgentClient;
   readonly logger: Logger;
   readonly workerId: string;
+  readonly workspaceConfig?: { tmpRoot: string; baseBranch: string };
+  readonly resolveAgentDefinition?: (agent: string) => Promise<AgentDefinitionLike | null>;
   /** Overrides para fluxo de auto-refresh em testes. */
   readonly authRefresh?: {
     readonly runSetupToken?: SetupTokenRunner;
@@ -155,6 +163,23 @@ export async function processTask(deps: RunnerDeps, task: Task): Promise<Process
     throw new LeaseBusyError(task.id, run.id);
   }
 
+  const workspaceConfig = deps.workspaceConfig ?? { tmpRoot: "/tmp", baseBranch: "main" };
+  let ephemeralWorkspacePath: string | null = null;
+  if (task.workingDir !== null && deps.resolveAgentDefinition !== undefined) {
+    const agentDef = await deps.resolveAgentDefinition(task.agent);
+    if (shouldUseEphemeralWorkspace(task, agentDef)) {
+      const ws = await createWorkspace({
+        taskRunId: run.id,
+        taskId: task.id,
+        slug: task.prompt.slice(0, 40),
+        baseBranch: workspaceConfig.baseBranch,
+        repoRoot: task.workingDir,
+        tmpRoot: workspaceConfig.tmpRoot,
+      });
+      ephemeralWorkspacePath = ws.path;
+    }
+  }
+
   // Memory inject opcional: prepend snippet de observations relevantes.
   let effectivePrompt = task.prompt;
   if (deps.memoryInject?.config.enabled) {
@@ -186,8 +211,8 @@ export async function processTask(deps: RunnerDeps, task: Task): Promise<Process
   try {
     agentResult =
       deps.review !== undefined
-        ? await runWithReviewPipeline(deps, task, run.id, effectivePrompt)
-        : await runAgentWithLedger(deps, task, run.id, effectivePrompt);
+        ? await runWithReviewPipeline(deps, task, run.id, effectivePrompt, ephemeralWorkspacePath)
+        : await runAgentWithLedger(deps, task, run.id, effectivePrompt, ephemeralWorkspacePath);
   } catch (err) {
     if (err instanceof SdkRateLimitError) {
       deps.quotaTracker.markCurrentWindowExhausted();
@@ -265,6 +290,26 @@ export async function processTask(deps: RunnerDeps, task: Task): Promise<Process
 
   log.info("task finished", { status: finalStatus, msgs: agentResult.msgsConsumed });
 
+  if (ephemeralWorkspacePath !== null && task.workingDir !== null) {
+    try {
+      await removeWorkspace(
+        {
+          path: ephemeralWorkspacePath,
+          baseBranch: workspaceConfig.baseBranch,
+          featureBranch: "",
+          taskRunId: run.id,
+          createdAt: "",
+        },
+        task.workingDir,
+      );
+    } catch (err) {
+      log.warn("workspace cleanup failed", {
+        error: (err as Error).message,
+        path: ephemeralWorkspacePath,
+      });
+    }
+  }
+
   return { task, run: finished, agentResult };
 }
 
@@ -290,6 +335,7 @@ async function runAgentWithLedger(
   task: Task,
   taskRunId: number,
   effectivePrompt: string,
+  workingDirectoryOverride: string | null,
 ): Promise<AgentRunResult> {
   const AUTH_RETRY_TOKEN = { value: "worker-auth-retry", source: "env" as const };
 
@@ -304,7 +350,11 @@ async function runAgentWithLedger(
     prompt: effectivePrompt,
   };
   if (task.sessionId !== null) streamOpts.sessionId = task.sessionId;
-  if (task.workingDir !== null) streamOpts.workingDirectory = task.workingDir;
+  if (workingDirectoryOverride !== null) {
+    streamOpts.workingDirectory = workingDirectoryOverride;
+  } else if (task.workingDir !== null) {
+    streamOpts.workingDirectory = task.workingDir;
+  }
 
   const runStreamOnce = async (): Promise<void> => {
     for await (const msg of deps.agentClient.stream(streamOpts)) {
@@ -371,6 +421,7 @@ async function runWithReviewPipeline(
   task: Task,
   taskRunId: number,
   effectivePrompt: string,
+  workingDirectoryOverride: string | null,
 ): Promise<AgentRunResult> {
   if (deps.review === undefined) {
     throw new Error("runWithReviewPipeline called without review deps");
@@ -385,7 +436,11 @@ async function runWithReviewPipeline(
       prompt: fullPrompt,
     };
     if (task.sessionId !== null) streamOpts.sessionId = task.sessionId;
-    if (task.workingDir !== null) streamOpts.workingDirectory = task.workingDir;
+    if (workingDirectoryOverride !== null) {
+      streamOpts.workingDirectory = workingDirectoryOverride;
+    } else if (task.workingDir !== null) {
+      streamOpts.workingDirectory = task.workingDir;
+    }
     for await (const msg of deps.agentClient.stream(streamOpts)) {
       msgsConsumed += 1;
       deps.quotaTracker.recordMessage(taskRunId);

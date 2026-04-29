@@ -7,9 +7,10 @@
  * Reusa execFile (não exec) — não passa por shell, mais seguro.
  */
 
-import { execFile } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { promisify } from "node:util";
+import type { Task } from "@clawde/domain/task";
 import type { Workspace } from "@clawde/domain/workspace";
 
 const exec = promisify(execFile);
@@ -21,6 +22,12 @@ export interface CreateWorkspaceInput {
   readonly baseBranch: string;
   readonly repoRoot: string;
   readonly tmpRoot?: string; // override pra testes
+}
+
+export interface AgentDefinitionLike {
+  readonly frontmatter?: {
+    readonly requiresWorkspace?: boolean;
+  };
 }
 
 function workspacePath(taskRunId: number, tmpRoot = "/tmp"): string {
@@ -94,6 +101,24 @@ export async function listWorktrees(repoRoot: string): Promise<ReadonlyArray<str
     }
   }
   return paths;
+}
+
+export function shouldUseEphemeralWorkspace(
+  _task: Task,
+  agentDef: AgentDefinitionLike | null,
+): boolean {
+  return agentDef?.frontmatter?.requiresWorkspace ?? false;
+}
+
+export function cleanupOrphanWorkspaceSync(
+  repoRoot: string,
+  taskRunId: number,
+  tmpRoot?: string,
+): boolean {
+  const path = workspacePath(taskRunId, tmpRoot);
+  if (!existsSync(path)) return false;
+  execFileSync("git", ["worktree", "remove", "--force", path], { cwd: repoRoot });
+  return true;
 }
 
 export { workspacePath as _workspacePathForTests, featureBranch as _featureBranchForTests };
