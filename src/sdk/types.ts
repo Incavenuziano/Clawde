@@ -45,6 +45,37 @@ export interface AgentRunResult {
   readonly error: string | null;
 }
 
+export class SdkAuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SdkAuthError";
+  }
+}
+
+export class SdkRateLimitError extends Error {
+  constructor(
+    message: string,
+    public readonly retryAfterSeconds: number | null = null,
+  ) {
+    super(message);
+    this.name = "SdkRateLimitError";
+  }
+}
+
+export class SdkNetworkError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SdkNetworkError";
+  }
+}
+
+export class SdkSchemaError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SdkSchemaError";
+  }
+}
+
 export interface RunAgentOptions {
   readonly prompt: string;
   readonly sessionId?: string;

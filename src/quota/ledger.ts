@@ -62,6 +62,25 @@ export class QuotaTracker {
     };
   }
 
+  /**
+   * Injeta débito sintético no ledger para forçar a janela atual ao estado
+   * "esgotado" até o próximo reset (usado em resposta a 429 do SDK).
+   */
+  markCurrentWindowExhausted(now: Date = new Date()): void {
+    const consumed = this.repo.totalInWindow(now);
+    const capacity = this.config.capacityPerWindow[this.config.plan];
+    const deficit = Math.max(0, capacity - consumed);
+    if (deficit === 0) return;
+
+    this.repo.insert({
+      msgsConsumed: deficit,
+      windowStart: this.repo.currentWindowStart(now),
+      plan: this.config.plan,
+      peakMultiplier: 1.0,
+      taskRunId: null,
+    });
+  }
+
   private computeResetsAt(now: Date): string {
     const reset = new Date(now.getTime() + FIVE_HOURS_MS);
     return reset.toISOString().replace("T", " ").replace(/\..+$/, "");

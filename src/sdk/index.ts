@@ -2,6 +2,7 @@ export {
   RealAgentClient,
   collectRun,
   getAgentClient,
+  mapSdkError,
   setAgentClient,
 } from "./client.ts";
 export {
@@ -23,3 +24,4 @@ export type {
   ToolResultBlock,
   ToolUseBlock,
 } from "./types.ts";
+export { SdkAuthError, SdkNetworkError, SdkRateLimitError, SdkSchemaError } from "./types.ts";
