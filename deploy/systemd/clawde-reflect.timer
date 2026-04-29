@@ -1,0 +1,10 @@
+[Unit]
+Description=Clawde reflection (a cada 6h, ADR 0009)
+
+[Timer]
+OnCalendar=*-*-* 00,06,12,18:00:00
+Unit=clawde-reflect.service
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -11,6 +11,7 @@
 
 import type { EventKind } from "@clawde/domain/event";
 import { runLogs } from "./commands/logs.ts";
+import { runMemory } from "./commands/memory.ts";
 import { runMigrate } from "./commands/migrate.ts";
 import { runQueue } from "./commands/queue.ts";
 import { runQuota } from "./commands/quota.ts";
@@ -212,6 +213,50 @@ export async function runMain(argv: ReadonlyArray<string>): Promise<number> {
       format: getOutputFormat(parsed),
       action,
     });
+  }
+
+  if (parsed.command === "memory") {
+    const action = parsed.positional[0];
+    if (action === undefined) {
+      emitErr("error: memory action required (search|show|stats|prune|reindex|recalc|inject)");
+      return 1;
+    }
+    if (
+      action !== "search" &&
+      action !== "show" &&
+      action !== "stats" &&
+      action !== "prune" &&
+      action !== "reindex" &&
+      action !== "recalc" &&
+      action !== "inject"
+    ) {
+      emitErr(`unknown memory action: ${action}`);
+      return 1;
+    }
+    const opts: Parameters<typeof runMemory>[0] = {
+      dbPath: getDbPath(parsed),
+      format: getOutputFormat(parsed),
+      action,
+    };
+    if (action === "search" || action === "inject") {
+      // Posicionais 1+ formam o query.
+      const queryParts = parsed.positional.slice(1);
+      if (queryParts.length > 0) Object.assign(opts, { query: queryParts.join(" ") });
+    }
+    if (action === "show") {
+      const idStr = parsed.positional[1];
+      if (idStr !== undefined) {
+        Object.assign(opts, { id: Number.parseInt(idStr, 10) });
+      }
+    }
+    const topK = getFlag(parsed, "top-k");
+    if (topK !== undefined) Object.assign(opts, { topK: Number.parseInt(topK, 10) });
+    const kindFlag = getFlag(parsed, "kind");
+    if (kindFlag !== undefined) Object.assign(opts, { kind: kindFlag });
+    if (parsed.flags["dry-run"] === true) Object.assign(opts, { dryRun: true });
+    const jsonlRoot = getFlag(parsed, "jsonl-root");
+    if (jsonlRoot !== undefined) Object.assign(opts, { jsonlRoot });
+    return await runMemory(opts);
   }
 
   emitErr(`unknown command: ${parsed.command}\nrun 'clawde help' for usage`);
