@@ -34,13 +34,17 @@ export async function bootstrap(): Promise<void> {
       leaseSeconds: config.worker.lease_seconds,
       heartbeatSeconds: config.worker.heartbeat_seconds,
     });
-    const reconciler = makeReconciler(runsRepo, eventsRepo);
+    const reconciler = makeReconciler(runsRepo, eventsRepo, {
+      tasksRepo,
+      workspaceTmpRoot: "/tmp",
+    });
     const agentClient = new RealAgentClient();
     const workerId = `${hostname()}-${process.pid}-${Date.now()}`;
     const reconcileResult = reconciler.reconcile(workerId);
     logger.info("startup reconcile", {
       expired_count: reconcileResult.expired.length,
       reenqueued_count: reconcileResult.reenqueued.length,
+      cleaned_orphans: reconcileResult.cleanedOrphans,
     });
     const maxTasks = 50;
     let processed = 0;
@@ -55,6 +59,7 @@ export async function bootstrap(): Promise<void> {
         agentClient,
         logger,
         workerId,
+        workspaceConfig: { tmpRoot: "/tmp", baseBranch: "main" },
       });
       if (result === null) break;
       processed += 1;

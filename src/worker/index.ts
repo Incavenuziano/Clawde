@@ -15,8 +15,10 @@ export {
   processTask,
 } from "./runner.ts";
 export {
+  cleanupOrphanWorkspaceSync,
   type CreateWorkspaceInput,
   WorkspaceError,
+  shouldUseEphemeralWorkspace,
   createWorkspace,
   listWorktrees,
   removeWorkspace,

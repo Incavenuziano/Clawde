@@ -35,6 +35,12 @@ import {
   SdkRateLimitError,
 } from "@clawde/sdk";
 import type { LeaseManager } from "./lease.ts";
+import {
+  type AgentDefinitionLike,
+  createWorkspace,
+  removeWorkspace,
+  shouldUseEphemeralWorkspace,
+} from "./workspace.ts";
 
 export interface MemoryInjectDeps {
   readonly memoryRepo: MemoryRepo;
@@ -57,6 +63,8 @@ export interface RunnerDeps {
   readonly agentClient: AgentClient;
   readonly logger: Logger;
   readonly workerId: string;
+  readonly workspaceConfig?: { tmpRoot: string; baseBranch: string };
+  readonly resolveAgentDefinition?: (agent: string) => Promise<AgentDefinitionLike | null>;
   /** Overrides para fluxo de auto-refresh em testes. */
   readonly authRefresh?: {
     readonly runSetupToken?: SetupTokenRunner;
@@ -155,117 +163,155 @@ export async function processTask(deps: RunnerDeps, task: Task): Promise<Process
     throw new LeaseBusyError(task.id, run.id);
   }
 
-  // Memory inject opcional: prepend snippet de observations relevantes.
-  let effectivePrompt = task.prompt;
-  if (deps.memoryInject?.config.enabled) {
-    try {
-      const ctx = await deps.memoryInject.buildContext(
-        deps.memoryInject.memoryRepo,
-        task.prompt,
-        deps.memoryInject.config,
-      );
-      if (ctx.injected) {
-        effectivePrompt = `${ctx.snippet}\n\n${task.prompt}`;
-      }
-    } catch (err) {
-      log.warn("memory inject failed (continuing without)", { error: (err as Error).message });
+  const workspaceConfig = deps.workspaceConfig ?? { tmpRoot: "/tmp", baseBranch: "main" };
+  let ephemeralWorkspacePath: string | null = null;
+  if (task.workingDir !== null && deps.resolveAgentDefinition !== undefined) {
+    const agentDef = await deps.resolveAgentDefinition(task.agent);
+    if (shouldUseEphemeralWorkspace(task, agentDef)) {
+      const ws = await createWorkspace({
+        taskRunId: run.id,
+        taskId: task.id,
+        slug: task.prompt.slice(0, 40),
+        baseBranch: workspaceConfig.baseBranch,
+        repoRoot: task.workingDir,
+        tmpRoot: workspaceConfig.tmpRoot,
+      });
+      ephemeralWorkspacePath = ws.path;
     }
   }
 
-  // Emite invocation_start.
-  deps.eventsRepo.insert({
-    taskRunId: run.id,
-    sessionId: task.sessionId,
-    traceId: null,
-    spanId: null,
-    kind: "claude_invocation_start",
-    payload: { agent: task.agent, prompt_len: effectivePrompt.length },
-  });
-
-  let agentResult: AgentRunResult;
   try {
-    agentResult =
-      deps.review !== undefined
-        ? await runWithReviewPipeline(deps, task, run.id, effectivePrompt)
-        : await runAgentWithLedger(deps, task, run.id, effectivePrompt);
-  } catch (err) {
-    if (err instanceof SdkRateLimitError) {
-      deps.quotaTracker.markCurrentWindowExhausted();
-      const exhaustedWindow = deps.quotaTracker.currentWindow();
-      const failed = deps.leaseManager.finish(acquisition, "failed", {
-        error: err.message,
-      });
-      const deferred = deps.runsRepo.insert(task.id, deps.workerId, {
-        notBefore: exhaustedWindow.resetsAt,
-      });
-      deps.eventsRepo.insert({
-        taskRunId: failed.id,
-        sessionId: task.sessionId,
-        traceId: null,
-        spanId: null,
-        kind: "quota_429_observed",
-        payload: {
-          task_id: task.id,
-          failed_run_id: failed.id,
-          deferred_run_id: deferred.id,
-          retry_after_seconds: err.retryAfterSeconds,
-          defer_until: exhaustedWindow.resetsAt,
-        },
+    // Memory inject opcional: prepend snippet de observations relevantes.
+    let effectivePrompt = task.prompt;
+    if (deps.memoryInject?.config.enabled) {
+      try {
+        const ctx = await deps.memoryInject.buildContext(
+          deps.memoryInject.memoryRepo,
+          task.prompt,
+          deps.memoryInject.config,
+        );
+        if (ctx.injected) {
+          effectivePrompt = `${ctx.snippet}\n\n${task.prompt}`;
+        }
+      } catch (err) {
+        log.warn("memory inject failed (continuing without)", { error: (err as Error).message });
+      }
+    }
+
+    // Emite invocation_start.
+    deps.eventsRepo.insert({
+      taskRunId: run.id,
+      sessionId: task.sessionId,
+      traceId: null,
+      spanId: null,
+      kind: "claude_invocation_start",
+      payload: { agent: task.agent, prompt_len: effectivePrompt.length },
+    });
+
+    let agentResult: AgentRunResult;
+    try {
+      agentResult =
+        deps.review !== undefined
+          ? await runWithReviewPipeline(deps, task, run.id, effectivePrompt, ephemeralWorkspacePath)
+          : await runAgentWithLedger(deps, task, run.id, effectivePrompt, ephemeralWorkspacePath);
+    } catch (err) {
+      if (err instanceof SdkRateLimitError) {
+        deps.quotaTracker.markCurrentWindowExhausted();
+        const exhaustedWindow = deps.quotaTracker.currentWindow();
+        const failed = deps.leaseManager.finish(acquisition, "failed", {
+          error: err.message,
+        });
+        const deferred = deps.runsRepo.insert(task.id, deps.workerId, {
+          notBefore: exhaustedWindow.resetsAt,
+        });
+        deps.eventsRepo.insert({
+          taskRunId: failed.id,
+          sessionId: task.sessionId,
+          traceId: null,
+          spanId: null,
+          kind: "quota_429_observed",
+          payload: {
+            task_id: task.id,
+            failed_run_id: failed.id,
+            deferred_run_id: deferred.id,
+            retry_after_seconds: err.retryAfterSeconds,
+            defer_until: exhaustedWindow.resetsAt,
+          },
+        });
+        return {
+          task,
+          run: deferred,
+          agentResult: {
+            stopReason: "error",
+            msgsConsumed: 0,
+            totalTurns: 0,
+            finalText: "",
+            error: err.message,
+          },
+        };
+      }
+
+      log.error("agent invocation crashed", { error: (err as Error).message });
+      const finished = deps.leaseManager.finish(acquisition, "failed", {
+        error: (err as Error).message,
       });
       return {
         task,
-        run: deferred,
+        run: finished,
         agentResult: {
           stopReason: "error",
           msgsConsumed: 0,
           totalTurns: 0,
           finalText: "",
-          error: err.message,
+          error: (err as Error).message,
         },
       };
     }
 
-    log.error("agent invocation crashed", { error: (err as Error).message });
-    const finished = deps.leaseManager.finish(acquisition, "failed", {
-      error: (err as Error).message,
-    });
-    return {
-      task,
-      run: finished,
-      agentResult: {
-        stopReason: "error",
-        msgsConsumed: 0,
-        totalTurns: 0,
-        finalText: "",
-        error: (err as Error).message,
+    // Emite invocation_end.
+    deps.eventsRepo.insert({
+      taskRunId: run.id,
+      sessionId: task.sessionId,
+      traceId: null,
+      spanId: null,
+      kind: "claude_invocation_end",
+      payload: {
+        stop_reason: agentResult.stopReason,
+        msgs_consumed: agentResult.msgsConsumed,
+        total_turns: agentResult.totalTurns,
       },
-    };
+    });
+
+    const finalStatus = agentResult.error === null ? "succeeded" : "failed";
+    const finished = deps.leaseManager.finish(acquisition, finalStatus, {
+      result: agentResult.finalText.length > 0 ? agentResult.finalText : null,
+      error: agentResult.error,
+      msgsConsumed: agentResult.msgsConsumed,
+    } as { result?: string; error?: string; msgsConsumed?: number });
+
+    log.info("task finished", { status: finalStatus, msgs: agentResult.msgsConsumed });
+    return { task, run: finished, agentResult };
+  } finally {
+    if (ephemeralWorkspacePath !== null && task.workingDir !== null) {
+      try {
+        await removeWorkspace(
+          {
+            path: ephemeralWorkspacePath,
+            baseBranch: workspaceConfig.baseBranch,
+            featureBranch: "",
+            taskRunId: run.id,
+            createdAt: "",
+          },
+          task.workingDir,
+        );
+      } catch (err) {
+        log.warn("workspace cleanup failed", {
+          error: (err as Error).message,
+          path: ephemeralWorkspacePath,
+        });
+      }
+    }
   }
-
-  // Emite invocation_end.
-  deps.eventsRepo.insert({
-    taskRunId: run.id,
-    sessionId: task.sessionId,
-    traceId: null,
-    spanId: null,
-    kind: "claude_invocation_end",
-    payload: {
-      stop_reason: agentResult.stopReason,
-      msgs_consumed: agentResult.msgsConsumed,
-      total_turns: agentResult.totalTurns,
-    },
-  });
-
-  const finalStatus = agentResult.error === null ? "succeeded" : "failed";
-  const finished = deps.leaseManager.finish(acquisition, finalStatus, {
-    result: agentResult.finalText.length > 0 ? agentResult.finalText : null,
-    error: agentResult.error,
-    msgsConsumed: agentResult.msgsConsumed,
-  } as { result?: string; error?: string; msgsConsumed?: number });
-
-  log.info("task finished", { status: finalStatus, msgs: agentResult.msgsConsumed });
-
-  return { task, run: finished, agentResult };
 }
 
 /**
@@ -290,6 +336,7 @@ async function runAgentWithLedger(
   task: Task,
   taskRunId: number,
   effectivePrompt: string,
+  workingDirectoryOverride: string | null,
 ): Promise<AgentRunResult> {
   const AUTH_RETRY_TOKEN = { value: "worker-auth-retry", source: "env" as const };
 
@@ -304,7 +351,11 @@ async function runAgentWithLedger(
     prompt: effectivePrompt,
   };
   if (task.sessionId !== null) streamOpts.sessionId = task.sessionId;
-  if (task.workingDir !== null) streamOpts.workingDirectory = task.workingDir;
+  if (workingDirectoryOverride !== null) {
+    streamOpts.workingDirectory = workingDirectoryOverride;
+  } else if (task.workingDir !== null) {
+    streamOpts.workingDirectory = task.workingDir;
+  }
 
   const runStreamOnce = async (): Promise<void> => {
     for await (const msg of deps.agentClient.stream(streamOpts)) {
@@ -371,6 +422,7 @@ async function runWithReviewPipeline(
   task: Task,
   taskRunId: number,
   effectivePrompt: string,
+  workingDirectoryOverride: string | null,
 ): Promise<AgentRunResult> {
   if (deps.review === undefined) {
     throw new Error("runWithReviewPipeline called without review deps");
@@ -385,7 +437,11 @@ async function runWithReviewPipeline(
       prompt: fullPrompt,
     };
     if (task.sessionId !== null) streamOpts.sessionId = task.sessionId;
-    if (task.workingDir !== null) streamOpts.workingDirectory = task.workingDir;
+    if (workingDirectoryOverride !== null) {
+      streamOpts.workingDirectory = workingDirectoryOverride;
+    } else if (task.workingDir !== null) {
+      streamOpts.workingDirectory = task.workingDir;
+    }
     for await (const msg of deps.agentClient.stream(streamOpts)) {
       msgsConsumed += 1;
       deps.quotaTracker.recordMessage(taskRunId);
