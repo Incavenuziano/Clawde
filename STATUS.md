@@ -36,7 +36,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P0.2 | `task/P0.2-trigger` | T-014..T-018 | codex | claude | merged, PR #3, 2026-04-29 | #3 |
 | P0.3 | `task/P0.3-config-schema` | T-019 | codex | claude | merged, PR #1, 2026-04-29 | #1 |
 | P1.1 | `task/P1.1-dequeue-retry` | T-020..T-023 | codex | claude | merged, PR #4, 2026-04-29 | #4 |
-| P1.2 | `task/P1.2-quota-not-before` | T-024..T-033 | codex | claude | in-review, PR #5 | #5 |
+| P1.2 | `task/P1.2-quota-not-before` | T-024..T-033 | codex | claude | merged, PR #5, 2026-04-29 | #5 |
 | P1.3 | `task/P1.3-sdk-errors` | T-034..T-040 | codex | claude | pending | — |
 | P2.1 | `task/P2.1-workspace-plug` | T-041..T-046 | codex | claude | pending | — |
 | P2.2 | `task/P2.2-sandbox-tools` | T-047..T-053 | codex | claude | pending | — |
@@ -60,8 +60,8 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P6.5 | `task/P6.5-backup-cadence` | T-138..T-140 | codex | claude | pending | — |
 | P6.6 | `task/P6.6-restore-drill` | T-141..T-143 | codex | claude | pending | — |
 
-**Cross-wave dependencies** (resolvidos via TODO + followup PR):
-- T-008 do P0.1 está blocked-on T-029 (P1.2) → P0.1 mergeia com TODO; followup `task/P0.1-followup-quota-gate` depois de P1.2.
+**Cross-wave dependencies**:
+- T-008 do P0.1 foi desbloqueado após merge de P1.2 (T-029); segue como followup dedicado.
 
 **Estados de branch**: `pending` | `in-progress, <quem>` | `in-review, PR #N` | `merged, PR #N, YYYY-MM-DD` | `blocked, after P-X.Y`
 
@@ -77,7 +77,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 - [x] T-005 — merged, PR #2, 2026-04-29
 - [x] T-006 — merged, PR #2, 2026-04-29
 - [x] T-007 — merged, PR #2, 2026-04-29
-- [ ] T-008 — blocked, after P1.2 (T-029)
+- [ ] T-008 — pending — unlocked after P1.2 (T-029)
 - [x] T-009 — merged, PR #2, 2026-04-29
 - [x] T-010 — merged, PR #2, 2026-04-29
 - [x] T-011 — merged, PR #2, 2026-04-29
@@ -105,16 +105,16 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 - [x] T-023 — merged, PR #4, 2026-04-29
 
 ### P1.2 — Quota policy com not_before
-- [x] T-024 — in-review, PR #5
-- [x] T-025 — in-review, PR #5
-- [x] T-026 — in-review, PR #5
-- [x] T-027 — in-review, PR #5
-- [x] T-028 — in-review, PR #5
-- [x] T-029 — in-review, PR #5
-- [x] T-030 — in-review, PR #5
-- [x] T-031 — in-review, PR #5
-- [x] T-032 — in-review, PR #5
-- [x] T-033 — in-review, PR #5
+- [x] T-024 — merged, PR #5, 2026-04-29
+- [x] T-025 — merged, PR #5, 2026-04-29
+- [x] T-026 — merged, PR #5, 2026-04-29
+- [x] T-027 — merged, PR #5, 2026-04-29
+- [x] T-028 — merged, PR #5, 2026-04-29
+- [x] T-029 — merged, PR #5, 2026-04-29
+- [x] T-030 — merged, PR #5, 2026-04-29
+- [x] T-031 — merged, PR #5, 2026-04-29
+- [x] T-032 — merged, PR #5, 2026-04-29
+- [x] T-033 — merged, PR #5, 2026-04-29
 
 ### P1.3 — SDK error tipados
 - [ ] T-034 — pending
