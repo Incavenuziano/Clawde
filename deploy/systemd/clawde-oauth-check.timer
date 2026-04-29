@@ -1,0 +1,11 @@
+[Unit]
+Description=Clawde OAuth check semanal (segunda 03:00 local)
+
+[Timer]
+OnCalendar=Mon *-*-* 03:00:00
+Unit=clawde-oauth-check.service
+Persistent=true
+RandomizedDelaySec=15m
+
+[Install]
+WantedBy=timers.target

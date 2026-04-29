@@ -10,6 +10,7 @@
  */
 
 import type { EventKind } from "@clawde/domain/event";
+import { runAuth } from "./commands/auth.ts";
 import { runLogs } from "./commands/logs.ts";
 import { runMemory } from "./commands/memory.ts";
 import { runMigrate } from "./commands/migrate.ts";
@@ -91,6 +92,7 @@ Commands:
   queue <prompt>         Enfileira nova task
   migrate <up|status|down>  Aplica/reverte migrations
   smoke-test             Roda checagens de saúde
+  auth <status|check>    Inspeciona OAuth token
   version                Mostra semver
   help                   Esta mensagem
 
@@ -257,6 +259,26 @@ export async function runMain(argv: ReadonlyArray<string>): Promise<number> {
     const jsonlRoot = getFlag(parsed, "jsonl-root");
     if (jsonlRoot !== undefined) Object.assign(opts, { jsonlRoot });
     return await runMemory(opts);
+  }
+
+  if (parsed.command === "auth") {
+    const action = parsed.positional[0] ?? "status";
+    if (action !== "status" && action !== "check") {
+      emitErr(`unknown auth action: ${action} (use status|check)`);
+      return 1;
+    }
+    const opts: Parameters<typeof runAuth>[0] = {
+      format: getOutputFormat(parsed),
+      action,
+    };
+    const t = getFlag(parsed, "threshold-days");
+    if (t !== undefined) {
+      const n = Number.parseInt(t, 10);
+      if (Number.isFinite(n) && n > 0) Object.assign(opts, { thresholdDays: n });
+    }
+    const cn = getFlag(parsed, "credential-name");
+    if (cn !== undefined) Object.assign(opts, { credentialName: cn });
+    return runAuth(opts);
   }
 
   emitErr(`unknown command: ${parsed.command}\nrun 'clawde help' for usage`);
