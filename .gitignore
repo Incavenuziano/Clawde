@@ -1,0 +1,40 @@
+# Bun
+node_modules/
+.bun/
+bun.lockb
+
+# Build
+dist/
+*.tsbuildinfo
+
+# State (Clawde runtime)
+*.db
+*.db-wal
+*.db-shm
+.clawde/state/
+.clawde/logs/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+!.vscode/settings.json
+*.swp
+*~
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Worktrees ephemeral
+/tmp/clawde-*
+
+# Logs (dev local)
+*.log
