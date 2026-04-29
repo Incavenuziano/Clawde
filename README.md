@@ -193,9 +193,10 @@ max_memory_mb = 1024
 ```
 
 Defaults sane por agente em `defaultLevelForAgent` (`telegram-bot`/`github-pr-handler` → 3,
-`implementer`/`debugger` → 2, demais → 1). Em produção atual, níveis 2/3 valem para
-tool calls (`Bash`, `Edit`, `Write`) via hooks, enquanto o processo do worker fica
-com hardening systemd nível 1. Ver ADR 0015.
+`implementer`/`debugger` → 2, demais → 1). Hoje, no runtime de produção, o worker segue
+com hardening systemd nível 1; os gates de tool calls (`Bash`, `Edit`, `Write`) via hooks
+estão implementados, mas só serão aplicados no path principal após o wire-up de T-064/P2.5a.
+Ver ADR 0015.
 
 ## Inspirações
 
@@ -218,7 +219,7 @@ Validadas via leitura de código (não só docs):
 | **1** Foundation (schema + repos) | ✅ | `src/db/`, `src/domain/`, `src/log/`, `src/config/` |
 | **2** Worker + SDK + sessão | ✅ | `src/worker/`, `src/sdk/`, `src/hooks/`, `src/quota/` |
 | **3** Receiver + CLI local | ✅ | `src/receiver/`, `src/cli/`, E2E lifecycle |
-| **4** Sandbox 2/3 em tools (bwrap, netns) | ✅ | `src/sandbox/` + hooks `PreToolUse` para `Bash`/`Edit`/`Write` |
+| **4** Sandbox 2/3 em tools (bwrap, netns) | 🟡 | `src/sandbox/` + hooks `PreToolUse` para `Bash`/`Edit`/`Write` (wire-up runtime pendente em T-064/P2.5a) |
 | **5** Memória + aprendizado | ✅ | `src/memory/`, hooks→memory, importance, reflector subagent |
 | **6** Telegram adapter | ✅ | `src/receiver/routes/telegram.ts` + `src/sanitize/` (XML envelope) |
 | **7** OAuth refresh + Datasette | ✅ | `src/auth/`, `deploy/datasette/`, `clawde dashboard` |

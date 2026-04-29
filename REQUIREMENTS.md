@@ -43,9 +43,10 @@ fresh context. ADR 0004.
 
 ### RF-08 — Sandbox em níveis (tools)
 3 níveis (systemd hardening / +bwrap / +netns) selecionáveis por agente em
-`sandbox.toml`. No estado atual, nível 2/3 é aplicado em tool calls (`Bash`,
-`Edit`, `Write`) via hooks; o worker segue in-process com hardening systemd
-nível 1. ADR 0015. Linux only (RF não-alvo: macOS prod).
+`sandbox.toml`. No estado atual de runtime, o worker segue in-process com
+hardening systemd nível 1; os gates de tool calls (`Bash`, `Edit`, `Write`) via
+hooks estão implementados, mas serão aplicados no path principal após o wire-up
+de T-064/P2.5a. ADR 0015. Linux only (RF não-alvo: macOS prod).
 
 ### RF-09 — Quota tracking
 `quota_ledger` com sliding window 5h, política por priority, peak hours
