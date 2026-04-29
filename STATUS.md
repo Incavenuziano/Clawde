@@ -14,13 +14,13 @@
 
 | Wave | Pending | In-progress | In-review | Merged | Blocked | Total |
 |------|---------|-------------|-----------|--------|---------|-------|
-| 1 — Boot | 19 | 0 | 0 | 0 | 0 | 19 |
+| 1 — Boot | 6 | 0 | 0 | 12 | 1 | 19 |
 | 2 — Operação | 21 | 0 | 0 | 0 | 0 | 21 |
 | 3 — Segurança core | 38 | 0 | 0 | 0 | 0 | 38 |
 | 4 — Hardening | 22 | 0 | 0 | 0 | 0 | 22 |
 | 5 — Alinhamento | 24 | 0 | 0 | 0 | 0 | 24 |
 | 6 — Hardening operacional | 19 | 0 | 0 | 0 | 0 | 19 |
-| **Total** | **143** | **0** | **0** | **0** | **0** | **143** |
+| **Total** | **130** | **0** | **0** | **12** | **1** | **143** |
 
 ---
 
@@ -32,9 +32,9 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 
 | Sub-fase | Branch | Tasks | Implementer | Reviewer | Estado | PR |
 |----------|--------|-------|-------------|----------|--------|----|
-| P0.1 | `task/P0.1-entrypoints` | T-001..T-013 | claude | codex | in-review, PR #2 | #2 |
+| P0.1 | `task/P0.1-entrypoints` | T-001..T-013 | claude | codex | merged, PR #2, 2026-04-29 | #2 |
 | P0.2 | `task/P0.2-trigger` | T-014..T-018 | codex | claude | in-review, PR #3 | #3 |
-| P0.3 | `task/P0.3-config-schema` | T-019 | codex | claude | in-review, PR #1 | #1 |
+| P0.3 | `task/P0.3-config-schema` | T-019 | codex | claude | merged, PR #1, 2026-04-29 | #1 |
 | P1.1 | `task/P1.1-dequeue-retry` | T-020..T-023 | codex | claude | pending | — |
 | P1.2 | `task/P1.2-quota-not-before` | T-024..T-033 | codex | claude | pending | — |
 | P1.3 | `task/P1.3-sdk-errors` | T-034..T-040 | codex | claude | pending | — |
@@ -70,19 +70,19 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 ## Wave 1 — Boot (P0)
 
 ### P0.1 — Entrypoints e build alignment
-- [ ] T-001 — in-review, PR #2
-- [ ] T-002 — in-review, PR #2
-- [ ] T-003 — blocked, after P0.3 (T-019) — telegram route deferred
-- [ ] T-004 — in-review, PR #2
-- [ ] T-005 — in-review, PR #2
-- [ ] T-006 — in-review, PR #2
-- [ ] T-007 — in-review, PR #2
+- [x] T-001 — merged, PR #2, 2026-04-29
+- [x] T-002 — merged, PR #2, 2026-04-29
+- [ ] T-003 — pending — followup PR task/P0.1-followup-telegram after P0.3 merge
+- [x] T-004 — merged, PR #2, 2026-04-29
+- [x] T-005 — merged, PR #2, 2026-04-29
+- [x] T-006 — merged, PR #2, 2026-04-29
+- [x] T-007 — merged, PR #2, 2026-04-29
 - [ ] T-008 — blocked, after P1.2 (T-029)
-- [ ] T-009 — in-review, PR #2
-- [ ] T-010 — in-review, PR #2
-- [ ] T-011 — in-review, PR #2
-- [ ] T-012 — in-review, PR #2
-- [ ] T-013 — in-review, PR #2
+- [x] T-009 — merged, PR #2, 2026-04-29
+- [x] T-010 — merged, PR #2, 2026-04-29
+- [x] T-011 — merged, PR #2, 2026-04-29
+- [x] T-012 — merged, PR #2, 2026-04-29
+- [x] T-013 — merged, PR #2, 2026-04-29
 
 ### P0.2 — Trigger event-driven
 - [x] T-014 — in-review, PR #3
@@ -92,7 +92,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 - [x] T-018 — in-review, PR #3
 
 ### P0.3 — Schema config
-- [x] T-019 — in-review, PR #1
+- [x] T-019 — merged, PR #1, 2026-04-29
 
 ---
 
