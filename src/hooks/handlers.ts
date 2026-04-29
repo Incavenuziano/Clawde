@@ -31,6 +31,34 @@ export type MemoryCallback = (input: {
   importance: number;
 }) => void;
 
+export interface PreToolUseAgentPolicy {
+  readonly allowedTools: ReadonlyArray<string>;
+  readonly sandbox: {
+    readonly level: 1 | 2 | 3;
+    readonly allowed_writes: ReadonlyArray<string>;
+  };
+}
+
+function normalizePath(input: string): string {
+  return input.replace(/\\/g, "/").trim();
+}
+
+function isPathTraversal(path: string): boolean {
+  const p = normalizePath(path);
+  return p.includes("../") || p.startsWith("..");
+}
+
+function isAllowedWritePath(path: string, allowedWrites: ReadonlyArray<string>): boolean {
+  const target = normalizePath(path);
+  if (isPathTraversal(target)) return false;
+  for (const allowed of allowedWrites) {
+    const base = normalizePath(allowed);
+    if (base.length === 0) continue;
+    if (target === base || target.startsWith(`${base}/`)) return true;
+  }
+  return false;
+}
+
 export function makeSessionStartHandler(
   emit: EventCallback,
 ): HookHandler<HookInput & { hook: "SessionStart"; payload: SessionStartPayload }> {
@@ -55,8 +83,47 @@ export function makeUserPromptSubmitHandler(
 
 export function makePreToolUseHandler(
   emit: EventCallback,
+  agent?: PreToolUseAgentPolicy,
 ): HookHandler<HookInput & { hook: "PreToolUse"; payload: PreToolUsePayload }> {
   return (input) => {
+    const toolName = input.payload.toolName;
+    const allowedTools = agent?.allowedTools ?? [];
+
+    if (allowedTools.length > 0 && !allowedTools.includes(toolName)) {
+      emit("tool_blocked", {
+        tool: toolName,
+        reason: "tool_not_allowlisted",
+      });
+      return { ok: false, block: true, message: `tool '${toolName}' not allowed` };
+    }
+
+    if (toolName === "Bash" && (agent?.sandbox.level ?? 1) >= 2) {
+      emit("tool_blocked", {
+        tool: toolName,
+        reason: "bash_requires_subprocess_wrapper",
+        sandbox_level: agent?.sandbox.level ?? 1,
+      });
+      return {
+        ok: false,
+        block: true,
+        message: "Bash blocked on sandbox level>=2 until subprocess wrapper is available",
+      };
+    }
+
+    if (toolName === "Edit" || toolName === "Write") {
+      const rawPath = input.payload.toolInput.path;
+      const path = typeof rawPath === "string" ? rawPath : "";
+      const allowedWrites = agent?.sandbox.allowed_writes ?? [];
+      if (allowedWrites.length > 0 && !isAllowedWritePath(path, allowedWrites)) {
+        emit("tool_blocked", {
+          tool: toolName,
+          reason: "write_path_not_allowed",
+          path,
+        });
+        return { ok: false, block: true, message: `write path '${path}' is not allowed` };
+      }
+    }
+
     emit("tool_use", { tool: input.payload.toolName, input: input.payload.toolInput });
     return { ok: true };
   };
