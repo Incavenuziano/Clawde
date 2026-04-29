@@ -32,7 +32,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 
 | Sub-fase | Branch | Tasks | Implementer | Reviewer | Estado | PR |
 |----------|--------|-------|-------------|----------|--------|----|
-| P0.1 | `task/P0.1-entrypoints` | T-001..T-013 | claude | codex | in-progress, claude | — |
+| P0.1 | `task/P0.1-entrypoints` | T-001..T-013 | claude | codex | in-review, PR #2 | #2 |
 | P0.2 | `task/P0.2-trigger` | T-014..T-018 | codex | claude | pending | — |
 | P0.3 | `task/P0.3-config-schema` | T-019 | codex | claude | in-review, PR #1 | #1 |
 | P1.1 | `task/P1.1-dequeue-retry` | T-020..T-023 | codex | claude | pending | — |
@@ -70,19 +70,19 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 ## Wave 1 — Boot (P0)
 
 ### P0.1 — Entrypoints e build alignment
-- [ ] T-001 — in-progress
-- [ ] T-002 — in-progress
-- [ ] T-003 — in-progress
-- [ ] T-004 — in-progress
-- [ ] T-005 — in-progress
-- [ ] T-006 — in-progress
-- [ ] T-007 — in-progress
+- [ ] T-001 — in-review, PR #2
+- [ ] T-002 — in-review, PR #2
+- [ ] T-003 — blocked, after P0.3 (T-019) — telegram route deferred
+- [ ] T-004 — in-review, PR #2
+- [ ] T-005 — in-review, PR #2
+- [ ] T-006 — in-review, PR #2
+- [ ] T-007 — in-review, PR #2
 - [ ] T-008 — blocked, after P1.2 (T-029)
-- [ ] T-009 — in-progress
-- [ ] T-010 — in-progress
-- [ ] T-011 — in-progress
-- [ ] T-012 — in-progress
-- [ ] T-013 — in-progress
+- [ ] T-009 — in-review, PR #2
+- [ ] T-010 — in-review, PR #2
+- [ ] T-011 — in-review, PR #2
+- [ ] T-012 — in-review, PR #2
+- [ ] T-013 — in-review, PR #2
 
 ### P0.2 — Trigger event-driven
 - [ ] T-014 — pending
