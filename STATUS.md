@@ -77,7 +77,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 - [x] T-005 — merged, PR #2, 2026-04-29
 - [x] T-006 — merged, PR #2, 2026-04-29
 - [x] T-007 — merged, PR #2, 2026-04-29
-- [ ] T-008 — pending — unlocked after P1.2 (T-029)
+- [ ] T-008 — in-review, PR followup — task/P0.1-followup-quota-gate
 - [x] T-009 — merged, PR #2, 2026-04-29
 - [x] T-010 — merged, PR #2, 2026-04-29
 - [x] T-011 — merged, PR #2, 2026-04-29
