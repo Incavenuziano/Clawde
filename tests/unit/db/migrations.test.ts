@@ -176,9 +176,10 @@ describe("db/migrations real schema (defaultMigrationsDir)", () => {
     rmSync(dbDir, { recursive: true, force: true });
   });
 
-  test("aplica migration 001 real e PRAGMA integrity_check = ok", () => {
+  test("aplica migrations reais e PRAGMA integrity_check = ok", () => {
     const applied = applyPending(db, defaultMigrationsDir());
-    expect(applied).toEqual([1]);
+    expect(applied.length).toBeGreaterThan(0);
+    expect(applied[0]).toBe(1);
     const row = db.query("PRAGMA integrity_check").get() as { integrity_check: string };
     expect(row.integrity_check).toBe("ok");
   });

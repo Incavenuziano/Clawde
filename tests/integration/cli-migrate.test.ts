@@ -64,8 +64,8 @@ describe("cli/commands/migrate", () => {
       runMigrate({ action: "status", dbPath, format: "text" }),
     );
     expect(exit).toBe(0);
-    expect(stdout).toContain("current: 1");
-    expect(stdout).toContain("latest:  1");
+    expect(stdout).toMatch(/current: \d+/);
+    expect(stdout).toMatch(/latest: +\d+/);
     expect(stdout).toContain("pending: (none)");
   });
 
@@ -76,8 +76,9 @@ describe("cli/commands/migrate", () => {
     );
     expect(exit).toBe(0);
     const parsed = JSON.parse(stdout);
-    expect(parsed.current).toBe(1);
-    expect(parsed.latest).toBe(1);
+    expect(parsed.current).toBeGreaterThanOrEqual(1);
+    expect(parsed.latest).toBe(parsed.current);
+    expect(parsed.pending).toEqual([]);
   });
 
   test("down sem --confirm retorna exit 1", () => {
@@ -95,7 +96,7 @@ describe("cli/commands/migrate", () => {
       runMigrate({ action: "down", dbPath, format: "text", target: 0, confirm: true }),
     );
     expect(exit).toBe(0);
-    expect(stdout).toContain("reverted: 1");
+    expect(stdout).toMatch(/reverted: [\d, ]+/);
   });
 
   test("erro de DB retorna exit 2 e stderr", () => {

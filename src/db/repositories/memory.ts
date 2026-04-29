@@ -152,19 +152,38 @@ export class MemoryRepo {
   }
 
   /**
+   * Conta quantas rows seriam deletadas pelo pruning (dryRun helper).
+   */
+  countPrunable(importanceCutoff: number, cutoffDate: string): number {
+    const row = this.db
+      .query<{ c: number }, [number, string]>(
+        `SELECT COUNT(*) AS c FROM memory_observations
+         WHERE kind != 'lesson'
+           AND importance < ?
+           AND created_at < ?`,
+      )
+      .get(importanceCutoff, cutoffDate);
+    return row?.c ?? 0;
+  }
+
+  /**
    * Deleta observations com importance < cutoff E created_at < cutoffDate,
    * preservando lessons. Usado pelo pruning (F5.T54).
-   * Retorna número de rows deletadas.
+   * Retorna número de rows deletadas (não inclui triggers cascateados — usa
+   * countPrunable antes do DELETE pra valor preciso).
    */
   pruneLowImportance(importanceCutoff: number, cutoffDate: string): number {
-    const result = this.db.run(
+    // changes do bun:sqlite conta também trigger inserts (memory_fts_delete);
+    // contamos antes pra valor preciso de rows efetivamente deletadas.
+    const willDelete = this.countPrunable(importanceCutoff, cutoffDate);
+    this.db.run(
       `DELETE FROM memory_observations
        WHERE kind != 'lesson'
          AND importance < ?
          AND created_at < ?`,
       [importanceCutoff, cutoffDate],
     );
-    return result.changes;
+    return willDelete;
   }
 
   /**
