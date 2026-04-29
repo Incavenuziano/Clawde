@@ -32,6 +32,8 @@ export const EVENT_KIND_VALUES = [
   "oauth_refresh_attempt",
   "oauth_refresh_success",
   "oauth_expiry_warning",
+  "auth.telegram_reject",
+  "auth.telegram_user_blocked",
   // sandbox
   "sandbox_init",
   "sandbox_violation",

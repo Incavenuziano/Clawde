@@ -11,6 +11,15 @@ export {
 } from "./auth/rate-limit.ts";
 export { type DedupResult, insertWithDedup } from "./dedup.ts";
 export {
+  type EnqueueRouteDeps,
+  makeEnqueueHandler,
+} from "./routes/enqueue.ts";
+export {
+  type TelegramRouteConfig,
+  type TelegramRouteDeps,
+  makeTelegramHandler,
+} from "./routes/telegram.ts";
+export {
   type ReceiverConfig,
   type ReceiverHandle,
   type RouteContext,
