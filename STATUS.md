@@ -35,7 +35,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P0.1 | `task/P0.1-entrypoints` | T-001..T-013 | claude | codex | merged, PR #2, 2026-04-29 | #2 |
 | P0.2 | `task/P0.2-trigger` | T-014..T-018 | codex | claude | merged, PR #3, 2026-04-29 | #3 |
 | P0.3 | `task/P0.3-config-schema` | T-019 | codex | claude | merged, PR #1, 2026-04-29 | #1 |
-| P1.1 | `task/P1.1-dequeue-retry` | T-020..T-023 | codex | claude | pending | — |
+| P1.1 | `task/P1.1-dequeue-retry` | T-020..T-023 | codex | claude | in-progress, codex | — |
 | P1.2 | `task/P1.2-quota-not-before` | T-024..T-033 | codex | claude | pending | — |
 | P1.3 | `task/P1.3-sdk-errors` | T-034..T-040 | codex | claude | pending | — |
 | P2.1 | `task/P2.1-workspace-plug` | T-041..T-046 | codex | claude | pending | — |
@@ -99,10 +99,10 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 ## Wave 2 — Operação consistente (P1.1, P1.2, P1.3)
 
 ### P1.1 — findPending considera retries
-- [ ] T-020 — pending
-- [ ] T-021 — pending
-- [ ] T-022 — pending
-- [ ] T-023 — pending
+- [ ] T-020 — in-progress (codex)
+- [ ] T-021 — in-progress (codex)
+- [ ] T-022 — in-progress (codex)
+- [ ] T-023 — in-progress (codex)
 
 ### P1.2 — Quota policy com not_before
 - [ ] T-024 — pending
