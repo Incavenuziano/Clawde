@@ -170,4 +170,58 @@ describe("hooks/handlers default emitem eventos via callback", () => {
     expect(events[0]?.kind).toBe("tool_use");
     expect(events[0]?.payload.tool).toBe("Bash");
   });
+
+  test("makePreToolUseHandler bloqueia tool fora de allowedTools", async () => {
+    const events: Array<{ kind: string; payload: Record<string, unknown> }> = [];
+    const handler = makePreToolUseHandler((kind, payload) => events.push({ kind, payload }), {
+      allowedTools: ["Read"],
+      sandbox: { level: 3, allowed_writes: ["./workspace"] },
+    });
+    const out = await handler(
+      preToolInput({ toolName: "Bash", toolInput: { command: "ls" } }) as HookInput & {
+        hook: "PreToolUse";
+        payload: PreToolUsePayload;
+      },
+    );
+    expect(out.ok).toBe(false);
+    expect(out.block).toBe(true);
+    expect(events[0]?.kind).toBe("tool_blocked");
+    expect(events[0]?.payload.reason).toBe("tool_not_allowlisted");
+  });
+
+  test("makePreToolUseHandler bloqueia Bash em sandbox nível >=2", async () => {
+    const events: Array<{ kind: string; payload: Record<string, unknown> }> = [];
+    const handler = makePreToolUseHandler((kind, payload) => events.push({ kind, payload }), {
+      allowedTools: ["Bash", "Read"],
+      sandbox: { level: 3, allowed_writes: ["./workspace"] },
+    });
+    const out = await handler(
+      preToolInput({ toolName: "Bash", toolInput: { command: "pwd" } }) as HookInput & {
+        hook: "PreToolUse";
+        payload: PreToolUsePayload;
+      },
+    );
+    expect(out.ok).toBe(false);
+    expect(out.block).toBe(true);
+    expect(events[0]?.kind).toBe("tool_blocked");
+    expect(events[0]?.payload.reason).toBe("bash_requires_subprocess_wrapper");
+  });
+
+  test("makePreToolUseHandler bloqueia Edit fora de allowed_writes", async () => {
+    const events: Array<{ kind: string; payload: Record<string, unknown> }> = [];
+    const handler = makePreToolUseHandler((kind, payload) => events.push({ kind, payload }), {
+      allowedTools: ["Edit", "Read"],
+      sandbox: { level: 2, allowed_writes: ["./workspace"] },
+    });
+    const out = await handler(
+      preToolInput({ toolName: "Edit", toolInput: { path: "/etc/passwd" } }) as HookInput & {
+        hook: "PreToolUse";
+        payload: PreToolUsePayload;
+      },
+    );
+    expect(out.ok).toBe(false);
+    expect(out.block).toBe(true);
+    expect(events[0]?.kind).toBe("tool_blocked");
+    expect(events[0]?.payload.reason).toBe("write_path_not_allowed");
+  });
 });
