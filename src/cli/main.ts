@@ -11,6 +11,7 @@
 
 import type { EventKind } from "@clawde/domain/event";
 import { runAuth } from "./commands/auth.ts";
+import { runDashboard } from "./commands/dashboard.ts";
 import { runLogs } from "./commands/logs.ts";
 import { runMemory } from "./commands/memory.ts";
 import { runMigrate } from "./commands/migrate.ts";
@@ -93,6 +94,7 @@ Commands:
   migrate <up|status|down>  Aplica/reverte migrations
   smoke-test             Roda checagens de saúde
   auth <status|check>    Inspeciona OAuth token
+  dashboard              Info do Datasette dashboard (URL, queries)
   version                Mostra semver
   help                   Esta mensagem
 
@@ -279,6 +281,21 @@ export async function runMain(argv: ReadonlyArray<string>): Promise<number> {
     const cn = getFlag(parsed, "credential-name");
     if (cn !== undefined) Object.assign(opts, { credentialName: cn });
     return runAuth(opts);
+  }
+
+  if (parsed.command === "dashboard") {
+    const opts: Parameters<typeof runDashboard>[0] = {
+      format: getOutputFormat(parsed),
+      url: getFlag(parsed, "url") ?? process.env.CLAWDE_DASHBOARD_URL ?? "http://127.0.0.1:18791",
+    };
+    const meta = getFlag(parsed, "metadata");
+    if (meta !== undefined) Object.assign(opts, { metadataPath: meta });
+    const t = getFlag(parsed, "timeout-ms");
+    if (t !== undefined) {
+      const n = Number.parseInt(t, 10);
+      if (Number.isFinite(n) && n > 0) Object.assign(opts, { probeTimeoutMs: n });
+    }
+    return await runDashboard(opts);
   }
 
   emitErr(`unknown command: ${parsed.command}\nrun 'clawde help' for usage`);

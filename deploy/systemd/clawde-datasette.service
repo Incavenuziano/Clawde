@@ -1,0 +1,46 @@
+[Unit]
+Description=Clawde Datasette dashboard (read-only sobre state.db)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.clawde
+EnvironmentFile=-%h/.clawde/config/clawde.env
+# Datasette via pipx (mantido pelo usuário). Falha clean se pipx não tiver instalado.
+ExecStart=%h/.local/bin/datasette serve %h/.clawde/state.db \
+  --immutable %h/.clawde/state.db \
+  --metadata %h/.clawde/deploy/datasette/metadata.yaml \
+  --host 127.0.0.1 \
+  --port 18791 \
+  --setting suggest_facets off \
+  --setting allow_csv_stream off \
+  --setting default_allow_sql off
+Restart=on-failure
+RestartSec=5s
+
+# Hardening (BEST_PRACTICES §10.4) — dashboard só serve loopback.
+PrivateTmp=yes
+ProtectHome=read-only
+ProtectSystem=strict
+NoNewPrivileges=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+# Datasette --immutable abre SQLite read-only; ainda assim mantemos
+# ReadWritePaths vazio (default em ProtectSystem=strict).
+
+[Install]
+WantedBy=default.target
