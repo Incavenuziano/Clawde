@@ -58,18 +58,14 @@ export async function buildMemoryContext(
   const results = await searchHybrid(repo, { query, limit: config.topK }, provider);
 
   // Filtra por importance.
-  const filtered = results.filter(
-    (r) => r.observation.importance >= config.minImportance,
-  );
+  const filtered = results.filter((r) => r.observation.importance >= config.minImportance);
 
   if (filtered.length === 0) {
     return { injected: false, snippet: "", observations: [], truncated: 0 };
   }
 
   // Sort por importance desc para truncar do menos importante primeiro.
-  const sorted = [...filtered].sort(
-    (a, b) => b.observation.importance - a.observation.importance,
-  );
+  const sorted = [...filtered].sort((a, b) => b.observation.importance - a.observation.importance);
 
   const lines: string[] = [];
   let totalChars = 0;

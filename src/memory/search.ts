@@ -13,7 +13,7 @@
 
 import type { MemoryRepo } from "@clawde/db/repositories/memory";
 import type { MemoryObservation, MemorySearchResult } from "@clawde/domain/memory";
-import { type EmbeddingProvider, EMBEDDING_DIM, cosineSim } from "./embeddings.ts";
+import { EMBEDDING_DIM, type EmbeddingProvider, cosineSim } from "./embeddings.ts";
 
 export interface HybridSearchOptions {
   readonly query: string;
@@ -54,12 +54,7 @@ export async function searchHybrid(
 
   let cosineResults: ReadonlyArray<{ obs: MemoryObservation; score: number }> = [];
   if (embeddingProvider !== undefined && embeddingProvider.modelId !== "noop") {
-    cosineResults = await searchByCosine(
-      repo,
-      options.query,
-      embeddingProvider,
-      options.limit * 3,
-    );
+    cosineResults = await searchByCosine(repo, options.query, embeddingProvider, options.limit * 3);
   }
   const cosRanks = new Map<number, number>();
   cosineResults.forEach((r, i) => cosRanks.set(r.obs.id, i + 1));
@@ -68,7 +63,11 @@ export async function searchHybrid(
   const allIds = new Set<number>([...ftsRanks.keys(), ...cosRanks.keys()]);
 
   // Calcula score RRF para cada ID.
-  const fused: Array<{ obs: MemoryObservation; score: number; matchType: "fts" | "embedding" | "hybrid" }> = [];
+  const fused: Array<{
+    obs: MemoryObservation;
+    score: number;
+    matchType: "fts" | "embedding" | "hybrid";
+  }> = [];
   for (const id of allIds) {
     const fRank = ftsRanks.get(id);
     const cRank = cosRanks.get(id);

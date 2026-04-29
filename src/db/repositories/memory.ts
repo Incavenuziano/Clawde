@@ -75,9 +75,7 @@ export class MemoryRepo {
    */
   sessionExists(sessionId: string): boolean {
     const row = this.db
-      .query<{ c: number }, [string]>(
-        "SELECT COUNT(*) AS c FROM sessions WHERE session_id = ?",
-      )
+      .query<{ c: number }, [string]>("SELECT COUNT(*) AS c FROM sessions WHERE session_id = ?")
       .get(sessionId);
     return (row?.c ?? 0) > 0;
   }

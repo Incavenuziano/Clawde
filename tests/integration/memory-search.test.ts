@@ -90,7 +90,11 @@ describe("memory/search searchHybrid", () => {
   });
   afterEach(() => setup.testDb.cleanup());
 
-  function insertObs(content: string, importance = 0.5, kind: "observation" | "lesson" = "observation"): number {
+  function insertObs(
+    content: string,
+    importance = 0.5,
+    kind: "observation" | "lesson" = "observation",
+  ): number {
     return setup.repo.insertObservation({
       sessionId: null,
       sourceJsonl: null,
@@ -131,11 +135,7 @@ describe("memory/search searchHybrid", () => {
     const v = await provider.embed("hello world clawde");
     setup.repo.updateEmbedding(id, v);
 
-    const results = await searchHybrid(
-      setup.repo,
-      { query: "hello*", limit: 5 },
-      provider,
-    );
+    const results = await searchHybrid(setup.repo, { query: "hello*", limit: 5 }, provider);
     expect(results.length).toBeGreaterThan(0);
     // Match em FTS5 + cosine → hybrid.
     expect(results[0]?.matchType).toBe("hybrid");

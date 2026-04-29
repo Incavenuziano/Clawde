@@ -169,7 +169,8 @@ describe("F3.T46 E2E lifecycle: queue → receiver → worker", () => {
     expect(result?.agentResult.msgsConsumed).toBe(3);
 
     // 4. Verifica trail completa em events.
-    const events = setup.workerDeps.eventsRepo.queryByTaskRun(result!.run.id);
+    if (result === null) throw new Error("unreachable");
+    const events = setup.workerDeps.eventsRepo.queryByTaskRun(result.run.id);
     const kinds = events.map((e) => e.kind);
     expect(kinds).toContain("task_start");
     expect(kinds).toContain("claude_invocation_start");

@@ -28,7 +28,12 @@ function makeSetup(): Setup {
   };
 }
 
-function writeJsonl(root: string, project: string, file: string, lines: ReadonlyArray<string>): string {
+function writeJsonl(
+  root: string,
+  project: string,
+  file: string,
+  lines: ReadonlyArray<string>,
+): string {
   const dir = join(root, project);
   mkdirSync(dir, { recursive: true });
   const full = join(dir, file);

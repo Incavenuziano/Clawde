@@ -173,8 +173,7 @@ export function runIndexer(repo: MemoryRepo, options: IndexerOptions): IndexResu
 
       try {
         // FK: session_id só é válido se row existir em sessions; se não, set null.
-        const sessionFkOk =
-          parsed.sessionId !== null && repo.sessionExists(parsed.sessionId);
+        const sessionFkOk = parsed.sessionId !== null && repo.sessionExists(parsed.sessionId);
         repo.insertObservation({
           sessionId: sessionFkOk ? parsed.sessionId : null,
           sourceJsonl,

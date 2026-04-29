@@ -12,8 +12,8 @@
  * Score em [0.0, 1.0]; clamp explícito.
  */
 
-import type { MemoryRepo } from "@clawde/db/repositories/memory";
 import type { ClawdeDatabase } from "@clawde/db/client";
+import type { MemoryRepo } from "@clawde/db/repositories/memory";
 
 export interface ImportanceScoringConfig {
   /** Score base para nova observation. */
@@ -75,7 +75,7 @@ export function recalcImportance(
 
   for (const row of rows) {
     const ageDays = ageInDays(row.created_at, now);
-    const decay = Math.pow(config.decayPerDay, ageDays);
+    const decay = config.decayPerDay ** ageDays;
     const consolidationBonus = row.ref_count * config.consolidationBoost;
 
     let newScore = config.baseScore * decay + consolidationBonus;
@@ -113,7 +113,7 @@ export function scoreObservation(input: {
 }): number {
   const config = input.config ?? DEFAULT_IMPORTANCE_CONFIG;
   const ageDays = ageInDays(input.createdAt, input.now ?? new Date());
-  const decay = Math.pow(config.decayPerDay, ageDays);
+  const decay = config.decayPerDay ** ageDays;
   let score = config.baseScore * decay + input.refCount * config.consolidationBoost;
   if (input.kind === "lesson") {
     score = Math.max(score, config.lessonFloor);

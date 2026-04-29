@@ -125,7 +125,11 @@ describe("memory/inject buildMemoryContext", () => {
   });
   afterEach(() => setup.testDb.cleanup());
 
-  function insertObs(content: string, importance = 0.5, kind: "observation" | "lesson" = "observation") {
+  function insertObs(
+    content: string,
+    importance = 0.5,
+    kind: "observation" | "lesson" = "observation",
+  ) {
     return setup.repo.insertObservation({
       sessionId: null,
       sourceJsonl: null,
@@ -159,7 +163,7 @@ describe("memory/inject buildMemoryContext", () => {
     expect(result.injected).toBe(true);
     expect(result.snippet).toContain("<prior_context");
     expect(result.snippet).toContain("</prior_context>");
-    expect(result.snippet).toContain("source=\"clawde-memory\"");
+    expect(result.snippet).toContain('source="clawde-memory"');
     expect(result.observations.length).toBeGreaterThan(0);
   });
 

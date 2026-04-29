@@ -113,10 +113,10 @@ export class XenovaEmbeddingProvider implements EmbeddingProvider {
   private async getPipeline(): Promise<any> {
     if (this.pipelinePromise === null) {
       this.pipelinePromise = (async () => {
+        // @ts-expect-error - @xenova/transformers é dep opcional, instalar quando habilitar embeddings
         const transformers = await import("@xenova/transformers").catch((err) => {
           throw new Error(
-            `@xenova/transformers not available (${(err as Error).message}). ` +
-              "Install with: bun add @xenova/transformers",
+            `@xenova/transformers not available (${(err as Error).message}). Install with: bun add @xenova/transformers`,
           );
         });
         // biome-ignore lint/suspicious/noExplicitAny: SDK uses any

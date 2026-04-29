@@ -25,8 +25,12 @@ describe("sdk/parser parseRawMessage", () => {
     });
     expect(m).not.toBeNull();
     expect(m?.blocks).toHaveLength(2);
-    expect(isTextBlock(m!.blocks[0]!)).toBe(true);
-    expect(isToolUseBlock(m!.blocks[1]!)).toBe(true);
+    if (m === null) throw new Error("unreachable");
+    const b0 = m.blocks[0];
+    const b1 = m.blocks[1];
+    if (b0 === undefined || b1 === undefined) throw new Error("unreachable");
+    expect(isTextBlock(b0)).toBe(true);
+    expect(isToolUseBlock(b1)).toBe(true);
   });
 
   test("tool_result preserva flags", () => {
