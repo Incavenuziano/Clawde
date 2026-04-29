@@ -23,6 +23,43 @@
 
 ---
 
+## Branches
+
+Estratégia: **1 branch por sub-fase** (~22 branches no total). Cada branch
+agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
+1 PR único por sub-fase. Detalhes em [docs/REVIEW_PROTOCOL.md](docs/REVIEW_PROTOCOL.md).
+
+| Sub-fase | Branch | Tasks | Implementer | Reviewer | Estado | PR |
+|----------|--------|-------|-------------|----------|--------|----|
+| P0.1 | `task/P0.1-entrypoints` | T-001..T-013 | claude | codex | pending | — |
+| P0.2 | `task/P0.2-trigger` | T-014..T-018 | codex | claude | pending | — |
+| P0.3 | `task/P0.3-config-schema` | T-019 | codex | claude | pending | — |
+| P1.1 | `task/P1.1-dequeue-retry` | T-020..T-023 | codex | claude | pending | — |
+| P1.2 | `task/P1.2-quota-not-before` | T-024..T-033 | codex | claude | pending | — |
+| P1.3 | `task/P1.3-sdk-errors` | T-034..T-040 | codex | claude | pending | — |
+| P2.1 | `task/P2.1-workspace-plug` | T-041..T-046 | claude | codex | pending | — |
+| P2.2 | `task/P2.2-sandbox-tools` | T-047..T-053 | codex | claude | pending | — |
+| P2.3 | `task/P2.3-external-input` | T-054..T-057 | claude | codex | pending | — |
+| P2.4 | `task/P2.4-review-fresh` | T-058..T-062 | claude | codex | pending | — |
+| P2.5a | `task/P2.5a-agent-loader` | T-063..T-068, T-077, T-078 | claude | codex | pending | — |
+| P2.5b | `task/P2.5b-agent-files` | T-069..T-076 | claude | codex (+ operador em T-075/076) | pending | — |
+| P1.4 | `task/P1.4-event-kind` | T-079..T-085 | codex | claude | pending | — |
+| P1.5 | `task/P1.5-json-validity` | T-086..T-091 | codex | claude | pending | — |
+| P2.6 | `task/P2.6-allowlist-fail` | T-092..T-096 | codex | claude (+ operador) | pending | — |
+| P2.7 | `task/P2.7-redact-events` | T-097..T-100 | codex | claude (+ operador) | pending | — |
+| P3.1 | `task/P3.1-readme-status` | T-101..T-103 | claude | codex | pending | — |
+| P3.2 | `task/P3.2-cli-ops` | T-104a/b/c, T-105..T-111 | claude | codex | pending | — |
+| P3.4 | `task/P3.4-reflect-job` | T-112..T-115 | claude | codex | pending | — |
+| P3.5 | `task/P3.5-smoke-service` | T-116..T-121 | codex | claude | pending | — |
+| P3.6 | `task/P3.6-sdk-real-ci` | T-122..T-124 | codex | claude | pending | — |
+
+**Cross-wave dependencies** (resolvidos via TODO + followup PR):
+- T-008 do P0.1 está blocked-on T-029 (P1.2) → P0.1 mergeia com TODO; followup `task/P0.1-followup-quota-gate` depois de P1.2.
+
+**Estados de branch**: `pending` | `in-progress, <quem>` | `in-review, PR #N` | `merged, PR #N, YYYY-MM-DD` | `blocked, after P-X.Y`
+
+---
+
 ## Wave 1 — Boot (P0)
 
 ### P0.1 — Entrypoints e build alignment
