@@ -1,0 +1,168 @@
+/**
+ * `clawde` CLI entrypoint (BLUEPRINT §6).
+ *
+ * Parsing minimalista de argv (sem dep externa pra manter binary slim).
+ * Subcomandos descobríveis via `clawde --help`.
+ *
+ * Exit codes:
+ *   0 sucesso, 1 uso inválido, 2 erro operacional, 3 quota,
+ *   4 auth, 5 fatal.
+ */
+
+import { runMigrate } from "./commands/migrate.ts";
+import { runQueue } from "./commands/queue.ts";
+import { runSmokeTest } from "./commands/smoke-test.ts";
+import { type OutputFormat, emit, emitErr } from "./output.ts";
+
+export interface ParsedArgs {
+  readonly command: string;
+  readonly positional: ReadonlyArray<string>;
+  readonly flags: Readonly<Record<string, string | boolean>>;
+}
+
+/**
+ * Parser de argv → ParsedArgs.
+ * Suporta: --flag (boolean), --flag value, --flag=value, posicionais.
+ */
+export function parseArgs(argv: ReadonlyArray<string>): ParsedArgs {
+  const command = argv[0] ?? "help";
+  const rest = argv.slice(1);
+  const positional: string[] = [];
+  const flags: Record<string, string | boolean> = {};
+
+  for (let i = 0; i < rest.length; i++) {
+    const token = rest[i];
+    if (token === undefined) continue;
+
+    if (token.startsWith("--")) {
+      const eqIdx = token.indexOf("=");
+      if (eqIdx >= 0) {
+        const k = token.slice(2, eqIdx);
+        const v = token.slice(eqIdx + 1);
+        flags[k] = v;
+        continue;
+      }
+      const key = token.slice(2);
+      const next = rest[i + 1];
+      if (next === undefined || next.startsWith("--")) {
+        flags[key] = true;
+      } else {
+        flags[key] = next;
+        i += 1;
+      }
+      continue;
+    }
+
+    positional.push(token);
+  }
+
+  return { command, positional, flags };
+}
+
+function getFlag(parsed: ParsedArgs, name: string, fallback?: string): string | undefined {
+  const v = parsed.flags[name];
+  if (v === undefined || v === false) return fallback;
+  if (v === true) return "";
+  return v;
+}
+
+function getOutputFormat(parsed: ParsedArgs): OutputFormat {
+  const v = getFlag(parsed, "output", "text");
+  return v === "json" ? "json" : "text";
+}
+
+function getDbPath(parsed: ParsedArgs): string {
+  return (
+    getFlag(parsed, "db") ??
+    process.env.CLAWDE_DB ??
+    `${process.env.HOME ?? ""}/.clawde/state.db`
+  );
+}
+
+const HELP_TEXT = `clawde — daemon de execução de tasks Claude Code headless
+
+Usage:
+  clawde <command> [options]
+
+Commands:
+  queue <prompt>         Enfileira nova task
+  migrate <up|status|down>  Aplica/reverte migrations
+  smoke-test             Roda checagens de saúde
+  version                Mostra semver
+  help                   Esta mensagem
+
+Common options:
+  --db <path>            DB path (default ~/.clawde/state.db ou env CLAWDE_DB)
+  --output {text|json}   Formato de output (default text)
+`;
+
+export async function runMain(argv: ReadonlyArray<string>): Promise<number> {
+  const parsed = parseArgs(argv);
+
+  if (parsed.command === "help" || parsed.flags.help === true) {
+    emit("text", HELP_TEXT);
+    return 0;
+  }
+
+  if (parsed.command === "version") {
+    emit(getOutputFormat(parsed), { version: "0.0.1" }, (d) => `clawde ${(d as { version: string }).version}`);
+    return 0;
+  }
+
+  if (parsed.command === "smoke-test") {
+    return runSmokeTest({
+      dbPath: getDbPath(parsed),
+      format: getOutputFormat(parsed),
+    });
+  }
+
+  if (parsed.command === "migrate") {
+    const action = parsed.positional[0] ?? "status";
+    const dbPath = getDbPath(parsed);
+    const format = getOutputFormat(parsed);
+    if (action === "up") return runMigrate({ action: "up", dbPath, format });
+    if (action === "status") return runMigrate({ action: "status", dbPath, format });
+    if (action === "down") {
+      const target = Number.parseInt(getFlag(parsed, "target", "0") ?? "0", 10);
+      const confirm = parsed.flags.confirm === true;
+      return runMigrate({ action: "down", dbPath, format, target, confirm });
+    }
+    emitErr(`unknown migrate action: ${action}`);
+    return 1;
+  }
+
+  if (parsed.command === "queue") {
+    const prompt = parsed.positional.join(" ");
+    if (prompt.length === 0) {
+      emitErr("error: prompt required (clawde queue <prompt>)");
+      return 1;
+    }
+    return await runQueue({
+      prompt,
+      priority: getFlag(parsed, "priority", "NORMAL") ?? "NORMAL",
+      agent: getFlag(parsed, "agent", "default") ?? "default",
+      sessionId: getFlag(parsed, "session-id"),
+      workingDir: getFlag(parsed, "working-dir"),
+      dedupKey: getFlag(parsed, "dedup-key"),
+      receiverUrl:
+        getFlag(parsed, "receiver-url") ??
+        process.env.CLAWDE_RECEIVER_URL ??
+        "http://127.0.0.1:18790",
+      format: getOutputFormat(parsed),
+    });
+  }
+
+  emitErr(`unknown command: ${parsed.command}\nrun 'clawde help' for usage`);
+  return 1;
+}
+
+if (import.meta.main) {
+  const argv = process.argv.slice(2);
+  runMain(argv).then(
+    (exit) => process.exit(exit),
+    (err) => {
+      emitErr(`fatal: ${(err as Error).message}`);
+      process.exit(5);
+    },
+  );
+}
