@@ -1,8 +1,8 @@
 [Unit]
-Description=Clawde worker trigger (event-driven via state.db mtime)
+Description=Clawde worker fallback trigger (queue.signal)
 
 [Path]
-PathChanged=%h/.clawde/state.db
+PathChanged=%h/.clawde/run/queue.signal
 Unit=clawde-worker.service
 
 [Install]
