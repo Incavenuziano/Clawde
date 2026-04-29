@@ -61,7 +61,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P6.6 | `task/P6.6-restore-drill` | T-141..T-143 | codex | claude | pending | — |
 
 **Cross-wave dependencies**:
-- T-008 do P0.1 foi desbloqueado após merge de P1.2 (T-029); segue como followup dedicado.
+- T-008 do P0.1 foi desbloqueado após merge de P1.2 (T-029) e concluído no followup PR #9 (2026-04-29).
 
 **Estados de branch**: `pending` | `in-progress, <quem>` | `in-review, PR #N` | `merged, PR #N, YYYY-MM-DD` | `blocked, after P-X.Y`
 
@@ -77,7 +77,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 - [x] T-005 — merged, PR #2, 2026-04-29
 - [x] T-006 — merged, PR #2, 2026-04-29
 - [x] T-007 — merged, PR #2, 2026-04-29
-- [ ] T-008 — in-review, PR followup — task/P0.1-followup-quota-gate
+- [x] T-008 — merged, PR #9, 2026-04-29 — followup task/P0.1-followup-quota-gate
 - [x] T-009 — merged, PR #2, 2026-04-29
 - [x] T-010 — merged, PR #2, 2026-04-29
 - [x] T-011 — merged, PR #2, 2026-04-29
