@@ -3,13 +3,8 @@
  * Suporta: up, status, down --target N --confirm.
  */
 
-import { closeDb, openDb } from "@clawde/db/client";
-import {
-  applyPending,
-  defaultMigrationsDir,
-  rollbackTo,
-  status,
-} from "@clawde/db/migrations";
+import { type ClawdeDatabase, closeDb, openDb } from "@clawde/db/client";
+import { applyPending, defaultMigrationsDir, rollbackTo, status } from "@clawde/db/migrations";
 import { type OutputFormat, emit, emitErr } from "../output.ts";
 
 export interface MigrateOptions {
@@ -39,7 +34,7 @@ export type MigrateAction = MigrateUpOptions | MigrateStatusOptions | MigrateDow
  */
 export function runMigrate(action: MigrateAction): number {
   const dir = action.migrationsDir ?? defaultMigrationsDir();
-  let db;
+  let db: ClawdeDatabase;
   try {
     db = openDb(action.dbPath);
   } catch (err) {

@@ -2,9 +2,9 @@
  * Repository: sessions (state machine governada por SESSION_TRANSITIONS).
  */
 
-import type { ClawdeDatabase } from "../client.ts";
 import type { Session, SessionState } from "@clawde/domain/session";
 import { validateSessionTransition } from "@clawde/state";
+import type { ClawdeDatabase } from "../client.ts";
 
 interface RawSessionRow {
   session_id: string;

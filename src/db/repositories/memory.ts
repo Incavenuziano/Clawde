@@ -3,13 +3,13 @@
  * Embeddings/cosine virão em F5 (ADR 0010); aqui só FTS5.
  */
 
-import type { ClawdeDatabase } from "../client.ts";
 import type {
   MemoryObservation,
   MemorySearchResult,
   NewMemoryObservation,
   ObservationKind,
 } from "@clawde/domain/memory";
+import type { ClawdeDatabase } from "../client.ts";
 
 interface RawObservationRow {
   id: number;
@@ -40,7 +40,10 @@ export class MemoryRepo {
 
   insertObservation(input: NewMemoryObservation): MemoryObservation {
     const row = this.db
-      .query<RawObservationRow, [string | null, string | null, ObservationKind, string, number, number | null]>(
+      .query<
+        RawObservationRow,
+        [string | null, string | null, ObservationKind, string, number, number | null]
+      >(
         `INSERT INTO memory_observations
            (session_id, source_jsonl, kind, content, importance, consolidated_into)
          VALUES (?, ?, ?, ?, ?, ?) RETURNING *`,

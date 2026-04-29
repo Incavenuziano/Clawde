@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { SessionsRepo } from "@clawde/db/repositories/sessions";
 import { deriveSessionId } from "@clawde/domain/session";
 import { InvalidTransitionError } from "@clawde/state";
-import { makeTestDb, type TestDb } from "../../helpers/db.ts";
+import { type TestDb, makeTestDb } from "../../helpers/db.ts";
 
 describe("repositories/sessions", () => {
   let testDb: TestDb;

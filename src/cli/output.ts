@@ -5,7 +5,11 @@
 
 export type OutputFormat = "text" | "json";
 
-export function emit(format: OutputFormat, data: unknown, textRender?: (d: unknown) => string): void {
+export function emit(
+  format: OutputFormat,
+  data: unknown,
+  textRender?: (d: unknown) => string,
+): void {
   if (format === "json") {
     process.stdout.write(`${JSON.stringify(data, null, 2)}\n`);
     return;

@@ -3,9 +3,9 @@
  * Reusa state.ts para validar transições.
  */
 
-import type { ClawdeDatabase } from "../client.ts";
 import type { TaskRun, TaskRunStatus } from "@clawde/domain/task";
 import { validateTaskRunTransition } from "@clawde/state";
+import type { ClawdeDatabase } from "../client.ts";
 
 interface RawTaskRunRow {
   id: number;
@@ -45,11 +45,11 @@ export class TaskRunsRepo {
    */
   insert(taskId: number, workerId: string): TaskRun {
     const nextAttempt =
-      (this.db
+      this.db
         .query<{ n: number }, [number]>(
           "SELECT COALESCE(MAX(attempt_n), 0) + 1 AS n FROM task_runs WHERE task_id = ?",
         )
-        .get(taskId)?.n ?? 1);
+        .get(taskId)?.n ?? 1;
 
     const row = this.db
       .query<RawTaskRunRow, [number, number, string]>(

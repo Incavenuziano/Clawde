@@ -96,10 +96,7 @@ describe("db/migrations applyPending + idempotência", () => {
   });
 
   test("status reporta pending e applied corretos", () => {
-    writeFileSync(
-      join(migDir, "002_more.up.sql"),
-      "CREATE TABLE t2 (id INTEGER PRIMARY KEY);",
-    );
+    writeFileSync(join(migDir, "002_more.up.sql"), "CREATE TABLE t2 (id INTEGER PRIMARY KEY);");
     writeFileSync(join(migDir, "002_more.down.sql"), "DROP TABLE IF EXISTS t2;");
 
     expect(status(db, migDir).pending).toEqual([1, 2]);
@@ -114,10 +111,7 @@ describe("db/migrations applyPending + idempotência", () => {
 
   test("falha de SQL faz ROLLBACK e mantém versão anterior", () => {
     applyPending(db, migDir); // aplica 001
-    writeFileSync(
-      join(migDir, "002_bad.up.sql"),
-      "CREATE TABLE t2 (id); INVALID_SQL_HERE;",
-    );
+    writeFileSync(join(migDir, "002_bad.up.sql"), "CREATE TABLE t2 (id); INVALID_SQL_HERE;");
     writeFileSync(join(migDir, "002_bad.down.sql"), "DROP TABLE IF EXISTS t2;");
 
     expect(() => applyPending(db, migDir)).toThrow(/migration 2.*failed/);
@@ -136,15 +130,9 @@ describe("db/migrations rollbackTo", () => {
     dbDir = mkdtempSync(join(tmpdir(), "clawde-db-test-"));
     migDir = mkdtempSync(join(tmpdir(), "clawde-mig-"));
     db = openDb(join(dbDir, "state.db"));
-    writeFileSync(
-      join(migDir, "001_a.up.sql"),
-      "CREATE TABLE t1 (id INTEGER PRIMARY KEY);",
-    );
+    writeFileSync(join(migDir, "001_a.up.sql"), "CREATE TABLE t1 (id INTEGER PRIMARY KEY);");
     writeFileSync(join(migDir, "001_a.down.sql"), "DROP TABLE IF EXISTS t1;");
-    writeFileSync(
-      join(migDir, "002_b.up.sql"),
-      "CREATE TABLE t2 (id INTEGER PRIMARY KEY);",
-    );
+    writeFileSync(join(migDir, "002_b.up.sql"), "CREATE TABLE t2 (id INTEGER PRIMARY KEY);");
     writeFileSync(join(migDir, "002_b.down.sql"), "DROP TABLE IF EXISTS t2;");
   });
   afterEach(() => {

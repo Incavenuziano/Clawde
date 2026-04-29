@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { DedupConflictError, TasksRepo } from "@clawde/db/repositories/tasks";
 import type { NewTask } from "@clawde/domain/task";
-import { makeTestDb, type TestDb } from "../../helpers/db.ts";
+import { type TestDb, makeTestDb } from "../../helpers/db.ts";
 
 function sampleTask(overrides: Partial<NewTask> = {}): NewTask {
   return {
@@ -58,9 +58,7 @@ describe("repositories/tasks", () => {
 
   test("dedupKey UNIQUE — segunda insert com mesma key lança DedupConflictError", () => {
     repo.insert(sampleTask({ dedupKey: "tg-update-42" }));
-    expect(() => repo.insert(sampleTask({ dedupKey: "tg-update-42" }))).toThrow(
-      DedupConflictError,
-    );
+    expect(() => repo.insert(sampleTask({ dedupKey: "tg-update-42" }))).toThrow(DedupConflictError);
   });
 
   test("dedupKey null não conflita (NULLs distintos em SQLite)", () => {
@@ -78,9 +76,9 @@ describe("repositories/tasks", () => {
 
   test("imutabilidade: trigger bloqueia UPDATE direto", () => {
     const t = repo.insert(sampleTask());
-    expect(() =>
-      testDb.db.exec(`UPDATE tasks SET prompt='hacked' WHERE id=${t.id}`),
-    ).toThrow(/immutable/);
+    expect(() => testDb.db.exec(`UPDATE tasks SET prompt='hacked' WHERE id=${t.id}`)).toThrow(
+      /immutable/,
+    );
   });
 
   test("findPending ordena por priority depois created_at", async () => {

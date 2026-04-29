@@ -2,8 +2,8 @@
  * Repository: quota_ledger (sliding window 5h, ARCHITECTURE §6.6).
  */
 
-import type { ClawdeDatabase } from "../client.ts";
 import type { NewQuotaLedgerEntry, Plan, QuotaLedgerEntry } from "@clawde/domain/quota";
+import type { ClawdeDatabase } from "../client.ts";
 
 interface RawLedgerRow {
   id: number;
@@ -86,9 +86,7 @@ export class QuotaLedgerRepo {
    */
   findRecent(limit = 100): ReadonlyArray<QuotaLedgerEntry> {
     const rows = this.db
-      .query<RawLedgerRow, [number]>(
-        "SELECT * FROM quota_ledger ORDER BY ts DESC, id DESC LIMIT ?",
-      )
+      .query<RawLedgerRow, [number]>("SELECT * FROM quota_ledger ORDER BY ts DESC, id DESC LIMIT ?")
       .all(limit);
     return rows.map(rowToEntry);
   }

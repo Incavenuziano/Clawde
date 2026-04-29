@@ -6,8 +6,8 @@
  * (domain/session).
  */
 
-import { TASK_RUN_TRANSITIONS, type TaskRunStatus } from "@clawde/domain/task";
 import { SESSION_TRANSITIONS, type SessionState } from "@clawde/domain/session";
+import { TASK_RUN_TRANSITIONS, type TaskRunStatus } from "@clawde/domain/task";
 
 export class InvalidTransitionError extends Error {
   constructor(

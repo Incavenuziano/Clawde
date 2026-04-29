@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { EventsRepo } from "@clawde/db/repositories/events";
 import type { NewEvent } from "@clawde/domain/event";
-import { makeTestDb, type TestDb } from "../../helpers/db.ts";
+import { type TestDb, makeTestDb } from "../../helpers/db.ts";
 
 function sample(overrides: Partial<NewEvent> = {}): NewEvent {
   return {
@@ -35,9 +35,9 @@ describe("repositories/events", () => {
 
   test("UPDATE em events bloqueado por trigger", () => {
     const e = repo.insert(sample());
-    expect(() =>
-      testDb.db.exec(`UPDATE events SET kind='changed' WHERE id=${e.id}`),
-    ).toThrow(/append-only/);
+    expect(() => testDb.db.exec(`UPDATE events SET kind='changed' WHERE id=${e.id}`)).toThrow(
+      /append-only/,
+    );
   });
 
   test("DELETE em events bloqueado sem _retention_grant", () => {
@@ -63,18 +63,12 @@ describe("repositories/events", () => {
 
   test("queryByTaskRun filtra por task_run_id", () => {
     // Pra ter um task_run_id válido (FK), insere task + run.
-    testDb.db.exec(
-      `INSERT INTO tasks (priority, prompt, source) VALUES ('NORMAL', 'p', 'cli')`,
-    );
-    const taskId = (
-      testDb.db.query("SELECT last_insert_rowid() AS id").get() as { id: number }
-    ).id;
+    testDb.db.exec(`INSERT INTO tasks (priority, prompt, source) VALUES ('NORMAL', 'p', 'cli')`);
+    const taskId = (testDb.db.query("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
     testDb.db.exec(
       `INSERT INTO task_runs (task_id, worker_id, status) VALUES (${taskId}, 'w1', 'pending')`,
     );
-    const runId = (
-      testDb.db.query("SELECT last_insert_rowid() AS id").get() as { id: number }
-    ).id;
+    const runId = (testDb.db.query("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
 
     repo.insert(sample({ taskRunId: runId, kind: "task_start" }));
     repo.insert(sample({ taskRunId: runId, kind: "task_finish" }));

@@ -3,8 +3,8 @@
  * INSERT é o único write permitido — tasks_no_update trigger bloqueia UPDATE.
  */
 
-import type { ClawdeDatabase } from "../client.ts";
 import type { NewTask, Priority, Task, TaskSource } from "@clawde/domain/task";
+import type { ClawdeDatabase } from "../client.ts";
 
 export class DedupConflictError extends Error {
   constructor(public readonly dedupKey: string) {
@@ -53,7 +53,20 @@ export class TasksRepo {
   insert(input: NewTask): Task {
     try {
       const result = this.db
-        .query<RawTaskRow, [Priority, string, string, string | null, string | null, string, TaskSource, string, string | null]>(
+        .query<
+          RawTaskRow,
+          [
+            Priority,
+            string,
+            string,
+            string | null,
+            string | null,
+            string,
+            TaskSource,
+            string,
+            string | null,
+          ]
+        >(
           `INSERT INTO tasks
              (priority, prompt, agent, session_id, working_dir, depends_on,
               source, source_metadata, dedup_key)
@@ -77,7 +90,10 @@ export class TasksRepo {
       return rowToTask(result);
     } catch (err) {
       const message = (err as Error).message;
-      if (message.includes("UNIQUE constraint failed: tasks.dedup_key") && input.dedupKey !== null) {
+      if (
+        message.includes("UNIQUE constraint failed: tasks.dedup_key") &&
+        input.dedupKey !== null
+      ) {
         throw new DedupConflictError(input.dedupKey);
       }
       throw err;

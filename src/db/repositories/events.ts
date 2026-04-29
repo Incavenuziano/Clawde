@@ -4,8 +4,8 @@
  * DELETE só permitido se _retention_grant tem linha (job de retenção mensal).
  */
 
-import type { ClawdeDatabase } from "../client.ts";
 import type { Event, EventKind, NewEvent } from "@clawde/domain/event";
+import type { ClawdeDatabase } from "../client.ts";
 
 interface RawEventRow {
   id: number;
@@ -39,7 +39,10 @@ export class EventsRepo {
    */
   insert(input: NewEvent): Event {
     const row = this.db
-      .query<RawEventRow, [number | null, string | null, string | null, string | null, EventKind, string]>(
+      .query<
+        RawEventRow,
+        [number | null, string | null, string | null, string | null, EventKind, string]
+      >(
         `INSERT INTO events
            (task_run_id, session_id, trace_id, span_id, kind, payload)
          VALUES (?, ?, ?, ?, ?, ?) RETURNING *`,
@@ -60,9 +63,7 @@ export class EventsRepo {
 
   queryByTaskRun(taskRunId: number): ReadonlyArray<Event> {
     const rows = this.db
-      .query<RawEventRow, [number]>(
-        "SELECT * FROM events WHERE task_run_id = ? ORDER BY ts, id",
-      )
+      .query<RawEventRow, [number]>("SELECT * FROM events WHERE task_run_id = ? ORDER BY ts, id")
       .all(taskRunId);
     return rows.map(rowToEvent);
   }

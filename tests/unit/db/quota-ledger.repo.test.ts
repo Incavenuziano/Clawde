@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { QuotaLedgerRepo, roundToHour } from "@clawde/db/repositories/quota-ledger";
-import { makeTestDb, type TestDb } from "../../helpers/db.ts";
+import { type TestDb, makeTestDb } from "../../helpers/db.ts";
 
 describe("repositories/quota-ledger roundToHour", () => {
   test("arredonda minutos/segundos pra hora cheia UTC", () => {
@@ -40,8 +40,20 @@ describe("repositories/quota-ledger", () => {
   test("totalInWindow soma entries em janela ativa", () => {
     const now = new Date("2026-04-29T15:30:00.000Z");
     const ws = roundToHour(now);
-    repo.insert({ msgsConsumed: 2, windowStart: ws, plan: "max5x", peakMultiplier: 1.0, taskRunId: null });
-    repo.insert({ msgsConsumed: 3, windowStart: ws, plan: "max5x", peakMultiplier: 1.7, taskRunId: null });
+    repo.insert({
+      msgsConsumed: 2,
+      windowStart: ws,
+      plan: "max5x",
+      peakMultiplier: 1.0,
+      taskRunId: null,
+    });
+    repo.insert({
+      msgsConsumed: 3,
+      windowStart: ws,
+      plan: "max5x",
+      peakMultiplier: 1.7,
+      taskRunId: null,
+    });
 
     expect(repo.totalInWindow(now)).toBe(5);
   });
@@ -51,8 +63,20 @@ describe("repositories/quota-ledger", () => {
     const oldWs = "2026-04-29 09:00:00"; // > 5h atrás
     const newWs = roundToHour(now);
 
-    repo.insert({ msgsConsumed: 100, windowStart: oldWs, plan: "max5x", peakMultiplier: 1.0, taskRunId: null });
-    repo.insert({ msgsConsumed: 5, windowStart: newWs, plan: "max5x", peakMultiplier: 1.0, taskRunId: null });
+    repo.insert({
+      msgsConsumed: 100,
+      windowStart: oldWs,
+      plan: "max5x",
+      peakMultiplier: 1.0,
+      taskRunId: null,
+    });
+    repo.insert({
+      msgsConsumed: 5,
+      windowStart: newWs,
+      plan: "max5x",
+      peakMultiplier: 1.0,
+      taskRunId: null,
+    });
 
     expect(repo.totalInWindow(now)).toBe(5);
   });
@@ -60,7 +84,13 @@ describe("repositories/quota-ledger", () => {
   test("totalInWindow inclui entries exatamente na borda (>=)", () => {
     const now = new Date("2026-04-29T15:00:00.000Z");
     const borderline = "2026-04-29 10:00:00"; // exatamente 5h atrás
-    repo.insert({ msgsConsumed: 7, windowStart: borderline, plan: "max5x", peakMultiplier: 1.0, taskRunId: null });
+    repo.insert({
+      msgsConsumed: 7,
+      windowStart: borderline,
+      plan: "max5x",
+      peakMultiplier: 1.0,
+      taskRunId: null,
+    });
 
     expect(repo.totalInWindow(now)).toBe(7);
   });
@@ -71,8 +101,20 @@ describe("repositories/quota-ledger", () => {
   });
 
   test("findRecent retorna por ts DESC", () => {
-    repo.insert({ msgsConsumed: 1, windowStart: "2026-04-29 10:00:00", plan: "max5x", peakMultiplier: 1.0, taskRunId: null });
-    repo.insert({ msgsConsumed: 2, windowStart: "2026-04-29 10:00:00", plan: "max5x", peakMultiplier: 1.0, taskRunId: null });
+    repo.insert({
+      msgsConsumed: 1,
+      windowStart: "2026-04-29 10:00:00",
+      plan: "max5x",
+      peakMultiplier: 1.0,
+      taskRunId: null,
+    });
+    repo.insert({
+      msgsConsumed: 2,
+      windowStart: "2026-04-29 10:00:00",
+      plan: "max5x",
+      peakMultiplier: 1.0,
+      taskRunId: null,
+    });
     const recent = repo.findRecent(10);
     expect(recent).toHaveLength(2);
     expect(recent[0]?.msgsConsumed).toBe(2); // último inserido primeiro

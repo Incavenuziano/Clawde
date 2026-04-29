@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { TasksRepo } from "@clawde/db/repositories/tasks";
 import { TaskRunsRepo } from "@clawde/db/repositories/task-runs";
+import { TasksRepo } from "@clawde/db/repositories/tasks";
 import { InvalidTransitionError } from "@clawde/state";
-import { makeTestDb, type TestDb } from "../../helpers/db.ts";
+import { type TestDb, makeTestDb } from "../../helpers/db.ts";
 
 describe("repositories/task-runs", () => {
   let testDb: TestDb;
