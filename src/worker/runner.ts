@@ -56,6 +56,16 @@ export interface ProcessResult {
   readonly agentResult: AgentRunResult;
 }
 
+class LeaseBusyError extends Error {
+  constructor(
+    readonly taskId: number,
+    readonly taskRunId: number,
+  ) {
+    super(`lease busy for task ${taskId} run ${taskRunId}`);
+    this.name = "LeaseBusyError";
+  }
+}
+
 /**
  * Processa 1 task end-to-end.
  *   - INSERT task_run (pending)
@@ -67,10 +77,19 @@ export async function processTask(deps: RunnerDeps, task: Task): Promise<Process
   const log = deps.logger.child({ taskId: task.id });
   log.info("task processing", { agent: task.agent, priority: task.priority });
 
-  const run = deps.runsRepo.insert(task.id, deps.workerId);
+  const latest = deps.runsRepo.findLatestByTaskId(task.id);
+  let run: TaskRun;
+  if (latest === null) {
+    run = deps.runsRepo.insert(task.id, deps.workerId);
+  } else if (latest.status === "pending") {
+    run = latest;
+  } else {
+    throw new LeaseBusyError(task.id, latest.id);
+  }
+
   const acquisition = deps.leaseManager.acquire(run.id);
   if (acquisition === null) {
-    throw new Error(`failed to acquire lease for task_run ${run.id}`);
+    throw new LeaseBusyError(task.id, run.id);
   }
 
   // Memory inject opcional: prepend snippet de observations relevantes.
@@ -159,7 +178,12 @@ export async function processNextPending(deps: RunnerDeps): Promise<ProcessResul
   if (pending.length === 0) return null;
   const task = pending[0];
   if (task === undefined) return null;
-  return processTask(deps, task);
+  try {
+    return await processTask(deps, task);
+  } catch (err) {
+    if (err instanceof LeaseBusyError) return null;
+    throw err;
+  }
 }
 
 async function runAgentWithLedger(

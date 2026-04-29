@@ -93,11 +93,22 @@ describe("repositories/tasks", () => {
     expect(pending.map((t) => t.prompt)).toEqual(["urgent-1", "normal-1", "low-1"]);
   }, 10000);
 
-  test("findPending exclui tasks com task_runs", () => {
-    const t = repo.insert(sampleTask({ prompt: "with-run" }));
+  test("findPending inclui tasks com latest run em pending", () => {
+    const t = repo.insert(sampleTask({ prompt: "with-pending-run" }));
     repo.insert(sampleTask({ prompt: "without-run" }));
     testDb.db.exec(
       `INSERT INTO task_runs (task_id, worker_id, status) VALUES (${t.id}, 'w1', 'pending')`,
+    );
+
+    const pending = repo.findPending();
+    expect(pending.map((p) => p.prompt)).toEqual(["with-pending-run", "without-run"]);
+  });
+
+  test("findPending exclui tasks com latest run não-pending", () => {
+    const t = repo.insert(sampleTask({ prompt: "with-succeeded-run" }));
+    repo.insert(sampleTask({ prompt: "without-run" }));
+    testDb.db.exec(
+      `INSERT INTO task_runs (task_id, worker_id, status) VALUES (${t.id}, 'w1', 'succeeded')`,
     );
 
     const pending = repo.findPending();
