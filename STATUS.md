@@ -295,7 +295,7 @@ Claude/Codex — Codex revisa Wave 1, Claude revisa Wave 2, ...) faz audit final
 e produz `docs/wave-summaries/wave-N.md`.
 
 - [ ] Wave 1 audit — pending (reviewer: codex)
-- [ ] Wave 2 audit — pending (reviewer: claude)
+- [x] Wave 2 audit — done (reviewer: claude, docs/wave-summaries/wave-2.md)
 - [ ] Wave 3 audit — pending (reviewer: codex)
 - [ ] Wave 4 audit — pending (reviewer: claude)
 - [ ] Wave 5 audit — pending (reviewer: codex)
