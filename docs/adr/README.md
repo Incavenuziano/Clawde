@@ -15,6 +15,10 @@ Registros das decisões arquiteturais não-triviais do Clawde. Formato baseado e
 | [0006](0006-proactive-oauth-refresh.md) | Accepted | OAuth refresh proativo (detect 401 + weekly check) |
 | [0007](0007-task-runs-separation.md) | Accepted | Separação `tasks` (intenção) vs `task_runs` (tentativa) |
 | [0008](0008-agent-sdk-over-subprocess.md) | Accepted | Agent SDK oficial em vez de subprocess do CLI |
+| [0009](0009-reflection-and-memory-aware-prompting.md) | Accepted | Reflection layer + memory-aware prompting |
+| [0010](0010-embedding-strategy.md) | Accepted | Embedding strategy: multilingual-e5-small via @xenova (sem API externa) |
+| [0011](0011-clawde-not-replacement-for-claude-code.md) | Accepted | Clawde não substitui Claude Code (split síncrono/assíncrono) |
+| [0012](0012-single-provider-anthropic.md) | Accepted | Single-provider Anthropic + risco aceito |
 
 ## Convenções
 

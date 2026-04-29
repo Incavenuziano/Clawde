@@ -506,11 +506,125 @@ task processa → `clawde logs --task <id>` mostra trail completo.
 | Fase | Tema | Saída esperada |
 |------|------|----------------|
 | **4** | Sandbox Níveis 2 e 3 (bwrap, netns) | Worker invoca via bwrap; matriz por agente carregada de `sandbox.toml` |
-| **5** | Memória nativa (indexer + hooks) | `~/.claude/projects/*.jsonl` indexados em `memory_fts` a cada 10min; busca FTS5 funciona via `clawde memory search` |
+| **5** | Memória nativa **+ aprendizado** (indexer + hooks + reflexão + memory-aware prompting) | Tasks F5.T47–T55 detalhadas abaixo |
 | **6** | Telegram adapter + sanitize | Bot grammy enfileira via `external_input` wrapper; prompt-guard ativo |
 | **7** | OAuth refresh proativo + Datasette | `clawde-oauth-check.timer`; dashboard read-only em :8001 |
 | **8** | Multi-host (Litestream) | `state.db` replicado pra B2/S3; laptop+server compartilham fila |
 | **9** | Two-stage review pipeline | Sub-agentes implementer/spec-reviewer/code-quality-reviewer/verifier ativos pra tasks `priority>=NORMAL` |
+
+==================================================================
+
+## Fase 5 — Memória nativa + aprendizado (detalhada)
+
+**Objetivo:** memória deixa de ser arquivo morto. Reflection layer extrai lições, memory-aware
+prompting injeta contexto relevante automaticamente em cada invocação. Implementa ADR 0009 + 0010.
+
+**Saída:** `clawde reflect now` gera lições verificáveis; toda task `priority>=NORMAL` recebe
+top-K observations como `<prior_context>`; `clawde memory search "X"` retorna mix FTS5 +
+embedding (se ligado) com score por importance.
+
+### F5.T47 — JSONL batch indexer (M)
+- **Depends:** F1.T17 (memory repo), F2.T22 (config)
+- **Files:** `src/memory/jsonl-indexer.ts`, `tests/integration/jsonl-indexer.test.ts`
+- **DoD:**
+  - Lê `~/.claude/projects/<hash>/*.jsonl` append-only, parseia entries, popula
+    `memory_observations` com `kind='observation'`.
+  - Reindex idempotente: rerun não duplica (dedup via `(source_jsonl, line_offset)` UNIQUE).
+  - Tolera linhas truncadas (último append em curso) — pula sem erro.
+  - Test fixture: 50MB JSONL → indexer roda <30s; rerun = 0 linhas novas.
+
+### F5.T48 — Embedding service (multilingual-e5-small) (M)
+- **Depends:** F5.T47, ADR 0010
+- **Files:** `src/memory/embeddings.ts`, `tests/integration/embeddings.test.ts`
+- **DoD:**
+  - `embed(text): Float32Array(384)` via `@xenova/transformers` carregando
+    `Xenova/multilingual-e5-small`.
+  - Lazy load: modelo só baixa/carrega na 1ª chamada.
+  - Cache LRU de embeddings recentes (cap 1000 entries) pra evitar recomputar.
+  - Configurável: `memory.embeddings_enabled = false` desliga sem erros.
+  - Test: PT-BR + EN inputs retornam vetores com cosine similarity razoável (smoke).
+
+### F5.T49 — sqlite-vec integration + híbrida search (M)
+- **Depends:** F5.T48, F1.T17
+- **Files:** `src/memory/search.ts`, `tests/integration/memory-search.test.ts`,
+  migration `002_add_embeddings.up.sql`
+- **DoD:**
+  - Migration adiciona `memory_observations.embedding BLOB(3072)` + `importance REAL DEFAULT 0.5`.
+  - Search híbrida: FTS5 (BM25) + cosine via sqlite-vec, ranking unificado por RRF.
+  - Score boost por `importance` (multiplicador configurável).
+  - Test: índice 100 obs PT-BR + EN; query retorna top-5 com scores monotônicos.
+
+### F5.T50 — Hooks PostToolUse/Stop persistem observations (S)
+- **Depends:** F2.T24 (hooks pipeline), F1.T17
+- **Files:** atualização em `src/hooks/post-tool-use.ts`, `src/hooks/stop.ts`,
+  `tests/integration/hooks-memory.test.ts`
+- **DoD:**
+  - `PostToolUse` extrai `(toolName, summary, exitCode)` e insere `memory_observations`
+    com `kind='observation'`.
+  - `Stop` insere `kind='summary'` com `finalText` truncado.
+  - Embedding gerado se `memory.embeddings_enabled=true`.
+  - Test: hook fires → row em `memory_observations` + (opcional) embedding presente.
+
+### F5.T51 — Reflector sub-agent + clawde-reflect job (M)
+- **Depends:** F5.T50, F2.T30 (worker)
+- **Files:** `.claude/agents/reflector/AGENT.md`, `.claude/agents/reflector/sandbox.toml`,
+  `src/cli/commands/reflect.ts`, `deploy/systemd/clawde-reflect.{service,timer}`,
+  `tests/integration/reflector.test.ts`
+- **DoD:**
+  - `AGENT.md` define role, prompt, allowedTools restritos a Read.
+  - `clawde reflect now` enfileira task `URGENT` invocando `reflector` com janela
+    `reflection.window_hours` (default 24).
+  - Reflector lê `events` + `messages_fts` recentes, extrai padrões, retorna JSON
+    com array de `{content, importance, source_observation_ids}`.
+  - Worker persiste cada item como `memory_observations.kind='lesson'` + atualiza
+    `consolidated_into` nas observations referenciadas.
+  - Systemd timer roda a cada 6h (configurável).
+  - Test integration: 20 observations sintéticas → reflector retorna ≥1 lesson coerente.
+
+### F5.T52 — Importance scoring updater (S)
+- **Depends:** F5.T51
+- **Files:** `src/memory/importance.ts`, `tests/unit/importance.test.ts`
+- **DoD:**
+  - Parte do reflector: re-avalia `importance` de observations referenciadas em lessons
+    novas (sobe score) e de observations sem matches recentes (desce score).
+  - Score em [0.0, 1.0]; clamp explícito.
+  - Test: simular cycles, verificar convergência (lessons mantêm score alto).
+
+### F5.T53 — Memory-aware prompting (auto inject) (M)
+- **Depends:** F5.T49, F2.T30
+- **Files:** `src/worker/runner.ts` (atualização), `src/memory/inject.ts`,
+  `tests/integration/memory-aware.test.ts`
+- **DoD:**
+  - Antes de invocar SDK, worker chama `searchMemory(taskContext, topK=N)` (N do AGENT.md
+    ou default 5).
+  - Top-K envelopados em `<prior_context source="clawde-memory">…</prior_context>` e
+    injetados via `--append-system-prompt` do SDK.
+  - Configurável por agente: `memoryAware: true|false` em AGENT.md frontmatter.
+  - Cap de tokens injetados (`memory.max_inject_tokens` default 3000) — trunca por
+    importance descendente.
+  - Test: task com `memoryAware=true` recebe prior_context; `false` não recebe.
+
+### F5.T54 — Pruning job (mensal) (S)
+- **Depends:** F5.T52
+- **Files:** `src/memory/prune.ts`, `deploy/systemd/clawde-prune.{service,timer}`,
+  `tests/unit/prune.test.ts`
+- **DoD:**
+  - `clawde memory prune` deleta observations com `importance < 0.2 AND
+    created_at < now()-90d AND kind != 'lesson'`.
+  - Lessons NUNCA são apagadas (preserva aprendizado consolidado).
+  - Dry-run (`--dry-run`) reporta sem deletar.
+  - Systemd timer mensal.
+  - Test: setup mix de obs/lessons; prune mantém lessons + obs recentes/important.
+
+### F5.T55 — CLI: memory commands + e2e (S)
+- **Depends:** F5.T49, F5.T51
+- **Files:** `src/cli/commands/memory.ts`, `tests/e2e/memory-lifecycle.test.ts`
+- **DoD:**
+  - `clawde memory search "<query>" --top-k 5 --kind observation|lesson|all`
+  - `clawde memory show <id>`
+  - `clawde memory stats` (counts por kind + distribuição de importance)
+  - `clawde memory prune --dry-run`
+  - E2E: gera 5 sessões, indexa, roda reflector, busca lesson gerada, valida.
 
 ==================================================================
 
@@ -521,7 +635,9 @@ Auto-checks a manter:
 - **Total de tasks Fase 1:** 20 (T01–T20).
 - **Total de tasks Fase 2:** 13 (T21–T33).
 - **Total de tasks Fase 3:** 13 (T34–T46).
-- **Soma:** 46 tasks. Estimate distribution: ~6 L, ~22 M, ~18 S.
+- **Total de tasks Fase 5 (detalhada por ADR 0009):** 9 (T47–T55).
+- **Soma fases detalhadas (1+2+3+5):** 55 tasks. Estimate distribution: ~6 L, ~28 M, ~21 S.
+- **Fases 4, 6, 7, 8, 9 ainda em alto nível** — detalhadas após Fase 3 verde.
 - **Critical path** (dependências encadeadas mais longas):
   - Fase 1: T01 → T02 → T08 → T09 → T10 → T20 (6 tasks).
   - Fase 2: T20 (Fase 1 done) → T22 → T23 → T24 → T30 → T33 (6 tasks).
