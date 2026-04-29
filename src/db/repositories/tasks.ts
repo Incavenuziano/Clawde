@@ -122,8 +122,13 @@ export class TasksRepo {
     const rows = this.db
       .query<RawTaskRow, [number]>(
         `SELECT t.* FROM tasks t
-         LEFT JOIN task_runs tr ON tr.task_id = t.id
-         WHERE tr.id IS NULL
+         LEFT JOIN task_runs tr_latest
+           ON tr_latest.task_id = t.id
+          AND tr_latest.id = (
+            SELECT MAX(id) FROM task_runs WHERE task_id = t.id
+          )
+         WHERE tr_latest.id IS NULL
+            OR tr_latest.status = 'pending'
          ORDER BY
            CASE t.priority
              WHEN 'URGENT' THEN 0

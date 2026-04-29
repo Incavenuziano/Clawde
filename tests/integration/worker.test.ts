@@ -192,4 +192,34 @@ describe("worker/runner end-to-end (com SDK mocked)", () => {
     await processTask(deps, task);
     expect(Date.now() - t0).toBeLessThan(2000);
   });
+
+  test("dois workers paralelos: só um pega lease e attempt_n não duplica", async () => {
+    const task = deps.tasksRepo.insert({
+      priority: "NORMAL",
+      prompt: "parallel",
+      agent: "default",
+      sessionId: null,
+      workingDir: null,
+      dependsOn: [],
+      source: "cli",
+      sourceMetadata: {},
+      dedupKey: null,
+    });
+    mockClient.enqueueResponse({ messages: [assistantText("ok")] });
+
+    const deps2: RunnerDeps = { ...deps, workerId: "worker-test-2" };
+    const [r1, r2] = await Promise.all([processNextPending(deps), processNextPending(deps2)]);
+    const processed = [r1, r2].filter((r) => r !== null);
+
+    expect(processed).toHaveLength(1);
+    expect(processed[0]?.task.id).toBe(task.id);
+
+    const runs = testDb.db
+      .query<{ status: string; attempt_n: number }, [number]>(
+        "SELECT status, attempt_n FROM task_runs WHERE task_id = ? ORDER BY attempt_n",
+      )
+      .all(task.id);
+    expect(runs).toHaveLength(1);
+    expect(runs[0]?.attempt_n).toBe(1);
+  });
 });

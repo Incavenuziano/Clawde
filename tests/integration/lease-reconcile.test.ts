@@ -1,9 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { EventsRepo } from "@clawde/db/repositories/events";
+import { QuotaLedgerRepo } from "@clawde/db/repositories/quota-ledger";
 import { TaskRunsRepo } from "@clawde/db/repositories/task-runs";
 import { TasksRepo } from "@clawde/db/repositories/tasks";
-import { LeaseManager, makeReconciler } from "@clawde/worker";
+import { createLogger } from "@clawde/log";
+import { DEFAULT_TRACKER_CONFIG, QuotaTracker } from "@clawde/quota";
+import { LeaseManager, makeReconciler, processNextPending } from "@clawde/worker";
 import { type TestDb, makeTestDb } from "../helpers/db.ts";
+import { MockAgentClient, assistantText } from "../mocks/sdk-mock.ts";
 
 describe("worker/lease + reconcile integration", () => {
   let testDb: TestDb;
@@ -120,5 +124,35 @@ describe("worker/lease + reconcile integration", () => {
     const result = reconciler.reconcile("worker-host01");
     expect(result.expired).toHaveLength(0);
     expect(result.reenqueued).toHaveLength(0);
+  });
+
+  test("lease expirado → reconcile → worker pega retry e attempt 2 termina succeeded", async () => {
+    const run = runsRepo.insert(taskId, "w1");
+    runsRepo.acquireLease(run.id, 60);
+    testDb.db.exec(
+      `UPDATE task_runs SET lease_until = datetime('now', '-10 seconds') WHERE id = ${run.id}`,
+    );
+
+    const reconciler = makeReconciler(runsRepo, eventsRepo);
+    const rec = reconciler.reconcile("worker-host01");
+    expect(rec.reenqueued).toHaveLength(1);
+
+    const mockClient = new MockAgentClient();
+    mockClient.enqueueResponse({ messages: [assistantText("retry ok")] });
+    const deps = {
+      tasksRepo,
+      runsRepo,
+      eventsRepo,
+      leaseManager: lease,
+      quotaTracker: new QuotaTracker(new QuotaLedgerRepo(testDb.db), DEFAULT_TRACKER_CONFIG),
+      agentClient: mockClient,
+      logger: createLogger({ component: "lease-reconcile-test" }),
+      workerId: "worker-retry",
+    };
+
+    const processed = await processNextPending(deps);
+    expect(processed).not.toBeNull();
+    expect(processed?.run.attemptN).toBe(2);
+    expect(processed?.run.status).toBe("succeeded");
   });
 });
