@@ -32,9 +32,9 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 
 | Sub-fase | Branch | Tasks | Implementer | Reviewer | Estado | PR |
 |----------|--------|-------|-------------|----------|--------|----|
-| P0.1 | `task/P0.1-entrypoints` | T-001..T-013 | claude | codex | pending | — |
+| P0.1 | `task/P0.1-entrypoints` | T-001..T-013 | claude | codex | in-progress, claude | — |
 | P0.2 | `task/P0.2-trigger` | T-014..T-018 | codex | claude | pending | — |
-| P0.3 | `task/P0.3-config-schema` | T-019 | codex | claude | pending | — |
+| P0.3 | `task/P0.3-config-schema` | T-019 | codex | claude | in-review, PR #1 | #1 |
 | P1.1 | `task/P1.1-dequeue-retry` | T-020..T-023 | codex | claude | pending | — |
 | P1.2 | `task/P1.2-quota-not-before` | T-024..T-033 | codex | claude | pending | — |
 | P1.3 | `task/P1.3-sdk-errors` | T-034..T-040 | codex | claude | pending | — |
@@ -70,19 +70,19 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 ## Wave 1 — Boot (P0)
 
 ### P0.1 — Entrypoints e build alignment
-- [ ] T-001 — pending
-- [ ] T-002 — pending
-- [ ] T-003 — pending
-- [ ] T-004 — pending
-- [ ] T-005 — pending
-- [ ] T-006 — pending
-- [ ] T-007 — pending
-- [ ] T-008 — pending — blocked-on T-029
-- [ ] T-009 — pending
-- [ ] T-010 — pending
-- [ ] T-011 — pending
-- [ ] T-012 — pending
-- [ ] T-013 — pending
+- [ ] T-001 — in-progress
+- [ ] T-002 — in-progress
+- [ ] T-003 — in-progress
+- [ ] T-004 — in-progress
+- [ ] T-005 — in-progress
+- [ ] T-006 — in-progress
+- [ ] T-007 — in-progress
+- [ ] T-008 — blocked, after P1.2 (T-029)
+- [ ] T-009 — in-progress
+- [ ] T-010 — in-progress
+- [ ] T-011 — in-progress
+- [ ] T-012 — in-progress
+- [ ] T-013 — in-progress
 
 ### P0.2 — Trigger event-driven
 - [ ] T-014 — pending
@@ -92,7 +92,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 - [ ] T-018 — pending
 
 ### P0.3 — Schema config
-- [ ] T-019 — pending
+- [x] T-019 — in-review, PR #1
 
 ---
 
