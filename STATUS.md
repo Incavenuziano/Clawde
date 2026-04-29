@@ -37,12 +37,12 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P1.1 | `task/P1.1-dequeue-retry` | T-020..T-023 | codex | claude | pending | — |
 | P1.2 | `task/P1.2-quota-not-before` | T-024..T-033 | codex | claude | pending | — |
 | P1.3 | `task/P1.3-sdk-errors` | T-034..T-040 | codex | claude | pending | — |
-| P2.1 | `task/P2.1-workspace-plug` | T-041..T-046 | claude | codex | pending | — |
+| P2.1 | `task/P2.1-workspace-plug` | T-041..T-046 | codex | claude | pending | — |
 | P2.2 | `task/P2.2-sandbox-tools` | T-047..T-053 | codex | claude | pending | — |
 | P2.3 | `task/P2.3-external-input` | T-054..T-057 | claude | codex | pending | — |
 | P2.4 | `task/P2.4-review-fresh` | T-058..T-062 | claude | codex | pending | — |
-| P2.5a | `task/P2.5a-agent-loader` | T-063..T-068, T-077, T-078 | claude | codex | pending | — |
-| P2.5b | `task/P2.5b-agent-files` | T-069..T-076 | claude | codex (+ operador em T-075/076) | pending | — |
+| P2.5a | `task/P2.5a-agent-loader` | T-063..T-068, T-077, T-078 | codex | claude | pending | — |
+| P2.5b | `task/P2.5b-agent-files` | T-069..T-076 | codex | claude (+ operador em T-075/076) | pending | — |
 | P1.4 | `task/P1.4-event-kind` | T-079..T-085 | codex | claude | pending | — |
 | P1.5 | `task/P1.5-json-validity` | T-086..T-091 | codex | claude | pending | — |
 | P2.6 | `task/P2.6-allowlist-fail` | T-092..T-096 | codex | claude (+ operador) | pending | — |
