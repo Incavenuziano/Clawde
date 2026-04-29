@@ -17,6 +17,7 @@ import { runMemory } from "./commands/memory.ts";
 import { runMigrate } from "./commands/migrate.ts";
 import { runQueue } from "./commands/queue.ts";
 import { runQuota } from "./commands/quota.ts";
+import { runReplica } from "./commands/replica.ts";
 import { runSmokeTest } from "./commands/smoke-test.ts";
 import { runTrace } from "./commands/trace.ts";
 import { type OutputFormat, emit, emitErr } from "./output.ts";
@@ -95,6 +96,7 @@ Commands:
   smoke-test             Roda checagens de saúde
   auth <status|check>    Inspeciona OAuth token
   dashboard              Info do Datasette dashboard (URL, queries)
+  replica <status|verify>  Saúde do Litestream replica
   version                Mostra semver
   help                   Esta mensagem
 
@@ -296,6 +298,34 @@ export async function runMain(argv: ReadonlyArray<string>): Promise<number> {
       if (Number.isFinite(n) && n > 0) Object.assign(opts, { probeTimeoutMs: n });
     }
     return await runDashboard(opts);
+  }
+
+  if (parsed.command === "replica") {
+    const action = parsed.positional[0] ?? "status";
+    if (action !== "status" && action !== "verify") {
+      emitErr(`unknown replica action: ${action} (use status|verify)`);
+      return 1;
+    }
+    const replicasFlag = getFlag(parsed, "replicas");
+    const expectedReplicas =
+      replicasFlag !== undefined && replicasFlag.length > 0
+        ? replicasFlag
+            .split(",")
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0)
+        : ["b2"];
+    const opts: Parameters<typeof runReplica>[0] = {
+      format: getOutputFormat(parsed),
+      action,
+      dbPath: getDbPath(parsed),
+      expectedReplicas,
+    };
+    const m = getFlag(parsed, "max-age-minutes");
+    if (m !== undefined) {
+      const n = Number.parseInt(m, 10);
+      if (Number.isFinite(n) && n > 0) Object.assign(opts, { maxAgeMinutes: n });
+    }
+    return await runReplica(opts);
   }
 
   emitErr(`unknown command: ${parsed.command}\nrun 'clawde help' for usage`);

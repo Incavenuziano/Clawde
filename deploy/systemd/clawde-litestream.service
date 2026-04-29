@@ -1,0 +1,40 @@
+[Unit]
+Description=Clawde state.db continuous replication (Litestream)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.clawde
+EnvironmentFile=%h/.clawde/config/litestream.env
+ExecStart=/usr/bin/litestream replicate -config %h/.clawde/deploy/litestream/litestream.yml
+Restart=on-failure
+RestartSec=10s
+
+# Hardening (BEST_PRACTICES §10.4) — precisa de read no state.db e network egress
+# pro bucket. Não escreve em paths locais (litestream gera apenas WAL local
+# temporário no mesmo dir do db).
+PrivateTmp=yes
+ProtectHome=read-only
+ProtectSystem=strict
+NoNewPrivileges=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+# Litestream precisa escrever WAL temporário no dir do state.db.
+ReadWritePaths=%h/.clawde
+
+[Install]
+WantedBy=default.target
