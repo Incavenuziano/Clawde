@@ -6,10 +6,14 @@
 
 ## TL;DR — onde paramos
 
-- **Setup completo**: planos (Codex + Claude), backlog atômico (124 tasks),
-  protocolo de review, AI onboarding, STATUS.md, gh CLI auth, bun + ts,
-  line endings normalizados.
+- **Setup completo**: planos (Codex + Claude), backlog atômico
+  (**143 tasks em 6 waves**), protocolo de review, AI onboarding,
+  STATUS.md, gh CLI auth, bun + ts, line endings normalizados.
 - **Wave 0 (pre-flight) commitada e em main** (commit `fdf9798`).
+- **Auditoria de conformidade vs BEST_PRACTICES.md feita**: 8 gaps
+  críticos absorvidos como **Wave 6** (T-125..T-143, hardening
+  operacional); 14 gaps importantes/aceitáveis documentados em
+  [`docs/KNOWN_GAPS.md`](docs/KNOWN_GAPS.md).
 - **Codex foi onboarded** (mensagem grande passada pelo operador), tem
   ambiente isolado (`~/clawde` clone), instalou bun/auth/etc, está
   pronto pra começar **P0.3** (`task/P0.3-config-schema`, T-019).
@@ -63,9 +67,10 @@ Use sempre esse padrão pra commits — é o noreply oficial do GitHub do user.
 1. **[`docs/AI_ONBOARDING.md`](docs/AI_ONBOARDING.md)** — referência completa pra qualquer IA do projeto
 2. **[`STATUS.md`](STATUS.md)** — estado de cada sub-fase, alocação Claude/Codex
 3. **[`docs/REVIEW_PROTOCOL.md`](docs/REVIEW_PROTOCOL.md)** — fluxo de PR por sub-fase
-4. **[`EXECUTION_BACKLOG.md`](EXECUTION_BACKLOG.md)** — 124 tasks, foque na sub-fase ativa
-5. **[`CONSOLIDATED_FIX_PLAN.md`](CONSOLIDATED_FIX_PLAN.md)** — contexto do "porquê" de cada fix
-6. **[`PRODUCTION_READINESS_PLAN.md`](PRODUCTION_READINESS_PLAN.md)** — versão Codex do plano
+4. **[`EXECUTION_BACKLOG.md`](EXECUTION_BACKLOG.md)** — **143 tasks em 6 waves**, foque na sub-fase ativa
+5. **[`docs/KNOWN_GAPS.md`](docs/KNOWN_GAPS.md)** — 14 gaps documentados como débito pós-MVP
+6. **[`CONSOLIDATED_FIX_PLAN.md`](CONSOLIDATED_FIX_PLAN.md)** — contexto do "porquê" de cada fix
+7. **[`PRODUCTION_READINESS_PLAN.md`](PRODUCTION_READINESS_PLAN.md)** — versão Codex do plano
 
 Documentos do projeto Clawde (consultar conforme precisar):
 - `ARCHITECTURE.md`, `BLUEPRINT.md`, `BEST_PRACTICES.md`, `REQUIREMENTS.md`
@@ -113,10 +118,11 @@ T-038, T-042, T-070-076, T-104):
 | P3.2 | `task/P3.2-cli-ops` | T-104a/b/c, T-105..T-111 | ~400 | codex |
 | P3.4 | `task/P3.4-reflect-job` | T-112..T-115 | ~150 | codex |
 
-### Claude reviewer (15 sub-fases) — Codex implementa
+### Claude reviewer (21 sub-fases) — Codex implementa
 
 P0.2, P0.3, P1.1, P1.2, P1.3, P2.1, P2.2 (security), P2.5a, P2.5b (security),
-P1.4, P1.5, P2.6 (security), P2.7 (security), P3.5, P3.6.
+P1.4, P1.5, P2.6 (security), P2.7 (security), P3.5, P3.6,
+**P6.1, P6.2, P6.3 (security em T-132), P6.4, P6.5, P6.6** (Wave 6).
 
 ## Próxima ação ao reabrir sessão
 

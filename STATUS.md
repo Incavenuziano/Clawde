@@ -19,7 +19,8 @@
 | 3 — Segurança core | 38 | 0 | 0 | 0 | 0 | 38 |
 | 4 — Hardening | 22 | 0 | 0 | 0 | 0 | 22 |
 | 5 — Alinhamento | 24 | 0 | 0 | 0 | 0 | 24 |
-| **Total** | **124** | **0** | **0** | **0** | **0** | **124** |
+| 6 — Hardening operacional | 19 | 0 | 0 | 0 | 0 | 19 |
+| **Total** | **143** | **0** | **0** | **0** | **0** | **143** |
 
 ---
 
@@ -52,6 +53,12 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P3.4 | `task/P3.4-reflect-job` | T-112..T-115 | claude | codex | pending | — |
 | P3.5 | `task/P3.5-smoke-service` | T-116..T-121 | codex | claude | pending | — |
 | P3.6 | `task/P3.6-sdk-real-ci` | T-122..T-124 | codex | claude | pending | — |
+| P6.1 | `task/P6.1-ci-security-gates` | T-125..T-127 | codex | claude (+ operador em T-125) | pending | — |
+| P6.2 | `task/P6.2-db-integrity` | T-128..T-130 | codex | claude | pending | — |
+| P6.3 | `task/P6.3-events-retention` | T-131..T-133 | codex | claude (+ operador em T-132) | pending | — |
+| P6.4 | `task/P6.4-alerts-system` | T-134..T-137 | codex | claude | pending | — |
+| P6.5 | `task/P6.5-backup-cadence` | T-138..T-140 | codex | claude | pending | — |
+| P6.6 | `task/P6.6-restore-drill` | T-141..T-143 | codex | claude | pending | — |
 
 **Cross-wave dependencies** (resolvidos via TODO + followup PR):
 - T-008 do P0.1 está blocked-on T-029 (P1.2) → P0.1 mergeia com TODO; followup `task/P0.1-followup-quota-gate` depois de P1.2.
@@ -246,6 +253,41 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 
 ---
 
+## Wave 6 — Hardening operacional (gaps do BEST_PRACTICES)
+
+### P6.1 — CI security gates
+- [ ] T-125 — pending — gitleaks (security)
+- [ ] T-126 — pending — bun audit
+- [ ] T-127 — pending — coverage gate
+
+### P6.2 — DB integrity automation
+- [ ] T-128 — pending
+- [ ] T-129 — pending
+- [ ] T-130 — pending
+
+### P6.3 — Events retention
+- [ ] T-131 — pending
+- [ ] T-132 — pending — purge (security)
+- [ ] T-133 — pending
+
+### P6.4 — Alerts system
+- [ ] T-134 — pending
+- [ ] T-135 — pending
+- [ ] T-136 — pending
+- [ ] T-137 — pending
+
+### P6.5 — Backup cadenciado
+- [ ] T-138 — pending
+- [ ] T-139 — pending
+- [ ] T-140 — pending
+
+### P6.6 — Restore drill
+- [ ] T-141 — pending
+- [ ] T-142 — pending
+- [ ] T-143 — pending
+
+---
+
 ## Wave reviews
 
 Quando todas as tasks de uma wave estiverem `merged`, reviewer da wave (alternar
@@ -257,6 +299,7 @@ e produz `docs/wave-summaries/wave-N.md`.
 - [ ] Wave 3 audit — pending (reviewer: codex)
 - [ ] Wave 4 audit — pending (reviewer: claude)
 - [ ] Wave 5 audit — pending (reviewer: codex)
+- [ ] Wave 6 audit — pending (reviewer: claude)
 
 ---
 

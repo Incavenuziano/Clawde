@@ -88,7 +88,8 @@
 | 3 | P2.1 → P2.5 | T-041 → T-078 (38) | 18-30h | Input externo seguro |
 | 4 | P1.4, P1.5, P2.6, P2.7 | T-079 → T-100 (22) | 10-13h | Hardening completo |
 | 5 | P3.1, P3.2, P3.4, P3.5, P3.6 | T-101 → T-124 (24) | 18-26h | Alinhamento doc/CI |
-| **Total** | **21** | **124** | **58-91h** | Production-ready |
+| 6 | P6.1 → P6.6 | T-125 → T-143 (19) | 14-21h | Hardening operacional (BP-conformant) |
+| **Total** | **27** | **143** | **72-112h** | Production-ready |
 
 ---
 
@@ -873,6 +874,151 @@
 **Smoke daily registra evento sdk_real_ping_ok/fail**.
 - Acceptance: `clawde-smoke.service` invoca `clawde smoke-test --include-sdk-ping`. Evento aparece no DB; alerta dispara se `_fail` (depende de canal de alerta configurado, opcional).
 - Depends: T-121.
+
+---
+
+# WAVE 6 — Hardening operacional (gaps do BEST_PRACTICES)
+
+> Adicionada após auditoria de conformidade do backlog vs `BEST_PRACTICES.md`.
+> Cobre 8 gaps críticos identificados como **obrigatórios** pelo manual mas
+> não cobertos pelas Waves 1-5. Sem isto, mesmo com Waves 1-5 completas, o
+> sistema não cumpre a definição de "production-ready" do próprio repo.
+>
+> Gaps considerados "importantes mas pós-MVP" estão documentados em
+> [`docs/KNOWN_GAPS.md`](docs/KNOWN_GAPS.md).
+
+## P6.1 — CI security gates (BP §3.1, §3.2, §2.7, §8.4)
+
+### T-125 `security | 1h | codex → claude`
+**Gitleaks pre-commit hook + GitHub Action**.
+- Files: `.gitleaks.toml` (novo), `.github/workflows/security.yml` (novo), `.git/hooks/pre-commit` (script).
+- Acceptance: regex custom para `sk-ant-*`, `sk-ant-oat01-*`, GitHub PAT, Telegram bot token. Pre-commit aborta `git commit` em match. CI falha em qualquer match no histórico (`gitleaks detect --redact`).
+- Depends: —
+
+### T-126 `verification | 30min | codex → claude`
+**`bun audit` em CI**.
+- Files: `.github/workflows/security.yml`.
+- Acceptance: roda em PR + main daily. Fail em vulnerabilidade `high|critical`. Aceita `moderate` mas reporta. Output anexado como PR comment.
+- Depends: —
+
+### T-127 `verification | 2h | codex → claude`
+**Coverage report + gate ≥80% em diffs**.
+- Files: `.github/workflows/coverage.yml`, `package.json` (script `test:coverage`).
+- Acceptance: `bun test --coverage` (já suportado em Bun 1.3+). PR comment mostra cobertura por arquivo modificado. CI falha se cobertura nos diffs novos < 80%. Cobertura geral mantida ou crescente.
+- Depends: —
+
+## P6.2 — DB integrity automation (BP §4.1)
+
+### T-128 `mech | 30min | codex → claude`
+**`clawde diagnose db` chama `PRAGMA integrity_check`**.
+- Files: `src/cli/commands/diagnose.ts` (já criado em T-106).
+- Acceptance: subcomando `db` executa `PRAGMA integrity_check` + `PRAGMA foreign_key_check` + `PRAGMA quick_check`. Exit 0 se "ok"; exit 1 + reporta diff. Tempo medido — warn >1s.
+- Depends: T-106.
+
+### T-129 `verification | 30min | codex → claude`
+**Worker startup chama integrity_check**.
+- Files: `src/worker/main.ts`.
+- Acceptance: bootstrap do worker chama `integrity_check`. >1s loga warn; resultado != "ok" emite event `db_corrupted`, transition pra readonly mode (recusa novas tasks), exit 1. Smoke test do P3.5 inclui esse path.
+- Depends: T-006, T-128.
+
+### T-130 `mech | 30min | codex → claude`
+**Daily systemd timer pra integrity_check**.
+- Files: `deploy/systemd/clawde-integrity.service` (novo), `clawde-integrity.timer` (novo).
+- Acceptance: timer `OnCalendar=*-*-* 02:30:00`. Service invoca `clawde diagnose db --output json`. Falha → alerta (T-137).
+- Depends: T-128.
+
+## P6.3 — Events retention job (BP §6.9, §7.1)
+
+### T-131 `mech | 1h | codex → claude`
+**`clawde events export --since-cutoff 90d`**.
+- Files: `src/cli/commands/events.ts` (novo).
+- Acceptance: subcomando `export` lê events com `ts < datetime('now', '-90 days')`, escreve em parquet (via `duckdb` lib ou JSON Lines + flag) em `~/.clawde/exports/events-YYYY-MM.{parquet|jsonl}`. Output stdout = caminho do arquivo gerado. Não toca DB.
+- Depends: —
+
+### T-132 `security | 1h | codex → claude (DUPLA REVIEW)`
+**`clawde events purge --before <date>`**.
+- Files: `src/cli/commands/events.ts`, possivelmente `src/db/repositories/events.ts`.
+- Acceptance: subcomando `purge` insere row em `_retention_grant` (sentinel pro trigger `events_no_delete`), executa `DELETE FROM events WHERE ts < ?`, remove row de grant. Idempotente. Requer `--confirm` flag. Loga quantos foram apagados. Sem grant ativo → trigger bloqueia → erro claro.
+- Depends: T-131.
+
+### T-133 `mech | 30min | codex → claude`
+**Monthly systemd timer: export + purge**.
+- Files: `deploy/systemd/clawde-events-retention.service` (novo), `clawde-events-retention.timer`.
+- Acceptance: timer mensal (dia 1, 04:00). Service script: `clawde events export --since-cutoff 90d && clawde events purge --before $(date -d '90 days ago' -I) --confirm`. Falha em qualquer step → alerta + abort (não purga sem export bem-sucedido).
+- Depends: T-131, T-132.
+
+## P6.4 — Alerts system (BP §6.7)
+
+### T-134 `design | 1h | codex → claude`
+**`AlertChannel` interface + dispatcher**.
+- Files: `src/alerts/index.ts` (novo), `src/alerts/types.ts`.
+- Acceptance: interface `AlertChannel { send(alert: Alert): Promise<void> }`. `Alert` tem `severity`, `trigger`, `payload`, `cooldownKey`. Dispatcher tem cooldown por trigger (1 alerta/h por chave configurável). `~/.clawde/state/alerts/<cooldownKey>.lock` pra persistir cooldown entre invocações de worker oneshot.
+- Depends: —
+
+### T-135 `mech | 1h | codex → claude`
+**Telegram alert channel**.
+- Files: `src/alerts/telegram.ts`.
+- Acceptance: implementa `AlertChannel` enviando POST `https://api.telegram.org/bot<token>/sendMessage`. Reusa `telegram.bot_token_credential` do config. Chat ID alvo via `telegram.alert_chat_id_credential`. Mensagem formatada: `[SEV][trigger] payload`.
+- Depends: T-134.
+
+### T-136 `mech | 1h | codex → claude`
+**Email alert channel (SMTP)**.
+- Files: `src/alerts/email.ts`.
+- Acceptance: implementa `AlertChannel` via SMTP simples (sem dep externa, usar TCP raw + STARTTLS). Config em `[alerts.email]`: smtp_host, smtp_port, credentials. Mensagem multipart text. Optional — desabilitado se config ausente.
+- Depends: T-134.
+
+### T-137 `verification | 1h | codex → claude`
+**Wire triggers de alerta nos pontos críticos**.
+- Files: `src/log/logger.ts` (FATAL → alert), `src/cli/commands/smoke-test.ts`, `src/quota/policy.ts`, `src/sandbox/matrix.ts`, `src/db/migrations/runner.ts`.
+- Acceptance: triggers cabeam alertas via dispatcher:
+  - `FATAL` log → alert (severity=critical)
+  - smoke test fail → alert (high)
+  - quota state crossover pra `critico` → alert (high, cooldown 1h)
+  - sandbox_violation event → alert (high)
+  - migration_fail → alert (critical)
+  - oauth_expiry_warning <30 days → alert (medium)
+  - db_corrupted (T-129) → alert (critical)
+- Depends: T-134, T-135.
+
+## P6.5 — Backup cadenciado (BP §10.1, §10.2)
+
+### T-138 `mech | 1h | codex → claude`
+**Script `scripts/backup-snapshot.sh`**.
+- Files: `scripts/backup-snapshot.sh` (novo).
+- Acceptance: `sqlite3 ~/.clawde/state.db ".backup '$DEST/state-$(date -u +%Y%m%dT%H%M%SZ).db'"`. `DEST` configurável via arg ou env. Compressão `gzip -9` opcional via flag. Output JSON pra stderr com path + size + duration.
+- Depends: —
+
+### T-139 `mech | 30min | codex → claude`
+**Systemd timers hourly/daily/weekly**.
+- Files: `deploy/systemd/clawde-backup-{hourly,daily,weekly}.{service,timer}` (6 arquivos novos).
+- Acceptance: hourly (`OnCalendar=hourly`), daily (`*-*-* 03:00:00`), weekly (`Sun *-*-* 03:30:00`). Cada um chama `backup-snapshot.sh` com DEST específico (`~/.clawde/backups/{hourly,daily,weekly}/`).
+- Depends: T-138.
+
+### T-140 `mech | 30min | codex → claude`
+**Retention policy: prune backups antigos**.
+- Files: `scripts/backup-prune.sh` (novo); incluir no script de cada timer ou rodar separado.
+- Acceptance: prune mantém: 24 hourly, 7 daily, 4 weekly. Mensal vai pra `~/.clawde/backups/monthly/` (não auto-prune; arquivamento manual). Loga quantos removidos.
+- Depends: T-138.
+
+## P6.6 — Restore drill mensal (BP §4.6, §10.3)
+
+### T-141 `design | 2h | codex → claude`
+**Script `scripts/restore-drill.sh`**.
+- Files: `scripts/restore-drill.sh` (novo).
+- Acceptance: 1) cria dir tmp `/tmp/clawde-drill-$RANDOM`; 2) restora backup mais recente do `~/.clawde/backups/weekly/`; 3) abre DB com `bun:sqlite`, roda integrity_check; 4) compara contagem de rows em tabelas append-only (`events`, `quota_ledger`, `messages`) entre original snapshot timestamp e restored — diff = 0; 5) exit 0 OK / exit 1 fail; 6) cleanup tmp dir.
+- Depends: T-138.
+
+### T-142 `mech | 30min | codex → claude`
+**Monthly systemd timer pra restore drill**.
+- Files: `deploy/systemd/clawde-restore-drill.{service,timer}` (novos).
+- Acceptance: timer `*-*-01 04:30:00` (dia 1, 04:30). Service: `bash scripts/restore-drill.sh`. Falha → alerta (T-137) com severity high (drill é teste do plano de DR).
+- Depends: T-141.
+
+### T-143 `test | 1h | codex → claude`
+**Test E2E drill executável manual**.
+- Files: `tests/integration/restore-drill.test.ts` (novo).
+- Acceptance: cria DB temporário, faz backup via `backup-snapshot.sh`, modifica DB, roda drill em outro path, compara — drill detecta sucesso (não falso positivo).
+- Depends: T-141.
 
 ---
 
