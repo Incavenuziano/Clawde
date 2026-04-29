@@ -45,9 +45,7 @@ describe("cli/smoke-test", () => {
     applyPending(db, defaultMigrationsDir());
     closeDb(db);
 
-    const { exit, stdout } = captureOutput(() =>
-      runSmokeTest({ dbPath, format: "text" }),
-    );
+    const { exit, stdout } = captureOutput(() => runSmokeTest({ dbPath, format: "text" }));
     expect(exit).toBe(0);
     expect(stdout).toContain("[OK ] db.integrity_check");
     expect(stdout).toContain("[OK ] db.migrations");
@@ -59,9 +57,7 @@ describe("cli/smoke-test", () => {
     const db = openDb(dbPath);
     closeDb(db);
 
-    const { exit, stdout } = captureOutput(() =>
-      runSmokeTest({ dbPath, format: "text" }),
-    );
+    const { exit, stdout } = captureOutput(() => runSmokeTest({ dbPath, format: "text" }));
     expect(exit).toBe(1);
     expect(stdout).toContain("[FAIL] db.migrations");
     expect(stdout).toContain("pending: 1");
@@ -73,9 +69,7 @@ describe("cli/smoke-test", () => {
     applyPending(db, defaultMigrationsDir());
     closeDb(db);
 
-    const { exit, stdout } = captureOutput(() =>
-      runSmokeTest({ dbPath, format: "json" }),
-    );
+    const { exit, stdout } = captureOutput(() => runSmokeTest({ dbPath, format: "json" }));
     expect(exit).toBe(0);
     const parsed = JSON.parse(stdout);
     expect(parsed.ok).toBe(true);

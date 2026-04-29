@@ -5,12 +5,9 @@ import { TaskRunsRepo } from "@clawde/db/repositories/task-runs";
 import { TasksRepo } from "@clawde/db/repositories/tasks";
 import { createLogger, resetLogSink, setLogSink } from "@clawde/log";
 import { DEFAULT_TRACKER_CONFIG, QuotaTracker } from "@clawde/quota";
-import { LeaseManager, processNextPending, processTask, type RunnerDeps } from "@clawde/worker";
-import {
-  MockAgentClient,
-  assistantText,
-} from "../mocks/sdk-mock.ts";
-import { makeTestDb, type TestDb } from "../helpers/db.ts";
+import { LeaseManager, type RunnerDeps, processNextPending, processTask } from "@clawde/worker";
+import { type TestDb, makeTestDb } from "../helpers/db.ts";
+import { MockAgentClient, assistantText } from "../mocks/sdk-mock.ts";
 
 describe("worker/runner end-to-end (com SDK mocked)", () => {
   let testDb: TestDb;
@@ -61,11 +58,7 @@ describe("worker/runner end-to-end (com SDK mocked)", () => {
       dedupKey: null,
     });
     mockClient.enqueueResponse({
-      messages: [
-        assistantText("Olá"),
-        assistantText("Processando"),
-        assistantText("Pronto"),
-      ],
+      messages: [assistantText("Olá"), assistantText("Processando"), assistantText("Pronto")],
     });
 
     const result = await processTask(deps, task);

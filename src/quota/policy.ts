@@ -62,7 +62,8 @@ export const DEFAULT_POLICY_CONFIG: PolicyConfig = {
   },
 };
 
-export function makeQuotaPolicy(config: PolicyConfig = DEFAULT_POLICY_CONFIG): QuotaPolicy {
+export function makeQuotaPolicy(_config: PolicyConfig = DEFAULT_POLICY_CONFIG): QuotaPolicy {
+  // Config aceito para extensibilidade futura (custom thresholds/reserve).
   return {
     canAccept(window: QuotaWindow, priority: Priority): QuotaDecision {
       const requiredRank = STATE_MIN_PRIORITY[window.state];
@@ -70,7 +71,11 @@ export function makeQuotaPolicy(config: PolicyConfig = DEFAULT_POLICY_CONFIG): Q
 
       // URGENT sempre tem janela reservada (exceto se totalmente esgotado).
       if (priority === "URGENT" && window.state !== "esgotado") {
-        return { accept: true, deferUntil: null, reason: `URGENT bypass for state=${window.state}` };
+        return {
+          accept: true,
+          deferUntil: null,
+          reason: `URGENT bypass for state=${window.state}`,
+        };
       }
 
       if (priorityRank >= requiredRank && window.state !== "esgotado") {

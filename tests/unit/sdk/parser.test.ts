@@ -32,9 +32,7 @@ describe("sdk/parser parseRawMessage", () => {
   test("tool_result preserva flags", () => {
     const m = parseRawMessage({
       role: "user",
-      content: [
-        { type: "tool_result", tool_use_id: "tu_1", content: "ok", is_error: false },
-      ],
+      content: [{ type: "tool_result", tool_use_id: "tu_1", content: "ok", is_error: false }],
     });
     expect(m?.blocks[0]).toEqual({
       type: "tool_result",

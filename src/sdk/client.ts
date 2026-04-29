@@ -17,9 +17,7 @@ import type {
 /**
  * Helper: collect stream → AgentRunResult (compartilhado entre real e mock).
  */
-export async function collectRun(
-  stream: AsyncIterable<ParsedMessage>,
-): Promise<AgentRunResult> {
+export async function collectRun(stream: AsyncIterable<ParsedMessage>): Promise<AgentRunResult> {
   let msgsConsumed = 0;
   let totalTurns = 0;
   const textParts: string[] = [];
@@ -65,12 +63,14 @@ export class RealAgentClient implements AgentClient {
     };
     if (options.maxTurns !== undefined) queryOptions.maxTurns = options.maxTurns;
     if (options.allowedTools !== undefined) queryOptions.allowedTools = options.allowedTools;
-    if (options.disallowedTools !== undefined) queryOptions.disallowedTools = options.disallowedTools;
+    if (options.disallowedTools !== undefined)
+      queryOptions.disallowedTools = options.disallowedTools;
     if (options.appendSystemPrompt !== undefined) {
       queryOptions.appendSystemPrompt = options.appendSystemPrompt;
     }
     if (options.workingDirectory !== undefined) queryOptions.cwd = options.workingDirectory;
-    if (options.resumeSessionId !== undefined) queryOptions.resumeSessionId = options.resumeSessionId;
+    if (options.resumeSessionId !== undefined)
+      queryOptions.resumeSessionId = options.resumeSessionId;
 
     // Lazy: parser.ts re-importado para evitar circularidade.
     const { parseRawMessage } = await import("./parser.ts");

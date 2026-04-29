@@ -6,8 +6,8 @@
  *   4. Valida via zod (falha = erro com path + mensagem).
  */
 
-import { homedir } from "node:os";
 import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import { parse as parseTOML } from "smol-toml";
 import { z } from "zod";
@@ -76,9 +76,7 @@ function readTomlOrEmpty(path: string): Record<string, unknown> {
     const parsed = parseTOML(raw);
     return parsed as Record<string, unknown>;
   } catch (err) {
-    throw new ConfigError(
-      `failed to parse TOML at ${path}: ${(err as Error).message}`,
-    );
+    throw new ConfigError(`failed to parse TOML at ${path}: ${(err as Error).message}`);
   }
 }
 

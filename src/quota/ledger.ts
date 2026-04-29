@@ -5,8 +5,8 @@
 
 import type { QuotaLedgerRepo } from "@clawde/db/repositories/quota-ledger";
 import type { Plan, QuotaState, QuotaWindow } from "@clawde/domain/quota";
-import { type PeakHoursConfig, DEFAULT_PEAK_CONFIG, checkPeakHours } from "./peak-hours.ts";
-import { type ThresholdConfig, DEFAULT_THRESHOLDS, thresholdToState } from "./thresholds.ts";
+import { DEFAULT_PEAK_CONFIG, type PeakHoursConfig, checkPeakHours } from "./peak-hours.ts";
+import { DEFAULT_THRESHOLDS, type ThresholdConfig, thresholdToState } from "./thresholds.ts";
 
 const FIVE_HOURS_MS = 5 * 60 * 60 * 1000;
 

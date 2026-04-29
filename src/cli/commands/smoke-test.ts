@@ -54,9 +54,7 @@ function checkMigrations(db: ClawdeDatabase): CheckResult {
       name: "db.migrations",
       ok: s.pending.length === 0 && s.current === s.latest,
       detail:
-        s.pending.length === 0
-          ? `up to date (v${s.current})`
-          : `pending: ${s.pending.join(", ")}`,
+        s.pending.length === 0 ? `up to date (v${s.current})` : `pending: ${s.pending.join(", ")}`,
     };
   } catch (err) {
     return {
@@ -89,9 +87,7 @@ export function runSmokeTest(options: SmokeTestOptions): number {
 
   emit(options.format, report, (d) => {
     const data = d as SmokeReport;
-    const lines = data.checks.map(
-      (c) => `[${c.ok ? "OK " : "FAIL"}] ${c.name}: ${c.detail ?? ""}`,
-    );
+    const lines = data.checks.map((c) => `[${c.ok ? "OK " : "FAIL"}] ${c.name}: ${c.detail ?? ""}`);
     lines.push("");
     lines.push(`overall: ${data.ok ? "OK" : "FAIL"}`);
     return lines.join("\n");

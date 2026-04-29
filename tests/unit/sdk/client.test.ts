@@ -10,11 +10,7 @@ import {
 describe("sdk/client collectRun (via MockAgentClient)", () => {
   test("agrega 3 messages assistant em finalText e msgsConsumed=3", async () => {
     const mock = new MockAgentClient({
-      messages: [
-        assistantText("Olá"),
-        assistantText("Vou ajudar"),
-        assistantText("Pronto"),
-      ],
+      messages: [assistantText("Olá"), assistantText("Vou ajudar"), assistantText("Pronto")],
     });
     const result = await mock.run({ prompt: "olá" });
     expect(result.msgsConsumed).toBe(3);
@@ -26,11 +22,7 @@ describe("sdk/client collectRun (via MockAgentClient)", () => {
 
   test("totalTurns conta blocos contínuos de assistant", async () => {
     const mock = new MockAgentClient({
-      messages: [
-        assistantText("turn1"),
-        toolResult("tu1", "result"),
-        assistantText("turn2"),
-      ],
+      messages: [assistantText("turn1"), toolResult("tu1", "result"), assistantText("turn2")],
     });
     const result = await mock.run({ prompt: "x" });
     expect(result.totalTurns).toBe(2);

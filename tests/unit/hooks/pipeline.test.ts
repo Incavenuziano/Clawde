@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import {
-  HookPipeline,
   type HookHandler,
   type HookInput,
   type HookOutput,
+  HookPipeline,
   type PreToolUsePayload,
   type SessionStartPayload,
   type UserPromptSubmitPayload,
@@ -47,9 +47,7 @@ describe("hooks/pipeline handler básico", () => {
       captured = input;
       return { ok: true, message: "started" };
     });
-    const result = await pipe.run(
-      sessionStartInput({ agent: "implementer", workingDir: "/tmp" }),
-    );
+    const result = await pipe.run(sessionStartInput({ agent: "implementer", workingDir: "/tmp" }));
     expect(result.message).toBe("started");
     expect(captured).not.toBeNull();
   });
@@ -110,9 +108,7 @@ describe("hooks/pipeline error handling", () => {
     pipe.register("SessionStart", () => {
       throw new Error("boom");
     });
-    const result = await pipe.run(
-      sessionStartInput({ agent: "x", workingDir: "/tmp" }),
-    );
+    const result = await pipe.run(sessionStartInput({ agent: "x", workingDir: "/tmp" }));
     expect(result.ok).toBe(false);
     expect(result.message).toContain("boom");
     expect(result.block).toBe(false);
@@ -129,9 +125,7 @@ describe("hooks/pipeline disabled", () => {
       called = true;
       return { ok: false };
     });
-    const result = await pipe.run(
-      sessionStartInput({ agent: "x", workingDir: "/tmp" }),
-    );
+    const result = await pipe.run(sessionStartInput({ agent: "x", workingDir: "/tmp" }));
     expect(called).toBe(false);
     expect(result.ok).toBe(true);
   });
@@ -141,23 +135,25 @@ describe("hooks/handlers default emitem eventos via callback", () => {
   test("makeSessionStartHandler chama emit", async () => {
     const events: Array<{ kind: string; payload: unknown }> = [];
     const handler = makeSessionStartHandler((kind, payload) => events.push({ kind, payload }));
-    await handler(sessionStartInput({ agent: "x", workingDir: "/tmp" }) as HookInput & {
-      hook: "SessionStart";
-      payload: SessionStartPayload;
-    });
+    await handler(
+      sessionStartInput({ agent: "x", workingDir: "/tmp" }) as HookInput & {
+        hook: "SessionStart";
+        payload: SessionStartPayload;
+      },
+    );
     expect(events).toHaveLength(1);
     expect(events[0]?.kind).toBe("session_start_hook");
   });
 
   test("makeUserPromptSubmitHandler emite com prompt_len", async () => {
     const events: Array<{ kind: string; payload: Record<string, unknown> }> = [];
-    const handler = makeUserPromptSubmitHandler((kind, payload) =>
-      events.push({ kind, payload }),
+    const handler = makeUserPromptSubmitHandler((kind, payload) => events.push({ kind, payload }));
+    await handler(
+      userPromptInput({ prompt: "hello world", source: "cli" }) as HookInput & {
+        hook: "UserPromptSubmit";
+        payload: UserPromptSubmitPayload;
+      },
     );
-    await handler(userPromptInput({ prompt: "hello world", source: "cli" }) as HookInput & {
-      hook: "UserPromptSubmit";
-      payload: UserPromptSubmitPayload;
-    });
     expect(events[0]?.payload.prompt_len).toBe(11);
     expect(events[0]?.payload.source).toBe("cli");
   });
@@ -165,10 +161,12 @@ describe("hooks/handlers default emitem eventos via callback", () => {
   test("makePreToolUseHandler captura toolName + input", async () => {
     const events: Array<{ kind: string; payload: Record<string, unknown> }> = [];
     const handler = makePreToolUseHandler((kind, payload) => events.push({ kind, payload }));
-    await handler(preToolInput({ toolName: "Bash", toolInput: { command: "ls" } }) as HookInput & {
-      hook: "PreToolUse";
-      payload: PreToolUsePayload;
-    });
+    await handler(
+      preToolInput({ toolName: "Bash", toolInput: { command: "ls" } }) as HookInput & {
+        hook: "PreToolUse";
+        payload: PreToolUsePayload;
+      },
+    );
     expect(events[0]?.kind).toBe("tool_use");
     expect(events[0]?.payload.tool).toBe("Bash");
   });

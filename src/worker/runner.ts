@@ -135,12 +135,14 @@ async function runAgentWithLedger(
   let stopReason: AgentRunResult["stopReason"] = "completed";
   let error: string | null = null;
 
+  const streamOpts: { prompt: string; sessionId?: string; workingDirectory?: string } = {
+    prompt: task.prompt,
+  };
+  if (task.sessionId !== null) streamOpts.sessionId = task.sessionId;
+  if (task.workingDir !== null) streamOpts.workingDirectory = task.workingDir;
+
   try {
-    for await (const msg of deps.agentClient.stream({
-      prompt: task.prompt,
-      sessionId: task.sessionId ?? undefined,
-      workingDirectory: task.workingDir ?? undefined,
-    })) {
+    for await (const msg of deps.agentClient.stream(streamOpts)) {
       msgsConsumed += 1;
       deps.quotaTracker.recordMessage(taskRunId);
       if (msg.role === "assistant") {

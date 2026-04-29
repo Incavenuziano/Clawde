@@ -35,12 +35,7 @@ export interface ParsedMessage {
   readonly raw?: unknown;
 }
 
-export type StopReason =
-  | "completed"
-  | "max_turns"
-  | "error"
-  | "user_abort"
-  | "stop_requested";
+export type StopReason = "completed" | "max_turns" | "error" | "user_abort" | "stop_requested";
 
 export interface AgentRunResult {
   readonly stopReason: StopReason;

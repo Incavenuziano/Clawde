@@ -19,11 +19,11 @@ export interface HookConfig {
 }
 
 const DEFAULT_HOOK_CONFIG: Record<HookName, HookConfig> = {
-  SessionStart:     { enabled: true, timeoutMs: 1000, onTimeout: "allow" },
-  UserPromptSubmit: { enabled: true, timeoutMs: 500,  onTimeout: "block" },
-  PreToolUse:       { enabled: true, timeoutMs: 200,  onTimeout: "allow" },
-  PostToolUse:      { enabled: true, timeoutMs: 2000, onTimeout: "allow" },
-  Stop:             { enabled: true, timeoutMs: 5000, onTimeout: "allow" },
+  SessionStart: { enabled: true, timeoutMs: 1000, onTimeout: "allow" },
+  UserPromptSubmit: { enabled: true, timeoutMs: 500, onTimeout: "block" },
+  PreToolUse: { enabled: true, timeoutMs: 200, onTimeout: "allow" },
+  PostToolUse: { enabled: true, timeoutMs: 2000, onTimeout: "allow" },
+  Stop: { enabled: true, timeoutMs: 5000, onTimeout: "allow" },
 };
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | "__TIMEOUT__"> {

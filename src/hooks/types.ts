@@ -5,12 +5,7 @@
  * pontos definidos do ciclo de vida do agente.
  */
 
-export type HookName =
-  | "SessionStart"
-  | "UserPromptSubmit"
-  | "PreToolUse"
-  | "PostToolUse"
-  | "Stop";
+export type HookName = "SessionStart" | "UserPromptSubmit" | "PreToolUse" | "PostToolUse" | "Stop";
 
 export interface HookCommonInput {
   readonly hook: HookName;

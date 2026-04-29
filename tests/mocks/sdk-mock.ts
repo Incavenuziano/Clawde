@@ -4,12 +4,7 @@
  */
 
 import { collectRun } from "@clawde/sdk";
-import type {
-  AgentClient,
-  AgentRunResult,
-  ParsedMessage,
-  RunAgentOptions,
-} from "@clawde/sdk";
+import type { AgentClient, AgentRunResult, ParsedMessage, RunAgentOptions } from "@clawde/sdk";
 
 export interface MockResponse {
   /** Mensagens emitidas em ordem. */

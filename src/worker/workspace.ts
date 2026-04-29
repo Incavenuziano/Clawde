@@ -38,9 +38,11 @@ function featureBranch(taskId: number, slug: string): string {
 }
 
 export class WorkspaceError extends Error {
-  constructor(message: string, public readonly cause?: unknown) {
+  override readonly cause?: unknown;
+  constructor(message: string, cause?: unknown) {
     super(message);
     this.name = "WorkspaceError";
+    if (cause !== undefined) this.cause = cause;
   }
 }
 
@@ -54,16 +56,11 @@ export async function createWorkspace(input: CreateWorkspaceInput): Promise<Work
 
   try {
     // Cria branch nova e worktree em path. -b cria a branch a partir de baseBranch.
-    await exec(
-      "git",
-      ["worktree", "add", "-b", branch, path, input.baseBranch],
-      { cwd: input.repoRoot },
-    );
+    await exec("git", ["worktree", "add", "-b", branch, path, input.baseBranch], {
+      cwd: input.repoRoot,
+    });
   } catch (err) {
-    throw new WorkspaceError(
-      `git worktree add failed: ${(err as Error).message}`,
-      err,
-    );
+    throw new WorkspaceError(`git worktree add failed: ${(err as Error).message}`, err);
   }
 
   return {
@@ -75,21 +72,11 @@ export async function createWorkspace(input: CreateWorkspaceInput): Promise<Work
   };
 }
 
-export async function removeWorkspace(
-  workspace: Workspace,
-  repoRoot: string,
-): Promise<void> {
+export async function removeWorkspace(workspace: Workspace, repoRoot: string): Promise<void> {
   try {
-    await exec(
-      "git",
-      ["worktree", "remove", "--force", workspace.path],
-      { cwd: repoRoot },
-    );
+    await exec("git", ["worktree", "remove", "--force", workspace.path], { cwd: repoRoot });
   } catch (err) {
-    throw new WorkspaceError(
-      `git worktree remove failed: ${(err as Error).message}`,
-      err,
-    );
+    throw new WorkspaceError(`git worktree remove failed: ${(err as Error).message}`, err);
   }
 }
 

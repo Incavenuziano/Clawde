@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { QuotaLedgerRepo } from "@clawde/db/repositories/quota-ledger";
 import { DEFAULT_TRACKER_CONFIG, QuotaTracker } from "@clawde/quota";
-import { makeTestDb, type TestDb } from "../../helpers/db.ts";
+import { type TestDb, makeTestDb } from "../../helpers/db.ts";
 
 describe("quota/ledger QuotaTracker", () => {
   let testDb: TestDb;

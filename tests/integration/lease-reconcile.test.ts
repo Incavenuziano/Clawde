@@ -3,7 +3,7 @@ import { EventsRepo } from "@clawde/db/repositories/events";
 import { TaskRunsRepo } from "@clawde/db/repositories/task-runs";
 import { TasksRepo } from "@clawde/db/repositories/tasks";
 import { LeaseManager, makeReconciler } from "@clawde/worker";
-import { makeTestDb, type TestDb } from "../helpers/db.ts";
+import { type TestDb, makeTestDb } from "../helpers/db.ts";
 
 describe("worker/lease + reconcile integration", () => {
   let testDb: TestDb;

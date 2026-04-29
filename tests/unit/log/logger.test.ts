@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import {
+  REDACTED_PLACEHOLDER,
   createLogger,
   getMinLevel,
   newSpanId,
   newTraceId,
   redact,
-  REDACTED_PLACEHOLDER,
   resetLogSink,
   setLogSink,
   setMinLevel,
@@ -82,7 +82,7 @@ describe("log/trace", () => {
     const traceId = newTraceId();
     const captured: string[] = [];
     const log = createLogger();
-    let lines: string[] = [];
+    const lines: string[] = [];
     setLogSink((line) => lines.push(line));
     try {
       withTrace({ traceId, spanId: newSpanId() }, () => {

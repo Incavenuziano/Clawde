@@ -1,14 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync, existsSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  WorkspaceError,
-  createWorkspace,
-  listWorktrees,
-  removeWorkspace,
-} from "@clawde/worker";
+import { WorkspaceError, createWorkspace, listWorktrees, removeWorkspace } from "@clawde/worker";
 
 function initRepo(dir: string): void {
   execFileSync("git", ["init", "-q", "-b", "main"], { cwd: dir });
@@ -19,11 +14,9 @@ function initRepo(dir: string): void {
   execFileSync("git", ["config", "tag.gpgsign", "false"], { cwd: dir });
   writeFileSync(join(dir, "README.md"), "test repo\n");
   execFileSync("git", ["add", "."], { cwd: dir });
-  execFileSync(
-    "git",
-    ["-c", "commit.gpgsign=false", "commit", "-q", "-m", "initial"],
-    { cwd: dir },
-  );
+  execFileSync("git", ["-c", "commit.gpgsign=false", "commit", "-q", "-m", "initial"], {
+    cwd: dir,
+  });
 }
 
 describe("worker/workspace integration", () => {

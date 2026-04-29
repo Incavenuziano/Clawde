@@ -16,10 +16,7 @@ export interface Reconciler {
   reconcile(workerId: string): ReconcileResult;
 }
 
-export function makeReconciler(
-  runsRepo: TaskRunsRepo,
-  eventsRepo: EventsRepo,
-): Reconciler {
+export function makeReconciler(runsRepo: TaskRunsRepo, eventsRepo: EventsRepo): Reconciler {
   return {
     reconcile(workerId: string): ReconcileResult {
       const expired = runsRepo.findExpiredLeases();
