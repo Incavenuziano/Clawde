@@ -24,5 +24,9 @@
   },
   "trustedDependencies": [
     "@biomejs/biome"
-  ]
+  ],
+  "dependencies": {
+    "smol-toml": "1.6.1",
+    "zod": "4.3.6"
+  }
 }
