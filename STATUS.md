@@ -37,7 +37,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P0.3 | `task/P0.3-config-schema` | T-019 | codex | claude | merged, PR #1, 2026-04-29 | #1 |
 | P1.1 | `task/P1.1-dequeue-retry` | T-020..T-023 | codex | claude | merged, PR #4, 2026-04-29 | #4 |
 | P1.2 | `task/P1.2-quota-not-before` | T-024..T-033 | codex | claude | merged, PR #5, 2026-04-29 | #5 |
-| P1.3 | `task/P1.3-sdk-errors` | T-034..T-040 | codex | claude | pending | — |
+| P1.3 | `task/P1.3-sdk-errors` | T-034..T-040 | codex | claude | in-progress, codex | — |
 | P2.1 | `task/P2.1-workspace-plug` | T-041..T-046 | codex | claude | pending | — |
 | P2.2 | `task/P2.2-sandbox-tools` | T-047..T-053 | codex | claude | pending | — |
 | P2.3 | `task/P2.3-external-input` | T-054..T-057 | claude | codex | pending | — |
@@ -117,13 +117,13 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 - [x] T-033 — merged, PR #5, 2026-04-29
 
 ### P1.3 — SDK error tipados
-- [ ] T-034 — pending
-- [ ] T-035 — pending
-- [ ] T-036 — pending
-- [ ] T-037 — pending
-- [ ] T-038 — pending
-- [ ] T-039 — pending
-- [ ] T-040 — pending
+- [ ] T-034 — in-progress, codex
+- [ ] T-035 — in-progress, codex
+- [ ] T-036 — in-progress, codex
+- [ ] T-037 — in-progress, codex
+- [ ] T-038 — in-progress, codex
+- [ ] T-039 — in-progress, codex
+- [ ] T-040 — in-progress, codex
 
 ---
 
