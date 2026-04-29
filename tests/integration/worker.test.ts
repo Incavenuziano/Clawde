@@ -1,0 +1,202 @@
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { EventsRepo } from "@clawde/db/repositories/events";
+import { QuotaLedgerRepo } from "@clawde/db/repositories/quota-ledger";
+import { TaskRunsRepo } from "@clawde/db/repositories/task-runs";
+import { TasksRepo } from "@clawde/db/repositories/tasks";
+import { createLogger, resetLogSink, setLogSink } from "@clawde/log";
+import { DEFAULT_TRACKER_CONFIG, QuotaTracker } from "@clawde/quota";
+import { LeaseManager, processNextPending, processTask, type RunnerDeps } from "@clawde/worker";
+import {
+  MockAgentClient,
+  assistantText,
+} from "../mocks/sdk-mock.ts";
+import { makeTestDb, type TestDb } from "../helpers/db.ts";
+
+describe("worker/runner end-to-end (com SDK mocked)", () => {
+  let testDb: TestDb;
+  let deps: RunnerDeps;
+  let mockClient: MockAgentClient;
+
+  beforeEach(() => {
+    testDb = makeTestDb();
+    setLogSink(() => {}); // silenciar logs durante test
+
+    const tasksRepo = new TasksRepo(testDb.db);
+    const runsRepo = new TaskRunsRepo(testDb.db);
+    const eventsRepo = new EventsRepo(testDb.db);
+    const quotaRepo = new QuotaLedgerRepo(testDb.db);
+    const lease = new LeaseManager(runsRepo, eventsRepo, {
+      leaseSeconds: 60,
+      heartbeatSeconds: 999,
+    });
+    const tracker = new QuotaTracker(quotaRepo, DEFAULT_TRACKER_CONFIG);
+    mockClient = new MockAgentClient();
+
+    deps = {
+      tasksRepo,
+      runsRepo,
+      eventsRepo,
+      leaseManager: lease,
+      quotaTracker: tracker,
+      agentClient: mockClient,
+      logger: createLogger({ component: "test-worker" }),
+      workerId: "worker-test",
+    };
+  });
+  afterEach(() => {
+    testDb.cleanup();
+    resetLogSink();
+  });
+
+  test("processTask end-to-end: succeeded com 3 messages", async () => {
+    const task = deps.tasksRepo.insert({
+      priority: "NORMAL",
+      prompt: "test",
+      agent: "default",
+      sessionId: null,
+      workingDir: null,
+      dependsOn: [],
+      source: "cli",
+      sourceMetadata: {},
+      dedupKey: null,
+    });
+    mockClient.enqueueResponse({
+      messages: [
+        assistantText("Olá"),
+        assistantText("Processando"),
+        assistantText("Pronto"),
+      ],
+    });
+
+    const result = await processTask(deps, task);
+    expect(result.run.status).toBe("succeeded");
+    expect(result.agentResult.msgsConsumed).toBe(3);
+    expect(result.run.result).toContain("Pronto");
+    expect(result.run.msgsConsumed).toBe(3);
+  });
+
+  test("eventos completos registrados (task_start, invocation_*, task_finish)", async () => {
+    const task = deps.tasksRepo.insert({
+      priority: "NORMAL",
+      prompt: "test",
+      agent: "default",
+      sessionId: null,
+      workingDir: null,
+      dependsOn: [],
+      source: "cli",
+      sourceMetadata: {},
+      dedupKey: null,
+    });
+    mockClient.enqueueResponse({
+      messages: [assistantText("ok")],
+    });
+
+    const result = await processTask(deps, task);
+    const events = deps.eventsRepo.queryByTaskRun(result.run.id);
+    const kinds = events.map((e) => e.kind);
+
+    expect(kinds).toContain("task_start");
+    expect(kinds).toContain("claude_invocation_start");
+    expect(kinds).toContain("claude_invocation_end");
+    expect(kinds).toContain("task_finish");
+  });
+
+  test("quota ledger registra cada message processada", async () => {
+    const task = deps.tasksRepo.insert({
+      priority: "NORMAL",
+      prompt: "test",
+      agent: "default",
+      sessionId: null,
+      workingDir: null,
+      dependsOn: [],
+      source: "cli",
+      sourceMetadata: {},
+      dedupKey: null,
+    });
+    mockClient.enqueueResponse({
+      messages: [assistantText("a"), assistantText("b"), assistantText("c")],
+    });
+
+    await processTask(deps, task);
+    const ledger = deps.quotaTracker.currentWindow();
+    expect(ledger.msgsConsumed).toBe(3);
+  });
+
+  test("agent erro vira task_run failed com error preservado", async () => {
+    const task = deps.tasksRepo.insert({
+      priority: "NORMAL",
+      prompt: "test",
+      agent: "default",
+      sessionId: null,
+      workingDir: null,
+      dependsOn: [],
+      source: "cli",
+      sourceMetadata: {},
+      dedupKey: null,
+    });
+    mockClient.enqueueResponse({
+      messages: [assistantText("partial")],
+      throwAfter: new Error("rate_limit_exceeded"),
+    });
+
+    const result = await processTask(deps, task);
+    expect(result.run.status).toBe("failed");
+    expect(result.run.error).toContain("rate_limit_exceeded");
+    expect(result.agentResult.error).toContain("rate_limit_exceeded");
+  });
+
+  test("processNextPending pula tasks já com run", async () => {
+    const t1 = deps.tasksRepo.insert({
+      priority: "URGENT",
+      prompt: "first",
+      agent: "default",
+      sessionId: null,
+      workingDir: null,
+      dependsOn: [],
+      source: "cli",
+      sourceMetadata: {},
+      dedupKey: null,
+    });
+    deps.tasksRepo.insert({
+      priority: "NORMAL",
+      prompt: "second",
+      agent: "default",
+      sessionId: null,
+      workingDir: null,
+      dependsOn: [],
+      source: "cli",
+      sourceMetadata: {},
+      dedupKey: null,
+    });
+    mockClient.enqueueResponse({ messages: [assistantText("ok")] });
+    mockClient.enqueueResponse({ messages: [assistantText("ok")] });
+
+    const r1 = await processNextPending(deps);
+    expect(r1?.task.id).toBe(t1.id); // URGENT processa primeiro
+    const r2 = await processNextPending(deps);
+    expect(r2?.task.prompt).toBe("second");
+
+    // Sem mais pending (ambas têm runs).
+    const r3 = await processNextPending(deps);
+    expect(r3).toBeNull();
+  });
+
+  test("processTask retorna em <2s com mock instantâneo (DoD)", async () => {
+    const task = deps.tasksRepo.insert({
+      priority: "NORMAL",
+      prompt: "p",
+      agent: "default",
+      sessionId: null,
+      workingDir: null,
+      dependsOn: [],
+      source: "cli",
+      sourceMetadata: {},
+      dedupKey: null,
+    });
+    mockClient.enqueueResponse({ messages: [assistantText("ok")] });
+
+    const t0 = Date.now();
+    await processTask(deps, task);
+    expect(Date.now() - t0).toBeLessThan(2000);
+  });
+});
