@@ -26,8 +26,12 @@ export class SystemdWorkerTrigger implements WorkerTrigger {
 
   async trigger(traceId: string): Promise<void> {
     if (this.signalPath !== null) {
-      await mkdir(dirname(this.signalPath), { recursive: true });
-      await appendFile(this.signalPath, `${Date.now()} ${traceId}\n`, "utf-8");
+      try {
+        await mkdir(dirname(this.signalPath), { recursive: true });
+        await appendFile(this.signalPath, `${Date.now()} ${traceId}\n`, "utf-8");
+      } catch {
+        // Fallback signal é best-effort; falha aqui não deve bloquear trigger primário.
+      }
     }
 
     await new Promise<void>((resolve, reject) => {
