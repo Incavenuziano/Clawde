@@ -48,5 +48,8 @@ export async function bootstrap(): Promise<ReceiverHandle> {
     { method: "POST", path: "/enqueue" },
     makeEnqueueHandler({ tasksRepo, eventsRepo, rateLimiter, logger }),
   );
+  // TODO: T-003 (after P0.3) — register /webhook/telegram conditionally once
+  //   TelegramConfigSchema is available in ClawdeConfig (PR #1).
+  logger.info("telegram disabled (pending P0.3)");
   return handle;
 }
