@@ -128,7 +128,13 @@ export class TasksRepo {
             SELECT MAX(id) FROM task_runs WHERE task_id = t.id
           )
          WHERE tr_latest.id IS NULL
-            OR tr_latest.status = 'pending'
+            OR (
+                 tr_latest.status = 'pending'
+                 AND (
+                   tr_latest.not_before IS NULL
+                   OR tr_latest.not_before <= datetime('now')
+                 )
+               )
          ORDER BY
            CASE t.priority
              WHEN 'URGENT' THEN 0

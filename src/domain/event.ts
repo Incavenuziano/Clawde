@@ -10,6 +10,7 @@ export const EVENT_KIND_VALUES = [
   "auth_fail",
   "rate_limit_hit",
   "dedup_skip",
+  "task_deferred",
   // worker lifecycle
   "task_start",
   "task_finish",

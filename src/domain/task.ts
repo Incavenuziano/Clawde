@@ -48,6 +48,7 @@ export interface TaskRun {
   readonly attemptN: number;
   readonly workerId: string;
   readonly status: TaskRunStatus;
+  readonly notBefore: string | null;
   readonly leaseUntil: string | null;
   readonly startedAt: string | null;
   readonly finishedAt: string | null;

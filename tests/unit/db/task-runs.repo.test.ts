@@ -34,7 +34,15 @@ describe("repositories/task-runs", () => {
     expect(run.status).toBe("pending");
     expect(run.attemptN).toBe(1);
     expect(run.workerId).toBe("worker-a");
+    expect(run.notBefore).toBeNull();
     expect(run.leaseUntil).toBeNull();
+  });
+
+  test("insert aceita notBefore opcional", () => {
+    const run = runsRepo.insert(taskId, "worker-a", {
+      notBefore: "2026-04-29 15:00:00",
+    });
+    expect(run.notBefore).toBe("2026-04-29 15:00:00");
   });
 
   test("insert subsequente para mesmo task incrementa attempt_n", () => {
@@ -143,6 +151,12 @@ describe("repositories/task-runs", () => {
     runsRepo.insert(taskId, "w1"); // attempt 1
     const second = runsRepo.insert(taskId, "w2"); // attempt 2
     expect(runsRepo.findLatestByTaskId(taskId)?.id).toBe(second.id);
+  });
+
+  test("setNotBefore atualiza coluna no run pendente", () => {
+    const run = runsRepo.insert(taskId, "w1");
+    const updated = runsRepo.setNotBefore(run.id, "2026-04-29 16:00:00");
+    expect(updated.notBefore).toBe("2026-04-29 16:00:00");
   });
 
   test("UNIQUE (task_id, attempt_n) protegido pelo schema", () => {

@@ -8,7 +8,7 @@ import { QuotaLedgerRepo } from "@clawde/db/repositories/quota-ledger";
 import { TaskRunsRepo } from "@clawde/db/repositories/task-runs";
 import { TasksRepo } from "@clawde/db/repositories/tasks";
 import { createLogger, setMinLevel } from "@clawde/log";
-import { QuotaTracker } from "@clawde/quota";
+import { QuotaTracker, makeQuotaPolicy } from "@clawde/quota";
 import { RealAgentClient } from "@clawde/sdk";
 import { LeaseManager, makeReconciler, processNextPending } from "./index.ts";
 
@@ -29,6 +29,7 @@ export async function bootstrap(): Promise<void> {
     const runsRepo = new TaskRunsRepo(db);
     const eventsRepo = new EventsRepo(db);
     const quotaTracker = new QuotaTracker(new QuotaLedgerRepo(db));
+    const quotaPolicy = makeQuotaPolicy();
     const leaseManager = new LeaseManager(runsRepo, eventsRepo, {
       leaseSeconds: config.worker.lease_seconds,
       heartbeatSeconds: config.worker.heartbeat_seconds,
@@ -52,6 +53,7 @@ export async function bootstrap(): Promise<void> {
         eventsRepo,
         leaseManager,
         quotaTracker,
+        quotaPolicy,
         agentClient,
         logger,
         workerId,

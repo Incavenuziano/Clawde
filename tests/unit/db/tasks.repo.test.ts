@@ -115,6 +115,22 @@ describe("repositories/tasks", () => {
     expect(pending.map((p) => p.prompt)).toEqual(["without-run"]);
   });
 
+  test("findPending exclui pending com not_before no futuro", () => {
+    const tFuture = repo.insert(sampleTask({ prompt: "future" }));
+    const tReady = repo.insert(sampleTask({ prompt: "ready" }));
+    testDb.db.exec(
+      `INSERT INTO task_runs (task_id, worker_id, status, not_before)
+       VALUES (${tFuture.id}, 'w1', 'pending', datetime('now', '+1 hour'))`,
+    );
+    testDb.db.exec(
+      `INSERT INTO task_runs (task_id, worker_id, status, not_before)
+       VALUES (${tReady.id}, 'w1', 'pending', datetime('now', '-1 hour'))`,
+    );
+
+    const pending = repo.findPending();
+    expect(pending.map((p) => p.prompt)).toEqual(["ready"]);
+  });
+
   test("insert com priority URGENT é aceito", () => {
     const t = repo.insert(sampleTask({ priority: "URGENT" }));
     expect(t.priority).toBe("URGENT");

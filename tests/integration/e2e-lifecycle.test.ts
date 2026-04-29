@@ -19,7 +19,7 @@ import { QuotaLedgerRepo } from "@clawde/db/repositories/quota-ledger";
 import { TaskRunsRepo } from "@clawde/db/repositories/task-runs";
 import { TasksRepo } from "@clawde/db/repositories/tasks";
 import { createLogger, resetLogSink, setLogSink } from "@clawde/log";
-import { DEFAULT_TRACKER_CONFIG, QuotaTracker } from "@clawde/quota";
+import { DEFAULT_TRACKER_CONFIG, QuotaTracker, makeQuotaPolicy } from "@clawde/quota";
 import {
   NoopWorkerTrigger,
   type ReceiverHandle,
@@ -83,6 +83,7 @@ async function setup(): Promise<E2E> {
     eventsRepo,
     leaseManager: lease,
     quotaTracker: tracker,
+    quotaPolicy: makeQuotaPolicy(),
     agentClient: mockClient,
     logger,
     workerId: "e2e-worker",

@@ -13,6 +13,7 @@ interface RawTaskRunRow {
   attempt_n: number;
   worker_id: string;
   status: TaskRunStatus;
+  not_before: string | null;
   lease_until: string | null;
   started_at: string | null;
   finished_at: string | null;
@@ -28,6 +29,7 @@ function rowToTaskRun(r: RawTaskRunRow): TaskRun {
     attemptN: r.attempt_n,
     workerId: r.worker_id,
     status: r.status,
+    notBefore: r.not_before,
     leaseUntil: r.lease_until,
     startedAt: r.started_at,
     finishedAt: r.finished_at,
@@ -43,7 +45,7 @@ export class TaskRunsRepo {
   /**
    * Insere novo task_run em status=pending. attempt_n auto-incrementa por task_id.
    */
-  insert(taskId: number, workerId: string): TaskRun {
+  insert(taskId: number, workerId: string, options?: { notBefore?: string | null }): TaskRun {
     const nextAttempt =
       this.db
         .query<{ n: number }, [number]>(
@@ -52,11 +54,11 @@ export class TaskRunsRepo {
         .get(taskId)?.n ?? 1;
 
     const row = this.db
-      .query<RawTaskRunRow, [number, number, string]>(
-        `INSERT INTO task_runs (task_id, attempt_n, worker_id, status)
-         VALUES (?, ?, ?, 'pending') RETURNING *`,
+      .query<RawTaskRunRow, [number, number, string, string | null]>(
+        `INSERT INTO task_runs (task_id, attempt_n, worker_id, status, not_before)
+         VALUES (?, ?, ?, 'pending', ?) RETURNING *`,
       )
-      .get(taskId, nextAttempt, workerId);
+      .get(taskId, nextAttempt, workerId, options?.notBefore ?? null);
     if (row === null) {
       throw new Error("INSERT...RETURNING returned null");
     }
@@ -110,6 +112,15 @@ export class TaskRunsRepo {
       [`+${leaseSeconds} seconds`, id],
     );
     return result.changes > 0;
+  }
+
+  setNotBefore(id: number, isoTimestamp: string | null): TaskRun {
+    this.db.run("UPDATE task_runs SET not_before = ? WHERE id = ?", [isoTimestamp, id]);
+    const after = this.findById(id);
+    if (after === null) {
+      throw new Error(`task_run ${id} disappeared after setNotBefore`);
+    }
+    return after;
   }
 
   /**

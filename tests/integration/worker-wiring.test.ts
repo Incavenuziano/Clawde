@@ -18,7 +18,7 @@ import {
   type MemoryContextResult,
   type buildMemoryContext,
 } from "@clawde/memory";
-import { DEFAULT_TRACKER_CONFIG, QuotaTracker } from "@clawde/quota";
+import { DEFAULT_TRACKER_CONFIG, QuotaTracker, makeQuotaPolicy } from "@clawde/quota";
 import { runReviewPipeline } from "@clawde/review";
 import { LeaseManager, type RunnerDeps, processTask } from "@clawde/worker";
 import { type TestDb, makeTestDb } from "../helpers/db.ts";
@@ -40,6 +40,7 @@ function baseDeps(testDb: TestDb, mockClient: MockAgentClient): RunnerDeps {
     eventsRepo,
     leaseManager: lease,
     quotaTracker: tracker,
+    quotaPolicy: makeQuotaPolicy(),
     agentClient: mockClient,
     logger: createLogger({ component: "test-wire" }),
     workerId: "worker-test",
