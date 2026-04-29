@@ -19,7 +19,10 @@
     "lint": "biome check src tests",
     "lint:fix": "biome check --write src tests",
     "format": "biome format --write src tests",
-    "build": "bun build src/cli/main.ts --compile --outfile dist/clawde",
+    "build:cli": "bun build src/cli/main.ts --compile --outfile dist/clawde",
+    "build:receiver": "bun build src/receiver/main.ts --target bun --outfile dist/receiver-main.js",
+    "build:worker": "bun build src/worker/main.ts --target bun --outfile dist/worker-main.js",
+    "build": "bun run build:cli && bun run build:receiver && bun run build:worker",
     "ci": "bun run typecheck && bun run lint && bun run test"
   },
   "devDependencies": {
