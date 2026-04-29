@@ -4,7 +4,7 @@ import { QuotaLedgerRepo } from "@clawde/db/repositories/quota-ledger";
 import { TaskRunsRepo } from "@clawde/db/repositories/task-runs";
 import { TasksRepo } from "@clawde/db/repositories/tasks";
 import { createLogger, resetLogSink, setLogSink } from "@clawde/log";
-import { DEFAULT_TRACKER_CONFIG, QuotaTracker } from "@clawde/quota";
+import { DEFAULT_TRACKER_CONFIG, QuotaTracker, makeQuotaPolicy } from "@clawde/quota";
 import { LeaseManager, type RunnerDeps, processNextPending, processTask } from "@clawde/worker";
 import { type TestDb, makeTestDb } from "../helpers/db.ts";
 import { MockAgentClient, assistantText } from "../mocks/sdk-mock.ts";
@@ -35,6 +35,7 @@ describe("worker/runner end-to-end (com SDK mocked)", () => {
       eventsRepo,
       leaseManager: lease,
       quotaTracker: tracker,
+      quotaPolicy: makeQuotaPolicy(),
       agentClient: mockClient,
       logger: createLogger({ component: "test-worker" }),
       workerId: "worker-test",

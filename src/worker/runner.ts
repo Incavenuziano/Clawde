@@ -16,6 +16,7 @@ import type { EventsRepo } from "@clawde/db/repositories/events";
 import type { MemoryRepo } from "@clawde/db/repositories/memory";
 import type { TaskRunsRepo } from "@clawde/db/repositories/task-runs";
 import type { TasksRepo } from "@clawde/db/repositories/tasks";
+import type { QuotaPolicy } from "@clawde/domain/quota";
 import type { Task, TaskRun } from "@clawde/domain/task";
 import type { Logger } from "@clawde/log";
 import type { MemoryAwareConfig, buildMemoryContext as buildMemoryContextFn } from "@clawde/memory";
@@ -41,6 +42,7 @@ export interface RunnerDeps {
   readonly eventsRepo: EventsRepo;
   readonly leaseManager: LeaseManager;
   readonly quotaTracker: QuotaTracker;
+  readonly quotaPolicy: QuotaPolicy;
   readonly agentClient: AgentClient;
   readonly logger: Logger;
   readonly workerId: string;
@@ -77,6 +79,9 @@ export async function processTask(deps: RunnerDeps, task: Task): Promise<Process
   const log = deps.logger.child({ taskId: task.id });
   log.info("task processing", { agent: task.agent, priority: task.priority });
 
+  const quotaWindow = deps.quotaTracker.currentWindow();
+  const quotaDecision = deps.quotaPolicy.canAccept(quotaWindow, task.priority);
+
   const latest = deps.runsRepo.findLatestByTaskId(task.id);
   let run: TaskRun;
   if (latest === null) {
@@ -85,6 +90,45 @@ export async function processTask(deps: RunnerDeps, task: Task): Promise<Process
     run = latest;
   } else {
     throw new LeaseBusyError(task.id, latest.id);
+  }
+
+  if (!quotaDecision.accept) {
+    if (quotaDecision.deferUntil !== null) {
+      const previousNotBefore = run.notBefore;
+      run = deps.runsRepo.setNotBefore(run.id, quotaDecision.deferUntil);
+      if (previousNotBefore !== quotaDecision.deferUntil) {
+        deps.eventsRepo.insert({
+          taskRunId: run.id,
+          sessionId: task.sessionId,
+          traceId: null,
+          spanId: null,
+          kind: "task_deferred",
+          payload: {
+            task_id: task.id,
+            priority: task.priority,
+            state: quotaWindow.state,
+            defer_until: quotaDecision.deferUntil,
+            reason: quotaDecision.reason,
+          },
+        });
+      }
+    }
+
+    log.info("task deferred by quota policy", {
+      state: quotaWindow.state,
+      defer_until: quotaDecision.deferUntil,
+    });
+    return {
+      task,
+      run,
+      agentResult: {
+        stopReason: "completed",
+        msgsConsumed: 0,
+        totalTurns: 0,
+        finalText: "",
+        error: null,
+      },
+    };
   }
 
   const acquisition = deps.leaseManager.acquire(run.id);

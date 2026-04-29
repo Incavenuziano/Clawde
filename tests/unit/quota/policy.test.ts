@@ -88,6 +88,41 @@ describe("quota/policy canAccept", () => {
     expect(decision.accept).toBe(true);
     expect(decision.reason).toContain("URGENT bypass");
   });
+
+  test("matriz completa 5 estados x 4 prioridades", () => {
+    const cases: Array<[QuotaState, "LOW" | "NORMAL" | "HIGH" | "URGENT", boolean]> = [
+      ["normal", "LOW", true],
+      ["normal", "NORMAL", true],
+      ["normal", "HIGH", true],
+      ["normal", "URGENT", true],
+      ["aviso", "LOW", false],
+      ["aviso", "NORMAL", true],
+      ["aviso", "HIGH", true],
+      ["aviso", "URGENT", true],
+      ["restrito", "LOW", false],
+      ["restrito", "NORMAL", false],
+      ["restrito", "HIGH", true],
+      ["restrito", "URGENT", true],
+      ["critico", "LOW", false],
+      ["critico", "NORMAL", false],
+      ["critico", "HIGH", false],
+      ["critico", "URGENT", true],
+      ["esgotado", "LOW", false],
+      ["esgotado", "NORMAL", false],
+      ["esgotado", "HIGH", false],
+      ["esgotado", "URGENT", false],
+    ];
+
+    for (const [state, priority, accepted] of cases) {
+      const decision = policy.canAccept(window(state), priority);
+      expect(decision.accept).toBe(accepted);
+      if (accepted) {
+        expect(decision.deferUntil).toBeNull();
+      } else {
+        expect(decision.deferUntil).toBe(window(state).resetsAt);
+      }
+    }
+  });
 });
 
 describe("quota/peak-hours checkPeakHours", () => {
