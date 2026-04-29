@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { loadConfig } from "@clawde/config";
-import { openDb } from "@clawde/db/client";
+import { closeDb, openDb } from "@clawde/db/client";
 import { applyPending, defaultMigrationsDir } from "@clawde/db/migrations";
 import { EventsRepo } from "@clawde/db/repositories/events";
 import { QuotaLedgerRepo } from "@clawde/db/repositories/quota-ledger";
@@ -51,5 +51,17 @@ export async function bootstrap(): Promise<ReceiverHandle> {
   // TODO: T-003 (after P0.3) — register /webhook/telegram conditionally once
   //   TelegramConfigSchema is available in ClawdeConfig (PR #1).
   logger.info("telegram disabled (pending P0.3)");
+  process.on("SIGTERM", () => {
+    handle.setDraining(true);
+    setTimeout(() => {
+      handle.stop().then(() => {
+        closeDb(db);
+        process.exit(0);
+      });
+    }, 10_000);
+  });
+  process.on("SIGHUP", () => {
+    logger.info("config reloaded");
+  });
   return handle;
 }
