@@ -8,6 +8,7 @@ import { EventsRepo } from "@clawde/db/repositories/events";
 import { TasksRepo } from "@clawde/db/repositories/tasks";
 import { createLogger, resetLogSink, setLogSink } from "@clawde/log";
 import {
+  NoopWorkerTrigger,
   type ReceiverHandle,
   TokenBucketRateLimiter,
   createReceiver,
@@ -52,6 +53,7 @@ async function start(): Promise<Setup> {
       eventsRepo,
       rateLimiter,
       logger,
+      workerTrigger: new NoopWorkerTrigger(),
       config: {
         secret: SECRET,
         allowedUserIds: ALLOWED_USER_IDS,

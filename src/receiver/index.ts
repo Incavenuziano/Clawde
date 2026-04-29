@@ -11,6 +11,12 @@ export {
 } from "./auth/rate-limit.ts";
 export { type DedupResult, insertWithDedup } from "./dedup.ts";
 export {
+  type WorkerTrigger,
+  type SystemdWorkerTriggerOptions,
+  NoopWorkerTrigger,
+  SystemdWorkerTrigger,
+} from "./trigger.ts";
+export {
   type EnqueueRouteDeps,
   makeEnqueueHandler,
 } from "./routes/enqueue.ts";

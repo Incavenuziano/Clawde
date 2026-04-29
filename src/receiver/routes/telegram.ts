@@ -24,6 +24,7 @@ import { verifyTelegramSecret } from "../auth/hmac.ts";
 import type { TokenBucketRateLimiter } from "../auth/rate-limit.ts";
 import { insertWithDedup } from "../dedup.ts";
 import type { RouteHandler } from "../server.ts";
+import type { WorkerTrigger } from "../trigger.ts";
 
 // Schema mínimo de Update que precisamos (Telegram tem dezenas de campos).
 const TelegramFromSchema = z.object({
@@ -64,6 +65,7 @@ export interface TelegramRouteDeps {
   readonly eventsRepo: EventsRepo;
   readonly rateLimiter: TokenBucketRateLimiter;
   readonly logger: Logger;
+  readonly workerTrigger: WorkerTrigger;
   readonly config: TelegramRouteConfig;
 }
 
@@ -189,6 +191,19 @@ export function makeTelegramHandler(deps: TelegramRouteDeps): RouteHandler {
         user_id: fromId,
       },
     });
+
+    if (!result.deduped) {
+      try {
+        await deps.workerTrigger.trigger(traceId);
+      } catch (err) {
+        deps.logger.warn("worker trigger failed after telegram enqueue", {
+          trace_id: traceId,
+          task_id: result.task.id,
+          update_id: parsed.data.update_id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
 
     // Telegram desliga retry quando recebe 200; mesmo em dedup, retornamos OK.
     return jsonResponse(

@@ -10,6 +10,7 @@ import { TasksRepo } from "@clawde/db/repositories/tasks";
 import { createLogger, resetLogSink, setLogSink } from "@clawde/log";
 import { DEFAULT_TRACKER_CONFIG, QuotaTracker } from "@clawde/quota";
 import {
+  NoopWorkerTrigger,
   TokenBucketRateLimiter,
   signGitHub,
   verifyGitHubHmac,
@@ -64,6 +65,7 @@ async function startReceiver(): Promise<Setup> {
       eventsRepo,
       rateLimiter,
       logger,
+      workerTrigger: new NoopWorkerTrigger(),
     }),
   );
 

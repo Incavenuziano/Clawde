@@ -8,7 +8,12 @@ import { applyPending, defaultMigrationsDir } from "@clawde/db/migrations";
 import { EventsRepo } from "@clawde/db/repositories/events";
 import { TasksRepo } from "@clawde/db/repositories/tasks";
 import { createLogger, resetLogSink, setLogSink } from "@clawde/log";
-import { type ReceiverHandle, TokenBucketRateLimiter, createReceiver } from "@clawde/receiver";
+import {
+  NoopWorkerTrigger,
+  type ReceiverHandle,
+  TokenBucketRateLimiter,
+  createReceiver,
+} from "@clawde/receiver";
 import { makeEnqueueHandler } from "@clawde/receiver/routes/enqueue";
 
 function captureOutput(fn: () => Promise<number> | number): Promise<{
@@ -67,6 +72,7 @@ async function startReceiver(): Promise<Setup> {
       eventsRepo: new EventsRepo(db),
       rateLimiter: new TokenBucketRateLimiter({ perMinute: 100, perHour: 1000 }),
       logger,
+      workerTrigger: new NoopWorkerTrigger(),
     }),
   );
 

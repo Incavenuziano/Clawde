@@ -104,9 +104,9 @@ describe("deploy/systemd unit files reais", () => {
     expect(content).toContain("ReadWritePaths=%h/.clawde /tmp");
   });
 
-  test("clawde-worker.path watcha state.db mtime", () => {
+  test("clawde-worker.path watcha queue.signal fallback", () => {
     const content = readUnit("clawde-worker.path");
-    expect(content).toContain("PathChanged=%h/.clawde/state.db");
+    expect(content).toContain("PathChanged=%h/.clawde/run/queue.signal");
     expect(content).toContain("Unit=clawde-worker.service");
   });
 
