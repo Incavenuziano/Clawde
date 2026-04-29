@@ -70,6 +70,31 @@ export class MemoryRepo {
   }
 
   /**
+   * Helper para o indexer: checa se uma session_id existe em sessions.
+   * Necessário porque FK falha em INSERT se sessionId aponta pra row inexistente.
+   */
+  sessionExists(sessionId: string): boolean {
+    const row = this.db
+      .query<{ c: number }, [string]>(
+        "SELECT COUNT(*) AS c FROM sessions WHERE session_id = ?",
+      )
+      .get(sessionId);
+    return (row?.c ?? 0) > 0;
+  }
+
+  /**
+   * Busca por sourceJsonl exato (usado pelo indexer pra dedup).
+   */
+  findBySourceJsonl(sourceJsonl: string): MemoryObservation | null {
+    const row = this.db
+      .query<RawObservationRow, [string]>(
+        "SELECT * FROM memory_observations WHERE source_jsonl = ?",
+      )
+      .get(sourceJsonl);
+    return row === null ? null : rowToObservation(row);
+  }
+
+  /**
    * Busca FTS5 trigram em memory_fts. Retorna observations com score (rank).
    * `query` é repassada literal (FTS5 sintaxe — escape se vier de input externo).
    */
