@@ -9,9 +9,13 @@
  *   4 auth, 5 fatal.
  */
 
+import type { EventKind } from "@clawde/domain/event";
+import { runLogs } from "./commands/logs.ts";
 import { runMigrate } from "./commands/migrate.ts";
+import { runQuota } from "./commands/quota.ts";
 import { runQueue } from "./commands/queue.ts";
 import { runSmokeTest } from "./commands/smoke-test.ts";
+import { runTrace } from "./commands/trace.ts";
 import { type OutputFormat, emit, emitErr } from "./output.ts";
 
 export interface ParsedArgs {
@@ -149,6 +153,55 @@ export async function runMain(argv: ReadonlyArray<string>): Promise<number> {
         process.env.CLAWDE_RECEIVER_URL ??
         "http://127.0.0.1:18790",
       format: getOutputFormat(parsed),
+    });
+  }
+
+  if (parsed.command === "logs") {
+    const dbPath = getDbPath(parsed);
+    const format = getOutputFormat(parsed);
+    const taskFlag = getFlag(parsed, "task");
+    const taskRunId = taskFlag !== undefined ? Number.parseInt(taskFlag, 10) : undefined;
+    const limit = Number.parseInt(getFlag(parsed, "limit", "100") ?? "100", 10);
+    const opts: Parameters<typeof runLogs>[0] = {
+      dbPath,
+      format,
+      limit,
+    };
+    if (taskRunId !== undefined && Number.isFinite(taskRunId)) {
+      Object.assign(opts, { taskRunId });
+    }
+    const trace = getFlag(parsed, "trace");
+    if (trace !== undefined) Object.assign(opts, { traceId: trace });
+    const since = getFlag(parsed, "since");
+    if (since !== undefined) Object.assign(opts, { since });
+    const kind = getFlag(parsed, "kind");
+    if (kind !== undefined) Object.assign(opts, { kind: kind as EventKind });
+    return runLogs(opts);
+  }
+
+  if (parsed.command === "trace") {
+    const traceId = parsed.positional[0];
+    if (traceId === undefined) {
+      emitErr("error: trace ID required (clawde trace <ulid>)");
+      return 1;
+    }
+    return runTrace({
+      dbPath: getDbPath(parsed),
+      format: getOutputFormat(parsed),
+      traceId,
+    });
+  }
+
+  if (parsed.command === "quota") {
+    const action = parsed.positional[0] ?? "status";
+    if (action !== "status" && action !== "history") {
+      emitErr(`unknown quota action: ${action} (use status|history)`);
+      return 1;
+    }
+    return runQuota({
+      dbPath: getDbPath(parsed),
+      format: getOutputFormat(parsed),
+      action,
     });
   }
 
