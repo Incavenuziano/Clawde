@@ -3,22 +3,37 @@
  *
  * Pipeline:
  *   1. acquire lease (LeaseManager) → emit task_start
- *   2. invoke AgentClient.run() — mock em testes, real em produção
- *   3. quota tracker registra cada mensagem consumida
- *   4. finish lease com succeeded/failed
+ *   2. (opcional) buildMemoryContext + prepend ao prompt
+ *   3. invoke AgentClient.run() — mock em testes, real em produção
+ *      OR runReviewPipeline quando review.enabled=true
+ *   4. quota tracker registra cada mensagem consumida
+ *   5. finish lease com succeeded/failed
  *
  * Workspace ephemeral é OPCIONAL — controlado por task.workingDir + workspaceConfig.
- * Pra Fase 2 mantemos a porta aberta mas não exigimos.
  */
 
 import type { EventsRepo } from "@clawde/db/repositories/events";
+import type { MemoryRepo } from "@clawde/db/repositories/memory";
 import type { TaskRunsRepo } from "@clawde/db/repositories/task-runs";
 import type { TasksRepo } from "@clawde/db/repositories/tasks";
 import type { Task, TaskRun } from "@clawde/domain/task";
 import type { Logger } from "@clawde/log";
+import type { MemoryAwareConfig, buildMemoryContext as buildMemoryContextFn } from "@clawde/memory";
 import type { QuotaTracker } from "@clawde/quota";
+import type { PipelineConfig, runReviewPipeline as runReviewPipelineFn } from "@clawde/review";
 import type { AgentClient, AgentRunResult } from "@clawde/sdk";
 import type { LeaseManager } from "./lease.ts";
+
+export interface MemoryInjectDeps {
+  readonly memoryRepo: MemoryRepo;
+  readonly config: MemoryAwareConfig;
+  readonly buildContext: typeof buildMemoryContextFn;
+}
+
+export interface ReviewPipelineDeps {
+  readonly config: PipelineConfig;
+  readonly run: typeof runReviewPipelineFn;
+}
 
 export interface RunnerDeps {
   readonly tasksRepo: TasksRepo;
@@ -29,6 +44,10 @@ export interface RunnerDeps {
   readonly agentClient: AgentClient;
   readonly logger: Logger;
   readonly workerId: string;
+  /** Opt-in: injeta memory context antes do prompt. */
+  readonly memoryInject?: MemoryInjectDeps;
+  /** Opt-in: roda review pipeline ao invés de invocação simples. */
+  readonly review?: ReviewPipelineDeps;
 }
 
 export interface ProcessResult {
@@ -54,6 +73,23 @@ export async function processTask(deps: RunnerDeps, task: Task): Promise<Process
     throw new Error(`failed to acquire lease for task_run ${run.id}`);
   }
 
+  // Memory inject opcional: prepend snippet de observations relevantes.
+  let effectivePrompt = task.prompt;
+  if (deps.memoryInject?.config.enabled) {
+    try {
+      const ctx = await deps.memoryInject.buildContext(
+        deps.memoryInject.memoryRepo,
+        task.prompt,
+        deps.memoryInject.config,
+      );
+      if (ctx.injected) {
+        effectivePrompt = `${ctx.snippet}\n\n${task.prompt}`;
+      }
+    } catch (err) {
+      log.warn("memory inject failed (continuing without)", { error: (err as Error).message });
+    }
+  }
+
   // Emite invocation_start.
   deps.eventsRepo.insert({
     taskRunId: run.id,
@@ -61,12 +97,15 @@ export async function processTask(deps: RunnerDeps, task: Task): Promise<Process
     traceId: null,
     spanId: null,
     kind: "claude_invocation_start",
-    payload: { agent: task.agent, prompt_len: task.prompt.length },
+    payload: { agent: task.agent, prompt_len: effectivePrompt.length },
   });
 
   let agentResult: AgentRunResult;
   try {
-    agentResult = await runAgentWithLedger(deps, task, run.id);
+    agentResult =
+      deps.review !== undefined
+        ? await runWithReviewPipeline(deps, task, run.id, effectivePrompt)
+        : await runAgentWithLedger(deps, task, run.id, effectivePrompt);
   } catch (err) {
     log.error("agent invocation crashed", { error: (err as Error).message });
     const finished = deps.leaseManager.finish(acquisition, "failed", {
@@ -127,6 +166,7 @@ async function runAgentWithLedger(
   deps: RunnerDeps,
   task: Task,
   taskRunId: number,
+  effectivePrompt: string,
 ): Promise<AgentRunResult> {
   let msgsConsumed = 0;
   let totalTurns = 0;
@@ -136,7 +176,7 @@ async function runAgentWithLedger(
   let error: string | null = null;
 
   const streamOpts: { prompt: string; sessionId?: string; workingDirectory?: string } = {
-    prompt: task.prompt,
+    prompt: effectivePrompt,
   };
   if (task.sessionId !== null) streamOpts.sessionId = task.sessionId;
   if (task.workingDir !== null) streamOpts.workingDirectory = task.workingDir;
@@ -166,4 +206,99 @@ async function runAgentWithLedger(
     finalText: textParts.join("\n").trim(),
     error,
   };
+}
+
+/**
+ * Roda review pipeline: cada stage invoca o agentClient com system prompt
+ * canônico do role. Quota é debitada por mensagem em todos os stages.
+ *
+ * stopReason e msgsConsumed são agregados ao longo de todos os stages.
+ */
+async function runWithReviewPipeline(
+  deps: RunnerDeps,
+  task: Task,
+  taskRunId: number,
+  effectivePrompt: string,
+): Promise<AgentRunResult> {
+  if (deps.review === undefined) {
+    throw new Error("runWithReviewPipeline called without review deps");
+  }
+  let msgsConsumed = 0;
+  let totalStageRuns = 0;
+
+  const stageRunner: import("@clawde/review").StageRunner = async (inv) => {
+    const parts: string[] = [];
+    const fullPrompt = `${inv.systemPrompt}\n\n${inv.prompt}`;
+    const streamOpts: { prompt: string; sessionId?: string; workingDirectory?: string } = {
+      prompt: fullPrompt,
+    };
+    if (task.sessionId !== null) streamOpts.sessionId = task.sessionId;
+    if (task.workingDir !== null) streamOpts.workingDirectory = task.workingDir;
+    for await (const msg of deps.agentClient.stream(streamOpts)) {
+      msgsConsumed += 1;
+      deps.quotaTracker.recordMessage(taskRunId);
+      if (msg.role === "assistant") {
+        const textBlocks = msg.blocks.filter((b) => b.type === "text");
+        for (const b of textBlocks) {
+          if (b.type === "text") parts.push(b.text);
+        }
+      }
+    }
+    totalStageRuns += 1;
+    return parts.join("\n").trim();
+  };
+
+  try {
+    const result = await deps.review.run(effectivePrompt, deps.review.config, {
+      runner: stageRunner,
+      onStage: (s) => {
+        const stageEvent =
+          s.role === "implementer"
+            ? "review.implementer.end"
+            : s.role === "spec-reviewer"
+              ? "review.spec.verdict"
+              : "review.quality.verdict";
+        deps.eventsRepo.insert({
+          taskRunId,
+          sessionId: task.sessionId,
+          traceId: null,
+          spanId: null,
+          kind: stageEvent,
+          payload: {
+            attempt_n: s.attemptN,
+            ...(s.verdict !== undefined && { verdict: s.verdict }),
+          },
+        });
+      },
+    });
+
+    deps.eventsRepo.insert({
+      taskRunId,
+      sessionId: task.sessionId,
+      traceId: null,
+      spanId: null,
+      kind: result.status === "approved" ? "review.pipeline.complete" : "review.pipeline.exhausted",
+      payload: {
+        rounds: result.totalRoundsRun,
+        status: result.status,
+        msgs_consumed: msgsConsumed,
+      },
+    });
+
+    return {
+      stopReason: result.status === "approved" ? "completed" : "max_turns",
+      msgsConsumed,
+      totalTurns: totalStageRuns,
+      finalText: result.finalOutput ?? "",
+      error: result.status === "approved" ? null : "review pipeline exhausted retries",
+    };
+  } catch (err) {
+    return {
+      stopReason: "error",
+      msgsConsumed,
+      totalTurns: totalStageRuns,
+      finalText: "",
+      error: (err as Error).message,
+    };
+  }
 }

@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { RefreshError, invokeWithAutoRefresh, isAuthError, refreshOAuthToken } from "@clawde/auth";
+import {
+  RefreshError,
+  invokeWithAutoRefresh,
+  isAuthError,
+  refreshOAuthToken,
+  spawnClaudeSetupToken,
+} from "@clawde/auth";
 
 const FAKE_TOKEN = { value: "tok-original", source: "env" } as const;
 const FRESH_TOKEN = { value: "tok-fresh", source: "env" } as const;
@@ -34,6 +40,21 @@ describe("auth/refresh isAuthError", () => {
   test("null/undefined safe", () => {
     expect(isAuthError(null)).toBe(false);
     expect(isAuthError(undefined)).toBe(false);
+  });
+});
+
+describe("auth/refresh spawnClaudeSetupToken", () => {
+  test("retorna exitCode != 0 quando claude binary ausente do PATH", async () => {
+    // Em test env sem `claude` no PATH, esperamos resposta clean (não throw).
+    const origPath = process.env.PATH;
+    process.env.PATH = "/nonexistent";
+    try {
+      const result = await spawnClaudeSetupToken();
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stderr).toContain("spawn failed");
+    } finally {
+      process.env.PATH = origPath;
+    }
   });
 });
 
