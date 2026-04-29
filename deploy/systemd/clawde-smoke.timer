@@ -1,0 +1,10 @@
+[Unit]
+Description=Clawde smoke test agendado (diário 04:00 local)
+
+[Timer]
+OnCalendar=*-*-* 04:00:00
+Unit=clawde-smoke.service
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,35 @@
+[Unit]
+Description=Clawde OAuth token expiry check (semanal)
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/.clawde
+EnvironmentFile=-%h/.clawde/config/clawde.env
+# LoadCredential opcional: aponta pra arquivo seguro com o token. Se ausente,
+# o comando cai pro env CLAUDE_CODE_OAUTH_TOKEN.
+LoadCredential=clawde-oauth:%h/.clawde/config/oauth-token
+ExecStart=%h/.bun/bin/bun run %h/.clawde/dist/cli-main.js auth check
+
+# Hardening (BEST_PRACTICES §10.4) — sem rede, read-only.
+PrivateTmp=yes
+ProtectHome=read-only
+ProtectSystem=strict
+NoNewPrivileges=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=default.target

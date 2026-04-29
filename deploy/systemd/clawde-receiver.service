@@ -1,0 +1,44 @@
+[Unit]
+Description=Clawde receiver (always-on HTTP daemon, ADR 0002)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.clawde
+EnvironmentFile=-%h/.clawde/config/clawde.env
+ExecStart=%h/.bun/bin/bun run %h/.clawde/dist/receiver-main.js
+Restart=on-failure
+RestartSec=10s
+StartLimitBurst=5
+StartLimitIntervalSec=300s
+
+# OAuth token via systemd credential (BEST_PRACTICES §2.2).
+# Coloque o token em /etc/clawde/credentials/oauth_token (mode 0600 owner clawde).
+LoadCredential=oauth-token:/etc/clawde/credentials/oauth_token
+
+# Hardening (ADR 0005 nivel 1, BEST_PRACTICES §10.4)
+PrivateTmp=yes
+ProtectHome=read-only
+ProtectSystem=strict
+NoNewPrivileges=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+# Receiver precisa escrever em state.db + bind unix socket.
+ReadWritePaths=%h/.clawde /run/clawde
+
+[Install]
+WantedBy=default.target

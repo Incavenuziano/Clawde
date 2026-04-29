@@ -1,0 +1,8 @@
+[install]
+exact = true
+production = false
+
+[test]
+coverage = false
+coverageThreshold = 0.80
+coverageReporter = ["text"]

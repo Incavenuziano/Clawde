@@ -1,0 +1,41 @@
+# Litestream config — Clawde state.db replication (ADR 0010).
+#
+# Setup:
+#   1. Instalar litestream (apt: github.com/benbjohnson/litestream releases).
+#   2. Criar bucket B2/S3/MinIO.
+#   3. Editar URL e credentials abaixo.
+#   4. systemctl --user enable --now clawde-litestream.service
+#
+# Restore (laptop morreu, novo host):
+#   litestream restore -o ~/.clawde/state.db b2://clawde-state/state.db
+#
+# Variáveis de ambiente lidas pelo litestream (passadas via EnvironmentFile no
+# systemd unit):
+#   LITESTREAM_ACCESS_KEY_ID
+#   LITESTREAM_SECRET_ACCESS_KEY
+# Mantenha esses secrets em ~/.clawde/config/litestream.env (chmod 600).
+
+dbs:
+  - path: /home/clawde/.clawde/state.db
+
+    replicas:
+      # Replica principal: Backblaze B2 (mais barato pra cold storage).
+      - name: b2
+        type: s3
+        endpoint: https://s3.us-west-002.backblazeb2.com
+        bucket: clawde-state
+        path: state.db
+        # Snapshots a cada 1h, retém 7 dias.
+        snapshot-interval: 1h
+        retention: 168h
+        retention-check-interval: 6h
+        # Sync WAL a cada 1s — perda máxima de 1s em catastrophic failure.
+        sync-interval: 1s
+
+      # Secondary: filesystem local (laptop secundário via NFS, ou disco USB).
+      # Comentado por default — descomentar quando 2º host configurado.
+      #- name: local-secondary
+      #  type: file
+      #  path: /mnt/clawde-backup/state.db
+      #  snapshot-interval: 30m
+      #  retention: 72h

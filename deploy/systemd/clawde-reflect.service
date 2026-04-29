@@ -1,0 +1,37 @@
+[Unit]
+Description=Clawde reflection job (extrai lições de janela de events/observations)
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/.clawde
+EnvironmentFile=-%h/.clawde/config/clawde.env
+# Enfileira task URGENT invocando reflector — worker oneshot processa.
+ExecStart=%h/.bun/bin/bun run %h/.clawde/dist/cli-main.js queue \
+  --priority URGENT --agent reflector "Reflect on events from last 24h"
+
+# Hardening Nivel 1 (ADR 0005).
+PrivateTmp=yes
+ProtectHome=read-only
+ProtectSystem=strict
+NoNewPrivileges=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+ReadWritePaths=%h/.clawde
+
+[Install]
+WantedBy=default.target

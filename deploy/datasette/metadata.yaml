@@ -1,0 +1,251 @@
+# Clawde Datasette dashboard metadata.
+#
+# Setup:
+#   pipx install datasette
+#   datasette serve ~/.clawde/state.db --immutable --metadata deploy/datasette/metadata.yaml --host 127.0.0.1 --port 18791
+#
+# --immutable: SQLite open read-only, sem WAL contention com worker/receiver.
+# Worker ainda escreve no DB original; Datasette re-abre a cada query (custo trivial).
+#
+# All queries são SELECT-only. Datasette --immutable + permissions vazias
+# impedem qualquer escrita mesmo se alguém tentar via SQL livre.
+
+title: "Clawde — task daemon dashboard"
+description_html: |
+  <p>Read-only view sobre <code>state.db</code>. Refresca em cada query.</p>
+  <p>Tabelas: <code>tasks</code>, <code>task_runs</code>, <code>sessions</code>,
+  <code>events</code>, <code>quota_ledger</code>, <code>memory_observations</code>.</p>
+
+# Permissions vazias no top-level → tudo via "anon allow" abaixo.
+# Hardening: bind 127.0.0.1, systemd unit sem rede externa.
+allow: {}
+
+databases:
+  state:
+    # Permissão pra anon view (leitura). NÃO concede execute-sql global —
+    # apenas as canned queries listadas abaixo.
+    allow:
+      view-database: true
+      view-table: true
+      view-query: true
+
+    queries:
+
+      # =====================================================================
+      # Saúde operacional
+      # =====================================================================
+
+      tasks_pending:
+        title: "Tasks pendentes (nenhum run iniciado)"
+        description: "Tasks com priority/agent/source. Ordenadas por priority + idade."
+        sql: |
+          SELECT
+            t.id,
+            t.priority,
+            t.agent,
+            t.source,
+            substr(t.prompt, 1, 80) AS prompt_preview,
+            t.created_at
+          FROM tasks t
+          LEFT JOIN task_runs r ON r.task_id = t.id
+          WHERE r.id IS NULL
+          ORDER BY
+            CASE t.priority
+              WHEN 'URGENT' THEN 0
+              WHEN 'HIGH'   THEN 1
+              WHEN 'NORMAL' THEN 2
+              WHEN 'LOW'    THEN 3
+            END,
+            t.created_at ASC
+          LIMIT 100;
+
+      task_runs_active:
+        title: "Runs ativos (status=running)"
+        description: "Worker vivo se lease_until > now. Caso contrário órfão (será reaped)."
+        sql: |
+          SELECT
+            r.id              AS run_id,
+            r.task_id,
+            r.attempt_n,
+            r.worker_id,
+            r.started_at,
+            r.lease_until,
+            CASE
+              WHEN r.lease_until > datetime('now') THEN 'alive'
+              ELSE 'STALE (orphan)'
+            END AS lease_state,
+            substr(t.prompt, 1, 60) AS prompt_preview
+          FROM task_runs r
+          JOIN tasks t ON t.id = r.task_id
+          WHERE r.status = 'running'
+          ORDER BY r.started_at DESC;
+
+      task_runs_failed_recent:
+        title: "Failed runs (24h)"
+        description: "Inclui error message. Útil pra triage."
+        sql: |
+          SELECT
+            r.id          AS run_id,
+            r.task_id,
+            r.attempt_n,
+            r.finished_at,
+            r.msgs_consumed,
+            substr(r.error, 1, 200) AS error_excerpt,
+            substr(t.prompt, 1, 60) AS prompt_preview,
+            t.priority,
+            t.agent
+          FROM task_runs r
+          JOIN tasks t ON t.id = r.task_id
+          WHERE r.status = 'failed'
+            AND r.finished_at > datetime('now', '-1 day')
+          ORDER BY r.finished_at DESC
+          LIMIT 100;
+
+      task_runs_throughput_24h:
+        title: "Throughput (24h por status)"
+        sql: |
+          SELECT
+            status,
+            COUNT(*)              AS runs,
+            SUM(msgs_consumed)    AS msgs_total,
+            ROUND(AVG(msgs_consumed), 2) AS msgs_avg
+          FROM task_runs
+          WHERE finished_at > datetime('now', '-1 day')
+             OR started_at  > datetime('now', '-1 day')
+          GROUP BY status
+          ORDER BY runs DESC;
+
+      # =====================================================================
+      # Quota
+      # =====================================================================
+
+      quota_recent_windows:
+        title: "Quota — últimas 12 janelas (5h cada)"
+        sql: |
+          SELECT
+            window_start,
+            plan,
+            SUM(msgs_consumed)   AS msgs_consumed,
+            ROUND(AVG(peak_multiplier), 2) AS avg_peak_multiplier,
+            COUNT(*)             AS entries
+          FROM quota_ledger
+          GROUP BY window_start, plan
+          ORDER BY window_start DESC
+          LIMIT 12;
+
+      quota_24h_total:
+        title: "Quota — total 24h"
+        sql: |
+          SELECT
+            plan,
+            SUM(msgs_consumed) AS msgs_24h,
+            COUNT(*)           AS ledger_entries
+          FROM quota_ledger
+          WHERE ts > datetime('now', '-1 day')
+          GROUP BY plan;
+
+      # =====================================================================
+      # Sessions
+      # =====================================================================
+
+      sessions_active_summary:
+        title: "Sessions por estado"
+        sql: |
+          SELECT
+            state,
+            COUNT(*)                    AS sessions,
+            SUM(msg_count)              AS msgs_total,
+            SUM(token_estimate)         AS tokens_estimate_total,
+            MAX(last_used_at)           AS most_recent
+          FROM sessions
+          GROUP BY state
+          ORDER BY sessions DESC;
+
+      sessions_token_heavy:
+        title: "Sessions com >100K tokens estimados"
+        description: "Candidates pra /compact ou archived."
+        sql: |
+          SELECT
+            session_id,
+            agent,
+            state,
+            msg_count,
+            token_estimate,
+            last_used_at
+          FROM sessions
+          WHERE token_estimate > 100000
+          ORDER BY token_estimate DESC;
+
+      # =====================================================================
+      # Memória
+      # =====================================================================
+
+      memory_top_importance:
+        title: "Top observations por importance"
+        sql: |
+          SELECT
+            id,
+            session_id,
+            kind,
+            ROUND(importance, 3) AS importance,
+            substr(content, 1, 120) AS content_preview,
+            created_at
+          FROM memory_observations
+          WHERE consolidated_into IS NULL
+          ORDER BY importance DESC, created_at DESC
+          LIMIT 50;
+
+      memory_kind_counts:
+        title: "Memória — contagem por kind"
+        sql: |
+          SELECT
+            kind,
+            COUNT(*)                       AS rows,
+            ROUND(AVG(importance), 3)      AS avg_importance,
+            COUNT(consolidated_into)       AS consolidated
+          FROM memory_observations
+          GROUP BY kind
+          ORDER BY rows DESC;
+
+      # =====================================================================
+      # Events / audit (append-only)
+      # =====================================================================
+
+      events_kind_24h:
+        title: "Events — últimas 24h por kind"
+        sql: |
+          SELECT
+            kind,
+            COUNT(*) AS occurrences
+          FROM events
+          WHERE ts > datetime('now', '-1 day')
+          GROUP BY kind
+          ORDER BY occurrences DESC;
+
+      events_errors_recent:
+        title: "Events de erro (kind LIKE %.error%)"
+        sql: |
+          SELECT
+            ts,
+            kind,
+            task_run_id,
+            trace_id,
+            substr(payload, 1, 200) AS payload_excerpt
+          FROM events
+          WHERE kind LIKE '%.error' OR kind LIKE '%.failed'
+          ORDER BY ts DESC
+          LIMIT 50;
+
+      events_by_trace:
+        title: "Events por trace_id"
+        description: "Forneça :trace pra ver toda a vida de um trace."
+        sql: |
+          SELECT
+            ts,
+            kind,
+            task_run_id,
+            session_id,
+            substr(payload, 1, 200) AS payload_excerpt
+          FROM events
+          WHERE trace_id = :trace
+          ORDER BY ts ASC;

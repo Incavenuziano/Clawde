@@ -1,0 +1,59 @@
+# Clawde — example configuration
+# Copy to ~/.clawde/config/clawde.toml and adjust for your environment.
+
+[clawde]
+home = "~/.clawde"
+log_level = "INFO"
+
+[worker]
+max_parallel = 1
+cli_path = "/usr/local/bin/claude"
+cli_min_version = "2.0.0"
+default_max_turns = 15
+default_timeout_seconds = 1800
+lease_seconds = 600
+heartbeat_seconds = 60
+
+[receiver]
+listen_tcp = "127.0.0.1:18790"
+listen_unix = "/run/clawde/receiver.sock"
+unix_socket_mode = "0660"
+unix_socket_group = "clawde"
+
+[receiver.rate_limit]
+per_ip_per_minute = 10
+per_ip_per_hour = 100
+health_per_minute = 60
+
+[quota]
+plan = "max5x"
+window_hours = 5
+reserve_urgent_pct = 15
+peak_hours_tz = "America/Los_Angeles"
+peak_start_local = "05:00"
+peak_end_local = "11:00"
+peak_multiplier = 1.7
+
+[quota.thresholds]
+aviso = 60
+restrito = 80
+critico = 95
+
+[sandbox]
+default_level = 1
+bwrap_path = "/usr/bin/bwrap"
+allow_levels_per_agent = true
+egress_allowlist_path = "~/.clawde/config/egress_allowlist.txt"
+
+[memory]
+backend = "native"
+jsonl_root = "~/.claude/projects"
+indexer_interval_minutes = 10
+embeddings_enabled = false
+embeddings_model = "Xenova/multilingual-e5-small"
+
+[auth]
+oauth_token_source = "env"
+oauth_token_credential = "clawde-oauth"
+oauth_expiry_warn_days = 30
+oauth_auto_refresh = true
