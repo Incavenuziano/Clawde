@@ -53,6 +53,15 @@ export const EVENT_KIND_VALUES = [
   "lesson",
   "reflection_start",
   "reflection_end",
+  // review pipeline (ADR 0004 — F9)
+  "review.implementer.start",
+  "review.implementer.end",
+  "review.spec.start",
+  "review.spec.verdict",
+  "review.quality.start",
+  "review.quality.verdict",
+  "review.pipeline.complete",
+  "review.pipeline.exhausted",
   // agent validation
   "agent_invalid",
 ] as const;

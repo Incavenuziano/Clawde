@@ -18,6 +18,7 @@ import { runMigrate } from "./commands/migrate.ts";
 import { runQueue } from "./commands/queue.ts";
 import { runQuota } from "./commands/quota.ts";
 import { runReplica } from "./commands/replica.ts";
+import { runReview } from "./commands/review.ts";
 import { runSmokeTest } from "./commands/smoke-test.ts";
 import { runTrace } from "./commands/trace.ts";
 import { type OutputFormat, emit, emitErr } from "./output.ts";
@@ -97,6 +98,7 @@ Commands:
   auth <status|check>    Inspeciona OAuth token
   dashboard              Info do Datasette dashboard (URL, queries)
   replica <status|verify>  Saúde do Litestream replica
+  review history <run-id>  Histórico do pipeline de review (Fase 9)
   version                Mostra semver
   help                   Esta mensagem
 
@@ -326,6 +328,30 @@ export async function runMain(argv: ReadonlyArray<string>): Promise<number> {
       if (Number.isFinite(n) && n > 0) Object.assign(opts, { maxAgeMinutes: n });
     }
     return await runReplica(opts);
+  }
+
+  if (parsed.command === "review") {
+    const action = parsed.positional[0] ?? "history";
+    if (action !== "history") {
+      emitErr(`unknown review action: ${action} (use history)`);
+      return 1;
+    }
+    const idStr = parsed.positional[1];
+    if (idStr === undefined) {
+      emitErr("error: task_run id required (clawde review history <run-id>)");
+      return 1;
+    }
+    const taskRunId = Number.parseInt(idStr, 10);
+    if (!Number.isFinite(taskRunId)) {
+      emitErr(`error: invalid run-id: ${idStr}`);
+      return 1;
+    }
+    return runReview({
+      format: getOutputFormat(parsed),
+      action,
+      dbPath: getDbPath(parsed),
+      taskRunId,
+    });
   }
 
   emitErr(`unknown command: ${parsed.command}\nrun 'clawde help' for usage`);
