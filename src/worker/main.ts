@@ -42,11 +42,9 @@ export async function bootstrap(): Promise<void> {
       expired_count: reconcileResult.expired.length,
       reenqueued_count: reconcileResult.reenqueued.length,
     });
-    // TODO: T-029 (after P1.2) — inject quota policy; for now loop is unthrottled
     const maxTasks = 50;
     let processed = 0;
     while (processed < maxTasks) {
-      // T-008 (blocked, after P1.2 T-029): quota gate goes here
       const result = await processNextPending({
         tasksRepo,
         runsRepo,

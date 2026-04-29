@@ -5,6 +5,7 @@ import { TaskRunsRepo } from "@clawde/db/repositories/task-runs";
 import { TasksRepo } from "@clawde/db/repositories/tasks";
 import { createLogger, resetLogSink, setLogSink } from "@clawde/log";
 import { DEFAULT_TRACKER_CONFIG, QuotaTracker, makeQuotaPolicy } from "@clawde/quota";
+import { SdkRateLimitError } from "@clawde/sdk";
 import { LeaseManager, type RunnerDeps, processNextPending, processTask } from "@clawde/worker";
 import { type TestDb, makeTestDb } from "../helpers/db.ts";
 import { MockAgentClient, assistantText } from "../mocks/sdk-mock.ts";
@@ -222,5 +223,78 @@ describe("worker/runner end-to-end (com SDK mocked)", () => {
       .all(task.id);
     expect(runs).toHaveLength(1);
     expect(runs[0]?.attempt_n).toBe(1);
+  });
+
+  test("401 no SDK dispara refresh 1x e retenta com sucesso", async () => {
+    const task = deps.tasksRepo.insert({
+      priority: "NORMAL",
+      prompt: "auth retry",
+      agent: "default",
+      sessionId: null,
+      workingDir: null,
+      dependsOn: [],
+      source: "cli",
+      sourceMetadata: {},
+      dedupKey: null,
+    });
+    mockClient.enqueueResponse({ messages: [], throwAfter: new Error("401 unauthorized") });
+    mockClient.enqueueResponse({ messages: [assistantText("ok after refresh")] });
+
+    let refreshCalls = 0;
+    deps = {
+      ...deps,
+      authRefresh: {
+        runSetupToken: async () => {
+          refreshCalls += 1;
+          return { exitCode: 0, stderr: "" };
+        },
+      },
+    };
+
+    const result = await processTask(deps, task);
+    expect(refreshCalls).toBe(1);
+    expect(mockClient.invocations).toHaveLength(2);
+    expect(result.run.status).toBe("succeeded");
+    expect(result.run.result).toContain("ok after refresh");
+  });
+
+  test("429 marca quota como esgotada e próxima task normal é deferida", async () => {
+    const rateLimitedTask = deps.tasksRepo.insert({
+      priority: "NORMAL",
+      prompt: "will hit 429",
+      agent: "default",
+      sessionId: null,
+      workingDir: null,
+      dependsOn: [],
+      source: "cli",
+      sourceMetadata: {},
+      dedupKey: null,
+    });
+    mockClient.enqueueResponse({
+      messages: [],
+      throwAfter: new SdkRateLimitError("429 quota exceeded"),
+    });
+
+    const first = await processTask(deps, rateLimitedTask);
+    expect(first.run.status).toBe("pending");
+    expect(first.run.notBefore).not.toBeNull();
+    expect(deps.quotaTracker.currentWindow().state).toBe("esgotado");
+    expect(deps.eventsRepo.queryByKind("quota_429_observed")).toHaveLength(1);
+
+    const normalTask = deps.tasksRepo.insert({
+      priority: "NORMAL",
+      prompt: "should defer by exhausted window",
+      agent: "default",
+      sessionId: null,
+      workingDir: null,
+      dependsOn: [],
+      source: "cli",
+      sourceMetadata: {},
+      dedupKey: null,
+    });
+    const second = await processTask(deps, normalTask);
+    expect(second.run.status).toBe("pending");
+    expect(second.run.notBefore).not.toBeNull();
+    expect(deps.eventsRepo.queryByKind("task_deferred").length).toBeGreaterThanOrEqual(1);
   });
 });

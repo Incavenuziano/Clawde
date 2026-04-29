@@ -88,4 +88,11 @@ describe("quota/ledger QuotaTracker", () => {
     const window = tracker.currentWindow(t);
     expect(window.resetsAt).toBe("2026-04-29 17:00:00");
   });
+
+  test("markCurrentWindowExhausted força estado esgotado", () => {
+    const t = new Date("2026-04-29T12:00:00.000Z");
+    expect(tracker.currentWindow(t).state).toBe("normal");
+    tracker.markCurrentWindowExhausted(t);
+    expect(tracker.currentWindow(t).state).toBe("esgotado");
+  });
 });

@@ -13,6 +13,25 @@ import type {
   RunAgentOptions,
   StopReason,
 } from "./types.ts";
+import { SdkAuthError as SdkAuthErrorClass } from "./types.ts";
+import { SdkNetworkError as SdkNetworkErrorClass } from "./types.ts";
+import { SdkRateLimitError as SdkRateLimitErrorClass } from "./types.ts";
+
+export function mapSdkError(err: unknown): Error {
+  const base = err instanceof Error ? err : new Error(String(err));
+  const msg = base.message.toLowerCase();
+
+  if (msg.includes("401") || msg.includes("unauthorized")) {
+    return new SdkAuthErrorClass(base.message);
+  }
+  if (msg.includes("429") || msg.includes("rate_limit") || msg.includes("quota")) {
+    return new SdkRateLimitErrorClass(base.message, null);
+  }
+  if (msg.includes("econnrefused") || msg.includes("etimedout") || msg.includes("enotfound")) {
+    return new SdkNetworkErrorClass(base.message);
+  }
+  return base;
+}
 
 /**
  * Helper: collect stream → AgentRunResult (compartilhado entre real e mock).
@@ -57,31 +76,35 @@ export async function collectRun(stream: AsyncIterable<ParsedMessage>): Promise<
  */
 export class RealAgentClient implements AgentClient {
   async *stream(options: RunAgentOptions): AsyncIterable<ParsedMessage> {
-    const sdk = await import("@anthropic-ai/claude-agent-sdk");
-    const queryOptions: Record<string, unknown> = {
-      prompt: options.prompt,
-    };
-    if (options.maxTurns !== undefined) queryOptions.maxTurns = options.maxTurns;
-    if (options.allowedTools !== undefined) queryOptions.allowedTools = options.allowedTools;
-    if (options.disallowedTools !== undefined)
-      queryOptions.disallowedTools = options.disallowedTools;
-    if (options.appendSystemPrompt !== undefined) {
-      queryOptions.appendSystemPrompt = options.appendSystemPrompt;
-    }
-    if (options.workingDirectory !== undefined) queryOptions.cwd = options.workingDirectory;
-    if (options.resumeSessionId !== undefined)
-      queryOptions.resumeSessionId = options.resumeSessionId;
+    try {
+      const sdk = await import("@anthropic-ai/claude-agent-sdk");
+      const queryOptions: Record<string, unknown> = {
+        prompt: options.prompt,
+      };
+      if (options.maxTurns !== undefined) queryOptions.maxTurns = options.maxTurns;
+      if (options.allowedTools !== undefined) queryOptions.allowedTools = options.allowedTools;
+      if (options.disallowedTools !== undefined)
+        queryOptions.disallowedTools = options.disallowedTools;
+      if (options.appendSystemPrompt !== undefined) {
+        queryOptions.appendSystemPrompt = options.appendSystemPrompt;
+      }
+      if (options.workingDirectory !== undefined) queryOptions.cwd = options.workingDirectory;
+      if (options.resumeSessionId !== undefined)
+        queryOptions.resumeSessionId = options.resumeSessionId;
 
-    // Lazy: parser.ts re-importado para evitar circularidade.
-    const { parseRawMessage } = await import("./parser.ts");
+      // Lazy: parser.ts re-importado para evitar circularidade.
+      const { parseRawMessage } = await import("./parser.ts");
 
-    // sdk.query é async iterable de mensagens raw do SDK. Mapeamos pra ParsedMessage.
-    // Tipagem do SDK pode mudar; aceitamos `any` aqui pelo escopo do wrapper.
-    // biome-ignore lint/suspicious/noExplicitAny: SDK ainda em flux; tipo unknown via parseRawMessage
-    const it = (sdk as { query: (...args: any[]) => AsyncIterable<unknown> }).query(queryOptions);
-    for await (const raw of it) {
-      const parsed = parseRawMessage(raw);
-      if (parsed !== null) yield parsed;
+      // sdk.query é async iterable de mensagens raw do SDK. Mapeamos pra ParsedMessage.
+      // Tipagem do SDK pode mudar; aceitamos `any` aqui pelo escopo do wrapper.
+      // biome-ignore lint/suspicious/noExplicitAny: SDK ainda em flux; tipo unknown via parseRawMessage
+      const it = (sdk as { query: (...args: any[]) => AsyncIterable<unknown> }).query(queryOptions);
+      for await (const raw of it) {
+        const parsed = parseRawMessage(raw);
+        if (parsed !== null) yield parsed;
+      }
+    } catch (err) {
+      throw mapSdkError(err);
     }
   }
 

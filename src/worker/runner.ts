@@ -12,6 +12,11 @@
  * Workspace ephemeral é OPCIONAL — controlado por task.workingDir + workspaceConfig.
  */
 
+import {
+  type SetupTokenRunner,
+  invokeWithAutoRefresh,
+  spawnClaudeSetupToken,
+} from "@clawde/auth/refresh";
 import type { EventsRepo } from "@clawde/db/repositories/events";
 import type { MemoryRepo } from "@clawde/db/repositories/memory";
 import type { TaskRunsRepo } from "@clawde/db/repositories/task-runs";
@@ -22,7 +27,13 @@ import type { Logger } from "@clawde/log";
 import type { MemoryAwareConfig, buildMemoryContext as buildMemoryContextFn } from "@clawde/memory";
 import type { QuotaTracker } from "@clawde/quota";
 import type { PipelineConfig, runReviewPipeline as runReviewPipelineFn } from "@clawde/review";
-import type { AgentClient, AgentRunResult } from "@clawde/sdk";
+import {
+  type AgentClient,
+  type AgentRunResult,
+  SdkAuthError,
+  SdkNetworkError,
+  SdkRateLimitError,
+} from "@clawde/sdk";
 import type { LeaseManager } from "./lease.ts";
 
 export interface MemoryInjectDeps {
@@ -46,6 +57,14 @@ export interface RunnerDeps {
   readonly agentClient: AgentClient;
   readonly logger: Logger;
   readonly workerId: string;
+  /** Overrides para fluxo de auto-refresh em testes. */
+  readonly authRefresh?: {
+    readonly runSetupToken?: SetupTokenRunner;
+    readonly reloadToken?: () => {
+      value: string;
+      source: "systemd-credential" | "keychain" | "env";
+    };
+  };
   /** Opt-in: injeta memory context antes do prompt. */
   readonly memoryInject?: MemoryInjectDeps;
   /** Opt-in: roda review pipeline ao invés de invocação simples. */
@@ -122,7 +141,7 @@ export async function processTask(deps: RunnerDeps, task: Task): Promise<Process
       task,
       run,
       agentResult: {
-        stopReason: "completed",
+        stopReason: "deferred",
         msgsConsumed: 0,
         totalTurns: 0,
         finalText: "",
@@ -170,6 +189,42 @@ export async function processTask(deps: RunnerDeps, task: Task): Promise<Process
         ? await runWithReviewPipeline(deps, task, run.id, effectivePrompt)
         : await runAgentWithLedger(deps, task, run.id, effectivePrompt);
   } catch (err) {
+    if (err instanceof SdkRateLimitError) {
+      deps.quotaTracker.markCurrentWindowExhausted();
+      const exhaustedWindow = deps.quotaTracker.currentWindow();
+      const failed = deps.leaseManager.finish(acquisition, "failed", {
+        error: err.message,
+      });
+      const deferred = deps.runsRepo.insert(task.id, deps.workerId, {
+        notBefore: exhaustedWindow.resetsAt,
+      });
+      deps.eventsRepo.insert({
+        taskRunId: failed.id,
+        sessionId: task.sessionId,
+        traceId: null,
+        spanId: null,
+        kind: "quota_429_observed",
+        payload: {
+          task_id: task.id,
+          failed_run_id: failed.id,
+          deferred_run_id: deferred.id,
+          retry_after_seconds: err.retryAfterSeconds,
+          defer_until: exhaustedWindow.resetsAt,
+        },
+      });
+      return {
+        task,
+        run: deferred,
+        agentResult: {
+          stopReason: "error",
+          msgsConsumed: 0,
+          totalTurns: 0,
+          finalText: "",
+          error: err.message,
+        },
+      };
+    }
+
     log.error("agent invocation crashed", { error: (err as Error).message });
     const finished = deps.leaseManager.finish(acquisition, "failed", {
       error: (err as Error).message,
@@ -236,6 +291,8 @@ async function runAgentWithLedger(
   taskRunId: number,
   effectivePrompt: string,
 ): Promise<AgentRunResult> {
+  const AUTH_RETRY_TOKEN = { value: "worker-auth-retry", source: "env" as const };
+
   let msgsConsumed = 0;
   let totalTurns = 0;
   const textParts: string[] = [];
@@ -249,7 +306,7 @@ async function runAgentWithLedger(
   if (task.sessionId !== null) streamOpts.sessionId = task.sessionId;
   if (task.workingDir !== null) streamOpts.workingDirectory = task.workingDir;
 
-  try {
+  const runStreamOnce = async (): Promise<void> => {
     for await (const msg of deps.agentClient.stream(streamOpts)) {
       msgsConsumed += 1;
       deps.quotaTracker.recordMessage(taskRunId);
@@ -262,7 +319,34 @@ async function runAgentWithLedger(
       }
       lastRole = msg.role;
     }
+  };
+
+  try {
+    await invokeWithAutoRefresh(
+      AUTH_RETRY_TOKEN,
+      async () => {
+        await runStreamOnce();
+      },
+      {
+        runSetupToken: deps.authRefresh?.runSetupToken ?? spawnClaudeSetupToken,
+        reloadToken: deps.authRefresh?.reloadToken ?? (() => AUTH_RETRY_TOKEN),
+      },
+    );
   } catch (err) {
+    if (err instanceof SdkRateLimitError || err instanceof SdkNetworkError) {
+      throw err;
+    }
+    if (err instanceof SdkAuthError) {
+      deps.eventsRepo.insert({
+        taskRunId,
+        sessionId: task.sessionId,
+        traceId: null,
+        spanId: null,
+        kind: "sdk_auth_error",
+        payload: { error: err.message },
+      });
+      throw err;
+    }
     error = (err as Error).message;
     stopReason = "error";
   }

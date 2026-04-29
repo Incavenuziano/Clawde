@@ -35,7 +35,13 @@ export interface ParsedMessage {
   readonly raw?: unknown;
 }
 
-export type StopReason = "completed" | "max_turns" | "error" | "user_abort" | "stop_requested";
+export type StopReason =
+  | "completed"
+  | "max_turns"
+  | "error"
+  | "user_abort"
+  | "stop_requested"
+  | "deferred";
 
 export interface AgentRunResult {
   readonly stopReason: StopReason;
@@ -43,6 +49,30 @@ export interface AgentRunResult {
   readonly totalTurns: number;
   readonly finalText: string;
   readonly error: string | null;
+}
+
+export class SdkAuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SdkAuthError";
+  }
+}
+
+export class SdkRateLimitError extends Error {
+  constructor(
+    message: string,
+    public readonly retryAfterSeconds: number | null = null,
+  ) {
+    super(message);
+    this.name = "SdkRateLimitError";
+  }
+}
+
+export class SdkNetworkError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SdkNetworkError";
+  }
 }
 
 export interface RunAgentOptions {

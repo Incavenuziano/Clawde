@@ -29,6 +29,7 @@ export const EVENT_KIND_VALUES = [
   "quota_threshold_crossed",
   "quota_reset",
   "peak_multiplier_applied",
+  "quota_429_observed",
   // auth
   "oauth_refresh_attempt",
   "oauth_refresh_success",
@@ -65,6 +66,9 @@ export const EVENT_KIND_VALUES = [
   "review.pipeline.exhausted",
   // agent validation
   "agent_invalid",
+  // sdk typed errors
+  "sdk_auth_error",
+  "sdk_network_error",
 ] as const;
 export type EventKind = (typeof EVENT_KIND_VALUES)[number];
 
