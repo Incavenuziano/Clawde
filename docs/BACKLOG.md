@@ -1,9 +1,25 @@
-# Clawde — Backlog (Fases 1–3)
+# Clawde — Backlog (Fases 1–9, todas entregues)
 
 > Tasks atômicas (1 commit cada, S=≤30min, M=≤2h, L=≤4h). Padrão derivado de
 > `superpowers/skills/writing-plans/SKILL.md` — TDD red-green-refactor sempre que
-> aplicável. Fases 4–9 ficam como roadmap em `ARCHITECTURE.md` §12; serão detalhadas
-> após Fase 3 estar verde.
+> aplicável.
+>
+> **Status do projeto:** todas as 9 fases entregues. 556 testes / 0 falhas, lint +
+> tsc strict clean. Commits na ordem `F1 → F2 → F3 → F5 → F4 → F7 → F6 → F8 → F9`
+> (5 antes de 4 e 7 antes de 6 por priorização do operador). Resumo do que cada
+> fase produziu:
+>
+> | Fase | Tema | Módulos / artefatos |
+> |------|------|---------------------|
+> | F1 | Foundation | `src/db/` (schema, migrations, repos), `src/domain/`, `src/log/` (ULID + AsyncLocalStorage), `src/config/` (zod) |
+> | F2 | Worker + SDK | `src/worker/` (lease, reconcile, runner, workspace git-worktree), `src/sdk/` (RealAgentClient lazy), `src/hooks/` (5-hook pipeline), `src/quota/` (sliding window 5h, peak hours) |
+> | F3 | Receiver + CLI | `src/receiver/` (Bun.serve TCP+unix, HMAC, rate-limit, dedup, /health, /enqueue), `src/cli/` (queue/migrate/logs/trace/quota/smoke-test) |
+> | F5 | Memory + learning | `src/memory/` (JSONL indexer, embeddings opt-in via Xenova, RRF hybrid search, importance, prune), `clawde memory ...`, reflector subagent (ADR 0009) |
+> | F4 | Sandbox bwrap+netns | `src/sandbox/` (systemd + bwrap + netns, agent-config TOML, materializeSandbox matrix por nível) |
+> | F7 | OAuth + Datasette | `src/auth/` (loader systemd-credential/env, JWT expiry parser, auto-refresh wrapper), `clawde auth status\|check`, `deploy/datasette/` (13 canned queries), `clawde dashboard` |
+> | F6 | Telegram + sanitize | `src/sanitize/` (`<external_input>` envelope com escape XML completo + system prompt "treat as data"), `src/receiver/routes/telegram.ts` (HMAC + allowlist + dedup por update_id) |
+> | F8 | Litestream multi-host | `src/replica/` (parser snapshots tabular + verifyReplicas freshness), `deploy/litestream/litestream.yml`, `deploy/scripts/litestream-restore.sh`, `clawde replica status\|verify` |
+> | F9 | Two-stage review | `src/review/` (implementer → spec-reviewer → code-quality-reviewer com VERDICT parser, retry com feedback, fresh context por stage), `clawde review history` |
 
 ## Convenções
 

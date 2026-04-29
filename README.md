@@ -4,8 +4,7 @@
 > Receiver always-on minimal + worker oneshot event-driven. Não substitui Claude Code
 > interativo — coexistem.
 
-**Status:** Fase de design completa, implementação ainda não começou.
-**Branch ativa:** `claude/analyze-anthropic-harness-8uvLd`.
+**Status:** Todas as 9 fases entregues. **556 testes passando, 0 falhas**, lint + TypeScript strict clean. Pronto pra uso pessoal Linux.
 
 ## O que é
 
@@ -64,8 +63,8 @@ bilateral por design.
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | ~1200 | Comparativo OpenClaw/Hermes/Clawde + decisões arquiteturais detalhadas |
 | [`BLUEPRINT.md`](BLUEPRINT.md) | ~1130 | Spec executável: tree, tipos do domínio, OpenAPI, hooks, agents, CLI, config |
 | [`BEST_PRACTICES.md`](BEST_PRACTICES.md) | ~1245 | Manual operacional: 6 invariantes + segurança + testes + logging + audit + dev/ops + incidentes |
-| [`docs/adr/`](docs/adr/) | 12 ADRs | Decisões arquiteturais imutáveis (formato MADR simplificado) |
-| [`docs/BACKLOG.md`](docs/BACKLOG.md) | ~620 | 55 tasks atômicas detalhadas (Fases 1+2+3+5) + roadmap das demais |
+| [`docs/adr/`](docs/adr/) | 13 ADRs | Decisões arquiteturais imutáveis (formato MADR simplificado) |
+| [`docs/BACKLOG.md`](docs/BACKLOG.md) | ~660 | Tasks atômicas (Fases 1–9 entregues) |
 
 **Como ler primeira vez (~30 min):**
 1. README (este, ~5min)
@@ -124,28 +123,77 @@ Mais detalhes em [`ARCHITECTURE.md`](ARCHITECTURE.md) §1.3.
 
 ## Quick start
 
-> ⚠️ **Não há código implementado ainda.** Esta seção descreve a UX-alvo após Fase 3.
-
 ```bash
 # Setup inicial (uma vez)
 bun install
 bun run build
-clawde setup-token       # gera OAuth headless 1-ano (Max subscription)
+claude setup-token       # OAuth headless 1-ano (Max subscription) — fora do clawde
 clawde migrate up
 
 # Subir daemons (systemd user)
-systemctl --user enable --now clawde-receiver clawde-worker.path clawde-smoke.timer
+mkdir -p ~/.config/systemd/user
+cp deploy/systemd/clawde-*.{service,timer,path} ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now clawde-receiver clawde-worker.path \
+  clawde-smoke.timer clawde-oauth-check.timer clawde-reflect.timer
 
 # Enfileirar primeira task
 clawde queue --priority NORMAL "explica o que esse repo faz"
 
 # Acompanhar
-clawde logs --follow
+clawde logs --task <run-id>
+clawde trace <ulid>
 clawde quota status
+clawde memory search "alguma coisa"
 ```
+
+### Comandos disponíveis
+
+| Comando | Função |
+|---------|--------|
+| `clawde queue <prompt>` | Enfileira nova task no receiver |
+| `clawde migrate <up\|status\|down>` | Aplica/reverte migrations SQLite |
+| `clawde logs --task <id>` | Lista events de um task_run |
+| `clawde trace <ulid>` | Mostra todos events de um trace_id |
+| `clawde quota <status\|history>` | Estado da janela 5h Max + histórico |
+| `clawde memory <search\|stats\|prune\|reindex\|inject>` | Memória nativa SQLite + FTS5 |
+| `clawde auth <status\|check>` | Inspeciona OAuth token (source, expiry) |
+| `clawde dashboard` | Probe Datasette read-only + lista canned queries |
+| `clawde replica <status\|verify>` | Saúde do Litestream snapshot remoto |
+| `clawde review history <run-id>` | Eventos do pipeline de review |
+| `clawde smoke-test` | Verifica DB, migrations, receiver health |
+| `clawde version`, `clawde help` | Meta |
+
+Use `--output json` em qualquer subcomando pra parse machine-readable.
 
 Configuração em `~/.clawde/config/clawde.toml`. Schema completo em
 [`BLUEPRINT.md`](BLUEPRINT.md) §7.
+
+### Opcionais
+
+- **Embeddings semânticos** (Fase 5): `bun add @xenova/transformers` →
+  `clawde memory reindex --provider xenova`. Sem isso, busca é FTS5 trigram.
+- **Telegram input** (Fase 6): defina `telegram.secret` + `telegram.allowed_user_ids` no `clawde.toml`,
+  configure `setWebhook` apontando pra `clawde-receiver:18790/webhook/telegram`.
+- **Datasette dashboard** (Fase 7): `pipx install datasette` →
+  `systemctl --user enable --now clawde-datasette`. Acesse `http://127.0.0.1:18791`.
+- **Multi-host backup** (Fase 8): instale `litestream`, edite
+  `deploy/litestream/litestream.yml` com bucket B2/S3, `systemctl --user enable --now clawde-litestream`.
+- **Two-stage review** (Fase 9): orquestrador `runReviewPipeline()` em código;
+  worker pode wrap calls do SDK pra passar implementer → spec → quality.
+
+### Sandbox
+
+Por agente, em `.clawde/agents/<nome>/sandbox.toml`:
+
+```toml
+level = 2          # 1 (systemd) | 2 (+ bwrap) | 3 (+ netns)
+network = "host"   # host | allowlist | loopback-only | none
+max_memory_mb = 1024
+```
+
+Defaults sane por agente em `defaultLevelForAgent` (`telegram-bot`/`github-pr-handler` → 3,
+`implementer`/`debugger` → 2, demais → 1). Ver ADR 0013.
 
 ## Inspirações
 
@@ -164,30 +212,41 @@ Validadas via leitura de código (não só docs):
 
 | Fase | Status | Saída |
 |------|--------|-------|
-| **0** Design | ✅ Completo | ARCHITECTURE + BLUEPRINT + BEST_PRACTICES + 12 ADRs + REQUIREMENTS + BACKLOG |
-| **1** Foundation (schema + repos) | 🔜 Próxima | 20 tasks (T01–T20) |
-| **2** Worker + SDK + sessão | ⏳ | 13 tasks (T21–T33) |
-| **3** Receiver + CLI local | ⏳ | 13 tasks (T34–T46) |
-| **4** Sandbox 2/3 (bwrap, netns) | ⏳ Roadmap | a detalhar |
-| **5** Memória + aprendizado | ⏳ | 9 tasks (T47–T55) detalhadas |
-| **6** Telegram adapter | ⏳ Roadmap | a detalhar |
-| **7** OAuth refresh + Datasette | ⏳ Roadmap | a detalhar |
-| **8** Multi-host (Litestream) | ⏳ Roadmap | a detalhar |
-| **9** Two-stage review pipeline | ⏳ Roadmap | a detalhar |
+| **0** Design | ✅ | ARCHITECTURE + BLUEPRINT + BEST_PRACTICES + 13 ADRs + REQUIREMENTS + BACKLOG |
+| **1** Foundation (schema + repos) | ✅ | `src/db/`, `src/domain/`, `src/log/`, `src/config/` |
+| **2** Worker + SDK + sessão | ✅ | `src/worker/`, `src/sdk/`, `src/hooks/`, `src/quota/` |
+| **3** Receiver + CLI local | ✅ | `src/receiver/`, `src/cli/`, E2E lifecycle |
+| **4** Sandbox 2/3 (bwrap, netns) | ✅ | `src/sandbox/` níveis 1/2/3 + agent-config TOML |
+| **5** Memória + aprendizado | ✅ | `src/memory/`, hooks→memory, importance, reflector subagent |
+| **6** Telegram adapter | ✅ | `src/receiver/routes/telegram.ts` + `src/sanitize/` (XML envelope) |
+| **7** OAuth refresh + Datasette | ✅ | `src/auth/`, `deploy/datasette/`, `clawde dashboard` |
+| **8** Multi-host (Litestream) | ✅ | `src/replica/`, `deploy/litestream/`, `clawde replica` |
+| **9** Two-stage review pipeline | ✅ | `src/review/` (implementer + spec + code-quality) |
 
-Backlog completo em [`docs/BACKLOG.md`](docs/BACKLOG.md).
+Backlog completo em [`docs/BACKLOG.md`](docs/BACKLOG.md). 556 testes / 0 falhas /
+~14K LOC TS + 13 ADRs + 6 docs estruturais.
 
 ## Licença
 
 A definir (provavelmente AGPL-3.0 — alinha com `claude-mem`).
 
-## Contribuição
+## Desenvolvimento
 
-Por enquanto, projeto solo. Issues bem-vindos. PRs aceitos depois da Fase 3 estar verde
-(precisa de baseline funcional pra revisar contribuições com sentido).
+```bash
+bun install
+bun run typecheck    # tsc --noEmit
+bun run lint         # biome check
+bun test             # bun:test
+bun run ci           # tudo acima
+bun run build        # binário standalone via bun build --compile
+```
 
 Convenções:
 - Conventional commits (`feat(scope): subject`).
 - 1 PR ≤ 300 LOC; squash merge; linear history.
 - CI gates obrigatórios em [`BEST_PRACTICES.md`](BEST_PRACTICES.md) §8.4.
 - ADR pra qualquer decisão não-trivial.
+
+## Contribuição
+
+Por enquanto, projeto solo. Issues bem-vindos. PRs aceitos.
