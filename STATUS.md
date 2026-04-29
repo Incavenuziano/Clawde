@@ -14,13 +14,13 @@
 
 | Wave | Pending | In-progress | In-review | Merged | Blocked | Total |
 |------|---------|-------------|-----------|--------|---------|-------|
-| 1 — Boot | 6 | 0 | 0 | 12 | 1 | 19 |
-| 2 — Operação | 21 | 0 | 0 | 0 | 0 | 21 |
+| 1 — Boot | 0 | 0 | 0 | 18 | 1 | 19 |
+| 2 — Operação | 17 | 4 | 0 | 0 | 0 | 21 |
 | 3 — Segurança core | 38 | 0 | 0 | 0 | 0 | 38 |
 | 4 — Hardening | 22 | 0 | 0 | 0 | 0 | 22 |
 | 5 — Alinhamento | 24 | 0 | 0 | 0 | 0 | 24 |
 | 6 — Hardening operacional | 19 | 0 | 0 | 0 | 0 | 19 |
-| **Total** | **130** | **0** | **0** | **12** | **1** | **143** |
+| **Total** | **120** | **4** | **0** | **18** | **1** | **143** |
 
 ---
 
@@ -72,7 +72,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 ### P0.1 — Entrypoints e build alignment
 - [x] T-001 — merged, PR #2, 2026-04-29
 - [x] T-002 — merged, PR #2, 2026-04-29
-- [ ] T-003 — pending — followup PR task/P0.1-followup-telegram after P0.3 merge
+- [x] T-003 — merged, PR #3, 2026-04-29 — telegram route wired in receiver/main.ts via P0.2
 - [x] T-004 — merged, PR #2, 2026-04-29
 - [x] T-005 — merged, PR #2, 2026-04-29
 - [x] T-006 — merged, PR #2, 2026-04-29
