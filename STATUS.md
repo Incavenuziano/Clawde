@@ -39,7 +39,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P1.2 | `task/P1.2-quota-not-before` | T-024..T-033 | codex | claude | merged, PR #5, 2026-04-29 | #5 |
 | P1.3 | `task/P1.3-sdk-errors` | T-034..T-040 | codex | claude | merged, PR #6, 2026-04-29 | #6 |
 | P2.1 | `task/P2.1-workspace-plug` | T-041..T-046 | codex | claude | merged, PR #7, 2026-04-29 | #7 |
-| P2.2 | `task/P2.2-sandbox-tools` | T-047..T-053 | codex | code | in-review, code | #10 |
+| P2.2 | `task/P2.2-sandbox-tools` | T-047..T-053 | codex | code | merged, PR #10, 2026-04-30 | #10 |
 | P2.3 | `task/P2.3-external-input` | T-054..T-057 | claude | codex | pending | — |
 | P2.4 | `task/P2.4-review-fresh` | T-058..T-062 | claude | codex | pending | — |
 | P2.5a | `task/P2.5a-agent-loader` | T-063..T-068, T-077, T-078 | codex | claude | pending | — |
@@ -138,13 +138,13 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 - [x] T-046 — merged, PR #7, 2026-04-29
 
 ### P2.2 — Sandbox em tools/hooks
-- [x] T-047 — done, codex
-- [x] T-048 — done, codex
-- [x] T-049 — done, codex
-- [x] T-050 — done, codex
-- [x] T-051 — done, codex
-- [x] T-052 — done, codex
-- [x] T-053 — done, codex
+- [x] T-047 — merged, PR #10, 2026-04-30
+- [x] T-048 — merged, PR #10, 2026-04-30
+- [x] T-049 — merged, PR #10, 2026-04-30
+- [x] T-050 — merged, PR #10, 2026-04-30
+- [x] T-051 — merged, PR #10, 2026-04-30
+- [x] T-052 — merged, PR #10, 2026-04-30
+- [x] T-053 — merged, PR #10, 2026-04-30
 
 ### P2.3 — EXTERNAL_INPUT_SYSTEM_PROMPT injection
 - [ ] T-054 — pending
