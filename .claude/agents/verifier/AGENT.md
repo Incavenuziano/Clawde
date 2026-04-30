@@ -5,7 +5,10 @@ model: sonnet
 allowedTools: [Read, Bash, Grep]
 disallowedTools: [Edit, Write, WebFetch, WebSearch]
 maxTurns: 10
-sandboxLevel: 2
+# sandboxLevel=1 enquanto Estratégia A (bwrap subprocess wrapper) não existir.
+# Em level >= 2 Bash é auto-disallowed pelo runtime (P2.2 T-050), e este agente
+# precisa rodar `bun test` no workspace. Ver ADR 0015.
+sandboxLevel: 1
 requiresWorkspace: true
 ---
 

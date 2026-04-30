@@ -1,4 +1,4 @@
-level = 2
+level = 1
 network = "loopback-only"
 allowed_egress = []
 allowed_writes = ["/workspace"]
