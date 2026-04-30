@@ -45,7 +45,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P2.5a | `task/P2.5a-agent-loader` | T-063..T-068, T-077, T-078 | codex | claude | merged, PR #11, 2026-04-30 | #11 |
 | P2.5b | `task/P2.5b-agent-files` | T-069..T-076 | codex | claude (+ operador em T-075/076) | merged, PR #12, 2026-04-30 | #12 |
 | P1.4 | `task/P1.4-event-kind` | T-079..T-085 | codex | claude | merged, PR #17, 2026-04-30 | #17 |
-| P1.5 | `task/P1.5-json-validity` | T-086..T-091 | codex | claude | pending | — |
+| P1.5 | `task/P1.5-json-validity` | T-086..T-091 | codex | claude | in-review, PR #19 | #19 |
 | P2.6 | `task/P2.6-allowlist-fail` | T-092..T-096 | codex | claude (+ operador) | pending | — |
 | P2.7 | `task/P2.7-redact-events` | T-097..T-100 | codex | claude (+ operador) | pending | — |
 | P3.1 | `task/P3.1-readme-status` | T-101..T-103 | claude | codex | pending | — |
@@ -191,12 +191,12 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 - [x] T-085 — merged, PR #17, 2026-04-30
 
 ### P1.5 — JSON validity em colunas TEXT
-- [ ] T-086 — pending
-- [ ] T-087 — pending
-- [ ] T-088 — pending
-- [ ] T-089 — pending
-- [ ] T-090 — pending
-- [ ] T-091 — pending
+- [x] T-086 — in-review, PR #19
+- [x] T-087 — in-review, PR #19
+- [x] T-088 — in-review, PR #19
+- [x] T-089 — in-review, PR #19
+- [x] T-090 — in-review, PR #19
+- [x] T-091 — in-review, PR #19
 
 ### P2.6 — Allowlist falsa
 - [ ] T-092 — pending

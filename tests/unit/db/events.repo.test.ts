@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { EventsRepo } from "@clawde/db/repositories/events";
+import { JsonCorruptionError } from "@clawde/db/repositories/tasks";
 import type { NewEvent } from "@clawde/domain/event";
 import { type TestDb, makeTestDb } from "../../helpers/db.ts";
 
@@ -106,5 +107,37 @@ describe("repositories/events", () => {
       input: { command: "ls -la" },
       metadata: { sandbox: 2 },
     });
+  });
+
+  test("queryByTrace lança JsonCorruptionError quando payload está inválido", () => {
+    testDb.db.exec("PRAGMA ignore_check_constraints = ON");
+    testDb.db.exec(`
+      INSERT INTO events (trace_id, kind, payload)
+      VALUES ('t-corrupt', 'enqueue', '{bad-json')
+    `);
+    testDb.db.exec("PRAGMA ignore_check_constraints = OFF");
+
+    expect(() => repo.queryByTrace("t-corrupt")).toThrow(JsonCorruptionError);
+  });
+
+  test("queryByTrace com onCorruption ignora rows inválidas e continua", () => {
+    testDb.db.exec("PRAGMA ignore_check_constraints = ON");
+    testDb.db.exec(`
+      INSERT INTO events (trace_id, kind, payload)
+      VALUES ('t-skip', 'enqueue', '{bad-json')
+    `);
+    testDb.db.exec("PRAGMA ignore_check_constraints = OFF");
+    repo.insert(sample({ traceId: "t-skip", kind: "task_start", payload: { ok: true } }));
+
+    const warnings: JsonCorruptionError[] = [];
+    const events = repo.queryByTrace("t-skip", {
+      onCorruption: (error) => {
+        warnings.push(error);
+      },
+    });
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]?.column).toBe("payload");
+    expect(events).toHaveLength(1);
+    expect(events[0]?.kind).toBe("task_start");
   });
 });

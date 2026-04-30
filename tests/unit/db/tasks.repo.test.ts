@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { DedupConflictError, TasksRepo } from "@clawde/db/repositories/tasks";
+import { DedupConflictError, JsonCorruptionError, TasksRepo } from "@clawde/db/repositories/tasks";
 import type { NewTask } from "@clawde/domain/task";
 import { type TestDb, makeTestDb } from "../../helpers/db.ts";
 
@@ -134,5 +134,47 @@ describe("repositories/tasks", () => {
   test("insert com priority URGENT é aceito", () => {
     const t = repo.insert(sampleTask({ priority: "URGENT" }));
     expect(t.priority).toBe("URGENT");
+  });
+
+  test("findById lança JsonCorruptionError quando depends_on está corrompido", () => {
+    testDb.db.exec("PRAGMA ignore_check_constraints = ON");
+    testDb.db.exec(`
+      INSERT INTO tasks (priority, prompt, agent, depends_on, source, source_metadata)
+      VALUES ('NORMAL', 'p', 'default', '{not-json', 'cli', '{}')
+    `);
+    const id = (testDb.db.query("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
+    testDb.db.exec("PRAGMA ignore_check_constraints = OFF");
+
+    try {
+      repo.findById(id);
+      throw new Error("expected JsonCorruptionError");
+    } catch (error) {
+      expect(error).toBeInstanceOf(JsonCorruptionError);
+      const typed = error as JsonCorruptionError;
+      expect(typed.rowId).toBe(id);
+      expect(typed.column).toBe("depends_on");
+      expect(typed.rawValue).toBe("{not-json");
+    }
+  });
+
+  test("findById lança JsonCorruptionError quando source_metadata está corrompido", () => {
+    testDb.db.exec("PRAGMA ignore_check_constraints = ON");
+    testDb.db.exec(`
+      INSERT INTO tasks (priority, prompt, agent, depends_on, source, source_metadata)
+      VALUES ('NORMAL', 'p', 'default', '[]', 'cli', '{oops')
+    `);
+    const id = (testDb.db.query("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
+    testDb.db.exec("PRAGMA ignore_check_constraints = OFF");
+
+    try {
+      repo.findById(id);
+      throw new Error("expected JsonCorruptionError");
+    } catch (error) {
+      expect(error).toBeInstanceOf(JsonCorruptionError);
+      const typed = error as JsonCorruptionError;
+      expect(typed.rowId).toBe(id);
+      expect(typed.column).toBe("source_metadata");
+      expect(typed.rawValue).toBe("{oops");
+    }
   });
 });

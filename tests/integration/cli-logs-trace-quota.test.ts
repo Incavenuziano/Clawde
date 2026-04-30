@@ -189,6 +189,22 @@ describe("cli logs", () => {
     expect(exit).toBe(1);
     expect(stderr).toContain("invalid --since");
   });
+
+  test("rows corrompidas em payload geram WARN e comando segue com exit 0", async () => {
+    setup.db.exec("PRAGMA ignore_check_constraints = ON");
+    setup.db.exec(`
+      INSERT INTO events (trace_id, kind, payload)
+      VALUES ('T-CORRUPT', 'enqueue', '{bad-json')
+    `);
+    setup.db.exec("PRAGMA ignore_check_constraints = OFF");
+
+    const { exit, stderr } = await captureOutput(() =>
+      runMain(["logs", "--trace", "T-CORRUPT", "--db", setup.dbPath]),
+    );
+    expect(exit).toBe(0);
+    expect(stderr).toContain("WARN: row ");
+    expect(stderr).toContain("corrupted (column payload); skipping");
+  });
 });
 
 describe("cli trace", () => {
