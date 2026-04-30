@@ -43,7 +43,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P2.3 | `task/P2.3-external-input` | T-054..T-057 | claude | codex | pending | — |
 | P2.4 | `task/P2.4-review-fresh` | T-058..T-062 | claude | codex | pending | — |
 | P2.5a | `task/P2.5a-agent-loader` | T-063..T-068, T-077, T-078 | codex | claude | merged, PR #11, 2026-04-30 | #11 |
-| P2.5b | `task/P2.5b-agent-files` | T-069..T-076 | codex | claude (+ operador em T-075/076) | pending | — |
+| P2.5b | `task/P2.5b-agent-files` | T-069..T-076 | codex | claude (+ operador em T-075/076) | in-review, claude | #12 |
 | P1.4 | `task/P1.4-event-kind` | T-079..T-085 | codex | claude | pending | — |
 | P1.5 | `task/P1.5-json-validity` | T-086..T-091 | codex | claude | pending | — |
 | P2.6 | `task/P2.6-allowlist-fail` | T-092..T-096 | codex | claude (+ operador) | pending | — |
@@ -166,14 +166,14 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 - [x] T-066 — merged, PR #11, 2026-04-30
 - [x] T-067 — merged, PR #11, 2026-04-30
 - [x] T-068 — merged, PR #11, 2026-04-30
-- [ ] T-069 — pending
-- [ ] T-070 — pending
-- [ ] T-071 — pending
-- [ ] T-072 — pending
-- [ ] T-073 — pending
-- [ ] T-074 — pending
-- [ ] T-075 — pending
-- [ ] T-076 — pending
+- [x] T-069 — in-review, PR #12
+- [x] T-070 — in-review, PR #12
+- [x] T-071 — in-review, PR #12
+- [x] T-072 — in-review, PR #12
+- [x] T-073 — in-review, PR #12
+- [x] T-074 — in-review, PR #12
+- [x] T-075 — in-review, PR #12 (security, dupla review)
+- [x] T-076 — in-review, PR #12 (security, dupla review)
 - [x] T-077 — merged, PR #11, 2026-04-30
 - [x] T-078 — merged, PR #11, 2026-04-30
 
