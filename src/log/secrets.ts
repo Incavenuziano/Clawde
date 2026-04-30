@@ -41,6 +41,7 @@ export const SECRET_KEY_PATTERNS = [
  * Padrões de regex para valores que parecem secrets independentemente da chave.
  */
 export const SECRET_VALUE_PATTERNS: ReadonlyArray<RegExp> = [
+  /sk-ant-[a-zA-Z0-9_-]+/g, // Anthropic generic token (inclui fakes/curtos em testes)
   /sk-ant-[a-zA-Z0-9_-]{32,}/g, // Anthropic API key
   /sk-ant-oat01-[a-zA-Z0-9_-]+/g, // Anthropic OAuth token
   /ghp_[a-zA-Z0-9]{36,}/g, // GitHub PAT

@@ -21,6 +21,7 @@ Registros das decisões arquiteturais não-triviais do Clawde. Formato baseado e
 | [0012](0012-single-provider-anthropic.md) | Accepted | Single-provider Anthropic + risco aceito |
 | [0013](0013-sandbox-bwrap-implementation.md) | Superseded by 0015 | Sandbox Nível 2/3: implementação via bubblewrap |
 | [0015](0015-sandbox-tools-not-process.md) | Accepted | Sandbox 2/3 aplicado em tool calls (`Bash`/`Edit`/`Write`) |
+| [0016](0016-events-scrub-policy.md) | Accepted | Events legados: auditoria sem scrub destrutivo automático |
 
 ## Convenções
 
