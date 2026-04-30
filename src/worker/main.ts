@@ -1,5 +1,6 @@
 import { homedir, hostname } from "node:os";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
+import { AgentDefinitionError, loadAllAgentDefinitions } from "@clawde/agents";
 import { loadConfig } from "@clawde/config";
 import { closeDb, openDb } from "@clawde/db/client";
 import { applyPending, defaultMigrationsDir } from "@clawde/db/migrations";
@@ -71,6 +72,19 @@ export async function bootstrap(
       tasksRepo,
       workspaceTmpRoot: "/tmp",
     });
+    const agentsRoot = join(expandHome(config.clawde.home), "agents");
+    const agentDefs = (() => {
+      try {
+        return loadAllAgentDefinitions(agentsRoot);
+      } catch (err) {
+        if (err instanceof AgentDefinitionError) {
+          const agentName = basename(dirname(err.agentPath));
+          throw new Error(`agent ${agentName} invalid: ${err.message}`);
+        }
+        throw err;
+      }
+    })();
+    const agentDefByName = new Map(agentDefs.map((d) => [d.name, d] as const));
     const agentClient = new RealAgentClient();
     const workerId = `${hostname()}-${process.pid}-${Date.now()}`;
     const reconcileResult = reconciler.reconcile(workerId);
@@ -92,6 +106,7 @@ export async function bootstrap(
         logger,
         workerId,
         workspaceConfig: { tmpRoot: "/tmp", baseBranch: "main" },
+        resolveAgentDefinition: async (agent) => agentDefByName.get(agent) ?? null,
       },
       maxTasks,
     );

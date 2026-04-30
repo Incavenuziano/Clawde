@@ -27,6 +27,13 @@ export interface CreateWorkspaceInput {
 export interface AgentDefinitionLike {
   readonly frontmatter?: {
     readonly requiresWorkspace?: boolean;
+    readonly allowedTools?: ReadonlyArray<string>;
+    readonly disallowedTools?: ReadonlyArray<string>;
+    readonly maxTurns?: number;
+  };
+  readonly sandbox?: {
+    readonly level: 1 | 2 | 3;
+    readonly allowed_writes: ReadonlyArray<string>;
   };
 }
 

@@ -22,11 +22,13 @@ import type { MemoryRepo } from "@clawde/db/repositories/memory";
 import type { TaskRunsRepo } from "@clawde/db/repositories/task-runs";
 import type { TasksRepo } from "@clawde/db/repositories/tasks";
 import type { QuotaPolicy } from "@clawde/domain/quota";
-import type { Task, TaskRun } from "@clawde/domain/task";
+import type { Task, TaskRun, TaskSource } from "@clawde/domain/task";
+import { type PreToolUsePayload, makePreToolUseHandler } from "@clawde/hooks";
 import type { Logger } from "@clawde/log";
 import type { MemoryAwareConfig, buildMemoryContext as buildMemoryContextFn } from "@clawde/memory";
 import type { QuotaTracker } from "@clawde/quota";
 import type { PipelineConfig, runReviewPipeline as runReviewPipelineFn } from "@clawde/review";
+import { EXTERNAL_INPUT_SYSTEM_PROMPT } from "@clawde/sanitize";
 import {
   type AgentClient,
   type AgentRunResult,
@@ -93,6 +95,18 @@ class LeaseBusyError extends Error {
     super(`lease busy for task ${taskId} run ${taskRunId}`);
     this.name = "LeaseBusyError";
   }
+}
+
+/**
+ * Sources cujo prompt vem de um caminho confiável (CLI direto do operador ou
+ * outro agente do próprio sistema). Demais sources (telegram, webhook, cron)
+ * são tratadas como "external" e ganham `EXTERNAL_INPUT_SYSTEM_PROMPT` em
+ * `appendSystemPrompt` pra defesa contra prompt injection.
+ */
+const TRUSTED_SOURCES: ReadonlySet<TaskSource> = new Set(["cli", "subagent"]);
+
+function isExternalSource(source: TaskSource): boolean {
+  return !TRUSTED_SOURCES.has(source);
 }
 
 /**
@@ -164,9 +178,15 @@ export async function processTask(deps: RunnerDeps, task: Task): Promise<Process
   }
 
   const workspaceConfig = deps.workspaceConfig ?? { tmpRoot: "/tmp", baseBranch: "main" };
+  let agentDef: AgentDefinitionLike | null = null;
+  if (deps.resolveAgentDefinition !== undefined) {
+    agentDef = await deps.resolveAgentDefinition(task.agent);
+    if (agentDef === null) {
+      throw new Error(`agent '${task.agent}' not found in AGENT.md definitions`);
+    }
+  }
   let ephemeralWorkspacePath: string | null = null;
-  if (task.workingDir !== null && deps.resolveAgentDefinition !== undefined) {
-    const agentDef = await deps.resolveAgentDefinition(task.agent);
+  if (task.workingDir !== null && agentDef !== null) {
     if (shouldUseEphemeralWorkspace(task, agentDef)) {
       const ws = await createWorkspace({
         taskRunId: run.id,
@@ -212,8 +232,22 @@ export async function processTask(deps: RunnerDeps, task: Task): Promise<Process
     try {
       agentResult =
         deps.review !== undefined
-          ? await runWithReviewPipeline(deps, task, run.id, effectivePrompt, ephemeralWorkspacePath)
-          : await runAgentWithLedger(deps, task, run.id, effectivePrompt, ephemeralWorkspacePath);
+          ? await runWithReviewPipeline(
+              deps,
+              task,
+              run.id,
+              effectivePrompt,
+              ephemeralWorkspacePath,
+              agentDef,
+            )
+          : await runAgentWithLedger(
+              deps,
+              task,
+              run.id,
+              effectivePrompt,
+              ephemeralWorkspacePath,
+              agentDef,
+            );
     } catch (err) {
       if (err instanceof SdkRateLimitError) {
         deps.quotaTracker.markCurrentWindowExhausted();
@@ -337,6 +371,7 @@ async function runAgentWithLedger(
   taskRunId: number,
   effectivePrompt: string,
   workingDirectoryOverride: string | null,
+  agentDef: AgentDefinitionLike | null,
 ): Promise<AgentRunResult> {
   const AUTH_RETRY_TOKEN = { value: "worker-auth-retry", source: "env" as const };
 
@@ -347,16 +382,46 @@ async function runAgentWithLedger(
   let stopReason: AgentRunResult["stopReason"] = "completed";
   let error: string | null = null;
 
-  const streamOpts: { prompt: string; sessionId?: string; workingDirectory?: string } = {
+  const streamOpts: {
+    prompt: string;
+    sessionId?: string;
+    workingDirectory?: string;
+    appendSystemPrompt?: string;
+    allowedTools?: ReadonlyArray<string>;
+    disallowedTools?: ReadonlyArray<string>;
+    maxTurns?: number;
+  } = {
     prompt: effectivePrompt,
   };
-  // TODO(T-064, P2.5a): ligar policy de tools/sandbox aqui (allowedTools + allowed_writes)
-  // e registrar makePreToolUseHandler no path de execução principal do worker.
+  const allowedTools = agentDef?.frontmatter?.allowedTools ?? [];
+  const disallowedTools = new Set(agentDef?.frontmatter?.disallowedTools ?? []);
+  if ((agentDef?.sandbox?.level ?? 1) >= 2) {
+    disallowedTools.add("Bash");
+  }
+  if (allowedTools.length > 0) streamOpts.allowedTools = allowedTools;
+  if (disallowedTools.size > 0) streamOpts.disallowedTools = [...disallowedTools];
+  if (agentDef?.frontmatter?.maxTurns !== undefined) {
+    streamOpts.maxTurns = agentDef.frontmatter.maxTurns;
+  }
+
+  const preToolHandler = makePreToolUseHandler(() => {}, {
+    allowedTools,
+    sandbox: {
+      level: agentDef?.sandbox?.level ?? 1,
+      allowed_writes: agentDef?.sandbox?.allowed_writes ?? [],
+    },
+  });
   if (task.sessionId !== null) streamOpts.sessionId = task.sessionId;
   if (workingDirectoryOverride !== null) {
     streamOpts.workingDirectory = workingDirectoryOverride;
   } else if (task.workingDir !== null) {
     streamOpts.workingDirectory = task.workingDir;
+  }
+  // T-054: sources externas recebem boilerplate de prompt-injection defense.
+  // Memory snippet (system prompt confiável) NÃO é tocado aqui — fica no
+  // user content via `effectivePrompt`. external_input envelope é orthogonal.
+  if (isExternalSource(task.source)) {
+    streamOpts.appendSystemPrompt = EXTERNAL_INPUT_SYSTEM_PROMPT;
   }
 
   const runStreamOnce = async (): Promise<void> => {
@@ -365,9 +430,27 @@ async function runAgentWithLedger(
       deps.quotaTracker.recordMessage(taskRunId);
       if (msg.role === "assistant") {
         if (lastRole !== "assistant") totalTurns += 1;
-        const textBlocks = msg.blocks.filter((b) => b.type === "text");
-        for (const b of textBlocks) {
-          if (b.type === "text") textParts.push(b.text);
+        for (const b of msg.blocks) {
+          if (b.type === "text") {
+            textParts.push(b.text);
+            continue;
+          }
+          if (b.type === "tool_use") {
+            const maybeGate = preToolHandler({
+              hook: "PreToolUse",
+              sessionId: task.sessionId ?? "worker-session",
+              taskRunId,
+              ts: new Date().toISOString(),
+              payload: {
+                toolName: b.name,
+                toolInput: b.input as PreToolUsePayload["toolInput"],
+              },
+            });
+            const gate = maybeGate instanceof Promise ? await maybeGate : maybeGate;
+            if (!gate.ok && gate.block) {
+              throw new Error(gate.message ?? `tool '${b.name}' blocked by policy`);
+            }
+          }
         }
       }
       lastRole = msg.role;
@@ -425,6 +508,7 @@ async function runWithReviewPipeline(
   taskRunId: number,
   effectivePrompt: string,
   workingDirectoryOverride: string | null,
+  agentDef: AgentDefinitionLike | null,
 ): Promise<AgentRunResult> {
   if (deps.review === undefined) {
     throw new Error("runWithReviewPipeline called without review deps");
@@ -435,14 +519,35 @@ async function runWithReviewPipeline(
   const stageRunner: import("@clawde/review").StageRunner = async (inv) => {
     const parts: string[] = [];
     const fullPrompt = `${inv.systemPrompt}\n\n${inv.prompt}`;
-    const streamOpts: { prompt: string; sessionId?: string; workingDirectory?: string } = {
+    const streamOpts: {
+      prompt: string;
+      sessionId?: string;
+      workingDirectory?: string;
+      appendSystemPrompt?: string;
+      allowedTools?: ReadonlyArray<string>;
+      disallowedTools?: ReadonlyArray<string>;
+      maxTurns?: number;
+    } = {
       prompt: fullPrompt,
     };
+    if (agentDef?.frontmatter?.maxTurns !== undefined) {
+      streamOpts.maxTurns = agentDef.frontmatter.maxTurns;
+    }
+    if (agentDef?.frontmatter?.allowedTools?.length) {
+      streamOpts.allowedTools = agentDef.frontmatter.allowedTools;
+    }
+    if (agentDef?.frontmatter?.disallowedTools?.length) {
+      streamOpts.disallowedTools = agentDef.frontmatter.disallowedTools;
+    }
     if (task.sessionId !== null) streamOpts.sessionId = task.sessionId;
     if (workingDirectoryOverride !== null) {
       streamOpts.workingDirectory = workingDirectoryOverride;
     } else if (task.workingDir !== null) {
       streamOpts.workingDirectory = task.workingDir;
+    }
+    // T-054: também aplica em review pipeline pra cada stage.
+    if (isExternalSource(task.source)) {
+      streamOpts.appendSystemPrompt = EXTERNAL_INPUT_SYSTEM_PROMPT;
     }
     for await (const msg of deps.agentClient.stream(streamOpts)) {
       msgsConsumed += 1;
