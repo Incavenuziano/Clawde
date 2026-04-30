@@ -59,7 +59,14 @@ Detecta 401 + check semanal de expiry + auto-refresh quando viável. ADR 0006.
 Backups hourly/daily/weekly/monthly + drill obrigatório. `BEST_PRACTICES.md` §10.
 
 ### RF-12 — CLI completa
-`clawde queue|logs|trace|quota|sessions|smoke-test|diagnose|panic-stop|panic-resume|forget|audit|migrate|memory|reflect|config|version`. `BLUEPRINT.md` §6.
+`clawde queue|logs|trace|quota|sessions|smoke-test|diagnose|panic-stop|panic-resume|migrate|memory|reflect|config|version`. `BLUEPRINT.md` §6.
+
+> **Removidos do MVP — escopo de fase própria.** `forget` e `audit verify/export`
+> ficam fora do contrato MVP: `forget` exige política de retenção/PII séria
+> (não trivial — afeta `events` append-only, hash chain, e exports já
+> distribuídos); `audit verify/export` são cobertos pela leitura direta via
+> Datasette dashboard (RF-13 / BLUEPRINT §11). Reintroduzir requer ADR
+> separada com decisão de governança.
 
 ## Requisitos não-funcionais
 

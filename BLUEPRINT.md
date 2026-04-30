@@ -130,9 +130,8 @@ clawde/
 │   │   │   ├── smoke-test.ts
 │   │   │   ├── diagnose.ts
 │   │   │   ├── panic-stop.ts
-│   │   │   ├── panic-resume.ts
-│   │   │   ├── forget.ts
-│   │   │   └── audit.ts
+│   │   │   └── panic-resume.ts
+│   │   │   # forget / audit fora do MVP — ver REQUIREMENTS RF-12
 │   │   └── output.ts            # text / json
 │   │
 │   └── adapters/                # input externos
@@ -936,13 +935,11 @@ clawde panic-stop
 clawde panic-resume
   → reativa após panic-stop; só funciona se diagnose all retorna ok
 
-clawde forget --user <id>
-  → DELETE em tasks/messages do usuário, mantém events com user_id hashed
-  --dry-run mostra quantas linhas seriam afetadas
-
-clawde audit [verify|export]
-  verify --task <id>         → recomputa hash chain de events da task
-  export --since <date> --to <path>  → parquet de events
+# clawde forget / clawde audit verify|export — REMOVIDOS do MVP.
+# Rationale: forget exige política de retenção/PII séria (afeta events
+# append-only + hash chain + exports já distribuídos); audit verify/export
+# são cobertos por leitura direta via Datasette dashboard (§11). Reintroduzir
+# requer ADR separada. Ver REQUIREMENTS RF-12.
 
 clawde migrate [up|down|status]
   up [--target <version>]    → aplica migrations pendentes
@@ -965,7 +962,7 @@ clawde --help [<command>]
 - **Exit codes:** 0 sucesso, 1 erro de uso (input inválido), 2 erro operacional (DB, network),
   3 erro de quota (busy), 4 erro de auth (token), 5 erro fatal.
 - **JSON output** em todos os comandos via `--output json` para scripting.
-- **Confirmação** em ações destrutivas (`forget`, `migrate down`, `panic-stop` em hosts
+- **Confirmação** em ações destrutivas (`migrate down`, `panic-stop` em hosts
   de produção): `--confirm` flag obrigatória.
 - **Stdout** = dados; **stderr** = mensagens humanas/progresso. Nunca misturar.
 - **Cores** em terminal interativo (TTY), desligadas em pipe.
