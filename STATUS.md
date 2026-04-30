@@ -44,7 +44,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P2.4 | `task/P2.4-review-fresh` | T-058..T-062 | claude | codex | merged, PR #16, 2026-04-30 | #16 |
 | P2.5a | `task/P2.5a-agent-loader` | T-063..T-068, T-077, T-078 | codex | claude | merged, PR #11, 2026-04-30 | #11 |
 | P2.5b | `task/P2.5b-agent-files` | T-069..T-076 | codex | claude (+ operador em T-075/076) | merged, PR #12, 2026-04-30 | #12 |
-| P1.4 | `task/P1.4-event-kind` | T-079..T-085 | codex | claude | pending | — |
+| P1.4 | `task/P1.4-event-kind` | T-079..T-085 | codex | claude | in-review, codex | — |
 | P1.5 | `task/P1.5-json-validity` | T-086..T-091 | codex | claude | pending | — |
 | P2.6 | `task/P2.6-allowlist-fail` | T-092..T-096 | codex | claude (+ operador) | pending | — |
 | P2.7 | `task/P2.7-redact-events` | T-097..T-100 | codex | claude (+ operador) | pending | — |
@@ -182,13 +182,13 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 ## Wave 4 — Hardening (P1.4, P1.5, P2.6, P2.7)
 
 ### P1.4 — EventKind CHECK constraint
-- [ ] T-079 — pending
-- [ ] T-080 — pending
-- [ ] T-081 — pending
-- [ ] T-082 — pending
-- [ ] T-083 — pending
-- [ ] T-084 — pending
-- [ ] T-085 — pending
+- [x] T-079 — done on branch `task/P1.4-event-kind` (docs/event-kinds-audit.md)
+- [x] T-080 — done on branch `task/P1.4-event-kind` (EventKind/EventKind values audit-sync)
+- [x] T-081 — done on branch `task/P1.4-event-kind` (migration 004_event_kind_check)
+- [x] T-082 — done on branch `task/P1.4-event-kind` (filtered copy + fail-fast if invalid >5)
+- [x] T-083 — done on branch `task/P1.4-event-kind` (recreated indexes + append-only triggers)
+- [x] T-084 — done on branch `task/P1.4-event-kind` (unit test invalid kind)
+- [x] T-085 — done on branch `task/P1.4-event-kind` (property roundtrip over EVENT_KIND_VALUES)
 
 ### P1.5 — JSON validity em colunas TEXT
 - [ ] T-086 — pending
