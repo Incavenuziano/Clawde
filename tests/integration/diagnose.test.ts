@@ -137,8 +137,9 @@ describe("cli/commands/diagnose", () => {
         runDiagnose({ dbPath, format: "json", subject: "oauth" }),
       );
       const report = JSON.parse(stdout) as DiagnoseReport;
+      const status = report.checks[0]?.status ?? "missing";
       // Aceita warn (token ausente) ou ok (token presente em CI).
-      expect(["ok", "warn"]).toContain(report.checks[0]?.status);
+      expect(["ok", "warn"]).toContain(status);
       expect([0, 1]).toContain(exit);
     } finally {
       if (prevToken !== undefined) process.env.HOME = prevToken;
