@@ -6,9 +6,10 @@ After=network.target
 Type=oneshot
 WorkingDirectory=%h/.clawde
 EnvironmentFile=-%h/.clawde/config/clawde.env
-# Enfileira task URGENT invocando reflector — worker oneshot processa.
-ExecStart=%h/.bun/bin/bun run %h/.clawde/dist/cli-main.js queue \
-  --priority URGENT --agent reflector "Reflect on events from last 24h"
+# P3.4 (T-114): comando dedicado `clawde reflect` lê events + observations
+# recentes, monta prompt estruturado conforme contrato do reflector/AGENT.md
+# e enfileira como task LOW com dedupKey horário.
+ExecStart=%h/.clawde/dist/clawde reflect --since 24h
 
 # Hardening Nivel 1 (ADR 0005).
 PrivateTmp=yes

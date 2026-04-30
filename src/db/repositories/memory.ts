@@ -70,6 +70,19 @@ export class MemoryRepo {
   }
 
   /**
+   * Retorna observations criadas a partir de `cutoffIso` (ISO 8601), ordenadas
+   * mais recentes primeiro. Útil pro reflector (P3.4) montar janela operacional.
+   */
+  findRecent(cutoffIso: string, limit = 200): ReadonlyArray<MemoryObservation> {
+    const rows = this.db
+      .query<RawObservationRow, [string, number]>(
+        "SELECT * FROM memory_observations WHERE created_at >= ? ORDER BY created_at DESC LIMIT ?",
+      )
+      .all(cutoffIso, limit);
+    return rows.map(rowToObservation);
+  }
+
+  /**
    * Helper para o indexer: checa se uma session_id existe em sessions.
    * Necessário porque FK falha em INSERT se sessionId aponta pra row inexistente.
    */
