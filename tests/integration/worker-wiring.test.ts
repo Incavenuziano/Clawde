@@ -263,4 +263,27 @@ describe("worker review pipeline (opt-in)", () => {
     const events = deps.eventsRepo.queryByTaskRun(result.run.id);
     expect(events.map((e) => e.kind)).toContain("review.pipeline.exhausted");
   });
+
+  test("agente inexistente em task retorna erro claro", async () => {
+    const deps = baseDeps(testDb, mockClient);
+    const task = deps.tasksRepo.insert({
+      priority: "NORMAL",
+      prompt: "Add sum",
+      agent: "nonexistent",
+      sessionId: null,
+      workingDir: null,
+      dependsOn: [],
+      source: "cli",
+      sourceMetadata: {},
+      dedupKey: null,
+    });
+    const withResolver: RunnerDeps = {
+      ...deps,
+      resolveAgentDefinition: async () => null,
+    };
+
+    await expect(processTask(withResolver, task)).rejects.toThrow(
+      "agent 'nonexistent' not found in AGENT.md definitions",
+    );
+  });
 });

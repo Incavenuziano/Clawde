@@ -10,6 +10,7 @@
  */
 
 import type { EventKind } from "@clawde/domain/event";
+import { runAgents } from "./commands/agents.ts";
 import { runAuth } from "./commands/auth.ts";
 import { runDashboard } from "./commands/dashboard.ts";
 import { runLogs } from "./commands/logs.ts";
@@ -99,6 +100,7 @@ Commands:
   dashboard              Info do Datasette dashboard (URL, queries)
   replica <status|verify>  Saúde do Litestream replica
   review history <run-id>  Histórico do pipeline de review (Fase 9)
+  agents list             Lista AGENT.md carregados
   version                Mostra semver
   help                   Esta mensagem
 
@@ -221,6 +223,15 @@ export async function runMain(argv: ReadonlyArray<string>): Promise<number> {
       format: getOutputFormat(parsed),
       action,
     });
+  }
+
+  if (parsed.command === "agents") {
+    const action = parsed.positional[0] ?? "list";
+    if (action !== "list") {
+      emitErr(`unknown agents action: ${action} (use list)`);
+      return 1;
+    }
+    return runAgents({ format: getOutputFormat(parsed) });
   }
 
   if (parsed.command === "memory") {
