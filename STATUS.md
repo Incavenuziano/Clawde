@@ -49,7 +49,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P2.6 | `task/P2.6-allowlist-fail` | T-092..T-096 | codex | claude (+ operador) | merged, PR #21, 2026-04-30 | #21 |
 | P2.7 | `task/P2.7-redact-events` | T-097..T-100 | codex | claude (+ operador) | merged, PR #22, 2026-04-30 | #22 |
 | P3.1 | `task/P3.1-readme-status` | T-101..T-103 | claude | codex | merged, PR #18, 2026-04-30 | #18 |
-| P3.2 | `task/P3.2-cli-ops` | T-104a/b/c, T-105..T-111 | claude | codex | pending | — |
+| P3.2 | `task/P3.2-cli-ops` | T-104a/b/c, T-105..T-111 | claude | codex | in-review, PR #25, 2026-04-30 | #25 |
 | P3.4 | `task/P3.4-reflect-job` | T-112..T-115 | claude | codex | merged, PR #20, 2026-04-30 | #20 |
 | P3.5 | `task/P3.5-smoke-service` | T-116..T-121 | codex | claude | merged, PR #24, 2026-04-30 | #24 |
 | P3.6 | `task/P3.6-sdk-real-ci` | T-122..T-124 | codex | claude | pending | — |
@@ -224,16 +224,16 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 - [x] T-103 — merged, PR #18, 2026-04-30
 
 ### P3.2 — CLI commands operacionais
-- [ ] T-104a — pending — subtask de T-104 (panic-stop core: lock + signal)
-- [ ] T-104b — pending — subtask de T-104 (event + audit)
-- [ ] T-104c — pending — subtask de T-104 (alerta opcional)
-- [ ] T-105 — pending
-- [ ] T-106 — pending
-- [ ] T-107 — pending
-- [ ] T-108 — pending
-- [ ] T-109 — pending
-- [ ] T-110 — pending
-- [ ] T-111 — pending
+- [x] T-104a — in-review, PR #25, 2026-04-30 — panic lock helpers
+- [x] T-104b — in-review, PR #25, 2026-04-30 — SystemdController
+- [x] T-104c — in-review, PR #25, 2026-04-30 — clawde panic-stop
+- [x] T-105 — in-review, PR #25, 2026-04-30 — clawde panic-resume
+- [x] T-106 — in-review, PR #25, 2026-04-30 — clawde diagnose
+- [x] T-107 — in-review, PR #25, 2026-04-30 — clawde sessions list
+- [x] T-108 — in-review, PR #25, 2026-04-30 — clawde sessions show
+- [x] T-109 — in-review, PR #25, 2026-04-30 — clawde config show
+- [x] T-110 — in-review, PR #25, 2026-04-30 — clawde config validate
+- [x] T-111 — in-review, PR #25, 2026-04-30 — cut forget+audit de RF-12
 
 ### P3.4 — Reflect job estruturado
 - [x] T-112 — merged, PR #20, 2026-04-30
