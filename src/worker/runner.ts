@@ -350,6 +350,8 @@ async function runAgentWithLedger(
   const streamOpts: { prompt: string; sessionId?: string; workingDirectory?: string } = {
     prompt: effectivePrompt,
   };
+  // TODO(T-064, P2.5a): ligar policy de tools/sandbox aqui (allowedTools + allowed_writes)
+  // e registrar makePreToolUseHandler no path de execução principal do worker.
   if (task.sessionId !== null) streamOpts.sessionId = task.sessionId;
   if (workingDirectoryOverride !== null) {
     streamOpts.workingDirectory = workingDirectoryOverride;

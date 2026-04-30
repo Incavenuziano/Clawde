@@ -102,7 +102,7 @@ Input externo (Telegram, webhook, CLI local)
                 ▼
    ┌─────────────────────────┐
    │   clawde-worker         │  oneshot, event-driven
-   │   Agent SDK + sandbox   │  sandbox nivel 1/2/3
+   │   Agent SDK + sandbox   │  sandbox nivel 1 + gate de tools
    │   two-stage review      │  pipeline subagentes
    └─────────────────────────┘
 ```
@@ -193,7 +193,10 @@ max_memory_mb = 1024
 ```
 
 Defaults sane por agente em `defaultLevelForAgent` (`telegram-bot`/`github-pr-handler` → 3,
-`implementer`/`debugger` → 2, demais → 1). Ver ADR 0013.
+`implementer`/`debugger` → 2, demais → 1). Hoje, no runtime de produção, o worker segue
+com hardening systemd nível 1; os gates de tool calls (`Bash`, `Edit`, `Write`) via hooks
+estão implementados, mas só serão aplicados no path principal após o wire-up de T-064/P2.5a.
+Ver ADR 0015.
 
 ## Inspirações
 
@@ -216,7 +219,7 @@ Validadas via leitura de código (não só docs):
 | **1** Foundation (schema + repos) | ✅ | `src/db/`, `src/domain/`, `src/log/`, `src/config/` |
 | **2** Worker + SDK + sessão | ✅ | `src/worker/`, `src/sdk/`, `src/hooks/`, `src/quota/` |
 | **3** Receiver + CLI local | ✅ | `src/receiver/`, `src/cli/`, E2E lifecycle |
-| **4** Sandbox 2/3 (bwrap, netns) | ✅ | `src/sandbox/` níveis 1/2/3 + agent-config TOML |
+| **4** Sandbox 2/3 em tools (bwrap, netns) | 🟡 | `src/sandbox/` + hooks `PreToolUse` para `Bash`/`Edit`/`Write` (wire-up runtime pendente em T-064/P2.5a) |
 | **5** Memória + aprendizado | ✅ | `src/memory/`, hooks→memory, importance, reflector subagent |
 | **6** Telegram adapter | ✅ | `src/receiver/routes/telegram.ts` + `src/sanitize/` (XML envelope) |
 | **7** OAuth refresh + Datasette | ✅ | `src/auth/`, `deploy/datasette/`, `clawde dashboard` |

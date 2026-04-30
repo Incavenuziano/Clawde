@@ -41,9 +41,12 @@ injeta top-K em cada invocação. ADR 0009. **Prioridade alta.**
 Pipeline `implementer → spec-reviewer → code-quality-reviewer → verifier` em
 fresh context. ADR 0004.
 
-### RF-08 — Sandbox em níveis
+### RF-08 — Sandbox em níveis (tools)
 3 níveis (systemd hardening / +bwrap / +netns) selecionáveis por agente em
-`sandbox.toml`. ADR 0005. Linux only (RF não-alvo: macOS prod).
+`sandbox.toml`. No estado atual de runtime, o worker segue in-process com
+hardening systemd nível 1; os gates de tool calls (`Bash`, `Edit`, `Write`) via
+hooks estão implementados, mas serão aplicados no path principal após o wire-up
+de T-064/P2.5a. ADR 0015. Linux only (RF não-alvo: macOS prod).
 
 ### RF-09 — Quota tracking
 `quota_ledger` com sliding window 5h, política por priority, peak hours
@@ -81,7 +84,7 @@ Backups hourly/daily/weekly/monthly + drill obrigatório. `BEST_PRACTICES.md` §
 |--------------|---------|---------|
 | Multi-provider (OpenAI/Google/Ollama/etc) | Vantagem econômica vem de Max; complexity tax não vale | ADR 0012 |
 | Multi-user / multi-tenant | Single-user simplifica; ADRs assumem isso | ADR 0002 + 0003 |
-| Suporte a macOS em produção | Sandbox bwrap é Linux-only; macOS = dev local | ADR 0005 |
+| Suporte a macOS em produção | Sandbox bwrap/tools é Linux-only; macOS = dev local | ADR 0015 |
 | Substituir Claude Code interativo | Coexistência por design; eixo síncrono ≠ assíncrono | ADR 0011 |
 | Channels além de Telegram + webhook genérico | Escopo: WhatsApp/Discord/Slack/Signal não cabem agora | ARCHITECTURE §1.3 |
 | Skills hub com 85+ extensões prontas | Não é gateway tipo OpenClaw; agentes custom em `.claude/agents/` | ARCHITECTURE §4.2 |
@@ -99,7 +102,7 @@ Backups hourly/daily/weekly/monthly + drill obrigatório. `BEST_PRACTICES.md` §
 - **Persistência:** SQLite único (`bun:sqlite` + WAL + `sqlite-vec` + FTS5 trigram).
 - **Embeddings:** `Xenova/multilingual-e5-small` via WASM. ADR 0010.
 - **Sem deps de runtime externas** (sem Ollama, sem Chroma, sem MCP servers críticos).
-- **Sandbox obrigatório** em todo worker (Nível 1 mínimo). ADR 0005.
+- **Sandbox obrigatório** em todo worker (Nível 1 mínimo) e gate de tools para níveis 2/3. ADR 0015.
 
 ## Riscos aceitos (registrados, não mitigados além do necessário)
 
@@ -108,7 +111,7 @@ Backups hourly/daily/weekly/monthly + drill obrigatório. `BEST_PRACTICES.md` §
 2. **Anthropic outage** → downtime total do Clawde; tasks acumulam em `pending`. ADR 0012.
 3. **Bun runtime jovem** → edge cases possíveis; pin de versão + smoke test diário. ADR 0001.
 4. **macOS dev sem sandbox completo** → trabalho dev em macOS roda nível 1 only; nunca
-   processa input externo não-confiável fora de Linux. ADR 0005.
+   processa input externo não-confiável fora de Linux. ADR 0015.
 
 ## Versionamento deste documento
 
