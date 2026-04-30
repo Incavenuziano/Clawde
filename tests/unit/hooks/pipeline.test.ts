@@ -158,7 +158,7 @@ describe("hooks/handlers default emitem eventos via callback", () => {
     expect(events[0]?.payload.source).toBe("cli");
   });
 
-  test("makePreToolUseHandler captura toolName + input", async () => {
+  test("makePreToolUseHandler emite resumo allowlisted para Bash", async () => {
     const events: Array<{ kind: string; payload: Record<string, unknown> }> = [];
     const handler = makePreToolUseHandler((kind, payload) => events.push({ kind, payload }));
     await handler(
@@ -168,7 +168,47 @@ describe("hooks/handlers default emitem eventos via callback", () => {
       },
     );
     expect(events[0]?.kind).toBe("tool_use");
-    expect(events[0]?.payload.tool).toBe("Bash");
+    expect(events[0]?.payload).toEqual({
+      tool_name: "Bash",
+      command_summary: "ls",
+    });
+  });
+
+  test("makePreToolUseHandler emite path para Read", async () => {
+    const events: Array<{ kind: string; payload: Record<string, unknown> }> = [];
+    const handler = makePreToolUseHandler((kind, payload) => events.push({ kind, payload }));
+    await handler(
+      preToolInput({
+        toolName: "Read",
+        toolInput: { path: "/tmp/x.txt", token: "secret" },
+      }) as HookInput & {
+        hook: "PreToolUse";
+        payload: PreToolUsePayload;
+      },
+    );
+    expect(events[0]?.payload).toEqual({
+      tool_name: "Read",
+      path: "/tmp/x.txt",
+    });
+  });
+
+  test("makePreToolUseHandler emite path + bytes_count para Edit/Write", async () => {
+    const events: Array<{ kind: string; payload: Record<string, unknown> }> = [];
+    const handler = makePreToolUseHandler((kind, payload) => events.push({ kind, payload }));
+    await handler(
+      preToolInput({
+        toolName: "Edit",
+        toolInput: { path: "/workspace/a.ts", newText: "abc" },
+      }) as HookInput & {
+        hook: "PreToolUse";
+        payload: PreToolUsePayload;
+      },
+    );
+    expect(events[0]?.payload).toEqual({
+      tool_name: "Edit",
+      path: "/workspace/a.ts",
+      bytes_count: 3,
+    });
   });
 
   test("makePreToolUseHandler bloqueia tool fora de allowedTools", async () => {

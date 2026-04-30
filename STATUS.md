@@ -40,15 +40,15 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P1.3 | `task/P1.3-sdk-errors` | T-034..T-040 | codex | claude | merged, PR #6, 2026-04-29 | #6 |
 | P2.1 | `task/P2.1-workspace-plug` | T-041..T-046 | codex | claude | merged, PR #7, 2026-04-29 | #7 |
 | P2.2 | `task/P2.2-sandbox-tools` | T-047..T-053 | codex | code | merged, PR #10, 2026-04-30 | #10 |
-| P2.3 | `task/P2.3-external-input` | T-054..T-057 | claude | codex | pending | — |
-| P2.4 | `task/P2.4-review-fresh` | T-058..T-062 | claude | codex | pending | — |
+| P2.3 | `task/P2.3-external-input` | T-054..T-057 | claude | codex | merged, PR #15, 2026-04-30 | #15 |
+| P2.4 | `task/P2.4-review-fresh` | T-058..T-062 | claude | codex | merged, PR #16, 2026-04-30 | #16 |
 | P2.5a | `task/P2.5a-agent-loader` | T-063..T-068, T-077, T-078 | codex | claude | merged, PR #11, 2026-04-30 | #11 |
 | P2.5b | `task/P2.5b-agent-files` | T-069..T-076 | codex | claude (+ operador em T-075/076) | merged, PR #12, 2026-04-30 | #12 |
-| P1.4 | `task/P1.4-event-kind` | T-079..T-085 | codex | claude | pending | — |
-| P1.5 | `task/P1.5-json-validity` | T-086..T-091 | codex | claude | pending | — |
-| P2.6 | `task/P2.6-allowlist-fail` | T-092..T-096 | codex | claude (+ operador) | pending | — |
-| P2.7 | `task/P2.7-redact-events` | T-097..T-100 | codex | claude (+ operador) | pending | — |
-| P3.1 | `task/P3.1-readme-status` | T-101..T-103 | claude | codex | pending | — |
+| P1.4 | `task/P1.4-event-kind` | T-079..T-085 | codex | claude | merged, PR #17, 2026-04-30 | #17 |
+| P1.5 | `task/P1.5-json-validity` | T-086..T-091 | codex | claude | merged, PR #19, 2026-04-30 | #19 |
+| P2.6 | `task/P2.6-allowlist-fail` | T-092..T-096 | codex | claude (+ operador) | merged, PR #21, 2026-04-30 | #21 |
+| P2.7 | `task/P2.7-redact-events` | T-097..T-100 | codex | claude (+ operador) | merged, PR #22, 2026-04-30 | #22 |
+| P3.1 | `task/P3.1-readme-status` | T-101..T-103 | claude | codex | merged, PR #18, 2026-04-30 | #18 |
 | P3.2 | `task/P3.2-cli-ops` | T-104a/b/c, T-105..T-111 | claude | codex | pending | — |
 | P3.4 | `task/P3.4-reflect-job` | T-112..T-115 | claude | codex | pending | — |
 | P3.5 | `task/P3.5-smoke-service` | T-116..T-121 | codex | claude | pending | — |
@@ -147,17 +147,17 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 - [x] T-053 — merged, PR #10, 2026-04-30
 
 ### P2.3 — EXTERNAL_INPUT_SYSTEM_PROMPT injection
-- [ ] T-054 — pending
-- [ ] T-055 — pending
-- [ ] T-056 — pending
-- [ ] T-057 — pending
+- [x] T-054 — merged, PR #15, 2026-04-30
+- [x] T-055 — merged, PR #15, 2026-04-30
+- [x] T-056 — merged, PR #15, 2026-04-30
+- [x] T-057 — merged, PR #15, 2026-04-30
 
 ### P2.4 — Review fresh context
-- [ ] T-058 — pending
-- [ ] T-059 — pending
-- [ ] T-060 — pending
-- [ ] T-061 — pending
-- [ ] T-062 — pending
+- [x] T-058 — merged, PR #16, 2026-04-30
+- [x] T-059 — merged, PR #16, 2026-04-30
+- [x] T-060 — merged, PR #16, 2026-04-30
+- [x] T-061 — merged, PR #16, 2026-04-30
+- [x] T-062 — merged, PR #16, 2026-04-30
 
 ### P2.5 — AGENT.md loader + criação de agentes
 - [x] T-063 — merged, PR #11, 2026-04-30
@@ -182,43 +182,43 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 ## Wave 4 — Hardening (P1.4, P1.5, P2.6, P2.7)
 
 ### P1.4 — EventKind CHECK constraint
-- [ ] T-079 — pending
-- [ ] T-080 — pending
-- [ ] T-081 — pending
-- [ ] T-082 — pending
-- [ ] T-083 — pending
-- [ ] T-084 — pending
-- [ ] T-085 — pending
+- [x] T-079 — merged, PR #17, 2026-04-30
+- [x] T-080 — merged, PR #17, 2026-04-30
+- [x] T-081 — merged, PR #17, 2026-04-30
+- [x] T-082 — merged, PR #17, 2026-04-30
+- [x] T-083 — merged, PR #17, 2026-04-30
+- [x] T-084 — merged, PR #17, 2026-04-30
+- [x] T-085 — merged, PR #17, 2026-04-30
 
 ### P1.5 — JSON validity em colunas TEXT
-- [ ] T-086 — pending
-- [ ] T-087 — pending
-- [ ] T-088 — pending
-- [ ] T-089 — pending
-- [ ] T-090 — pending
-- [ ] T-091 — pending
+- [x] T-086 — merged, PR #19, 2026-04-30
+- [x] T-087 — merged, PR #19, 2026-04-30
+- [x] T-088 — merged, PR #19, 2026-04-30
+- [x] T-089 — merged, PR #19, 2026-04-30
+- [x] T-090 — merged, PR #19, 2026-04-30
+- [x] T-091 — merged, PR #19, 2026-04-30
 
 ### P2.6 — Allowlist falsa
-- [ ] T-092 — pending
-- [ ] T-093 — pending
-- [ ] T-094 — pending
-- [ ] T-095 — pending
-- [ ] T-096 — pending
+- [x] T-092 — merged, PR #21, 2026-04-30
+- [x] T-093 — merged, PR #21, 2026-04-30
+- [x] T-094 — merged, PR #21, 2026-04-30
+- [x] T-095 — merged, PR #21, 2026-04-30
+- [x] T-096 — merged, PR #21, 2026-04-30
 
 ### P2.7 — Redact em events
-- [ ] T-097 — pending
-- [ ] T-098 — pending
-- [ ] T-099 — pending
-- [ ] T-100 — pending
+- [x] T-097 — merged, PR #22, 2026-04-30
+- [x] T-098 — merged, PR #22, 2026-04-30
+- [x] T-099 — merged, PR #22, 2026-04-30
+- [x] T-100 — merged, PR #22, 2026-04-30
 
 ---
 
 ## Wave 5 — Alinhamento (P3.1, P3.2, P3.4, P3.5, P3.6)
 
 ### P3.1 — README/status
-- [ ] T-101 — pending
-- [ ] T-102 — pending
-- [ ] T-103 — pending
+- [x] T-101 — merged, PR #18, 2026-04-30
+- [x] T-102 — merged, PR #18, 2026-04-30
+- [x] T-103 — merged, PR #18, 2026-04-30
 
 ### P3.2 — CLI commands operacionais
 - [ ] T-104a — pending — subtask de T-104 (panic-stop core: lock + signal)

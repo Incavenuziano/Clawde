@@ -24,6 +24,11 @@ export interface BwrapConfig {
   readonly readWritePaths: ReadonlyArray<{ host: string; sandbox: string }>;
   /** Modo de rede. */
   readonly network: NetworkMode;
+  /**
+   * Backend real de allowlist (nftables/netns) disponível.
+   * Enquanto false/undefined, network='allowlist' falha fechada.
+   */
+  readonly allowlistBackendAvailable?: boolean;
   /** Working directory dentro do sandbox. */
   readonly workdir?: string;
   /** Variáveis de ambiente (passadas pra bwrap --setenv). */
@@ -90,7 +95,11 @@ export function buildBwrapArgs(
   if (config.network === "host") {
     args.push("--share-net");
   } else if (config.network === "allowlist") {
-    // Allowlist real precisa nftables setup externo (T57); aqui só não unshare net.
+    if (config.allowlistBackendAvailable !== true) {
+      throw new Error(
+        "network='allowlist' requires nftables backend not yet implemented. Use 'host' explicitly.",
+      );
+    }
     args.push("--share-net");
   }
   // 'loopback-only' e 'none' = mantém net unshared. loopback exists by default

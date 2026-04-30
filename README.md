@@ -4,7 +4,7 @@
 > Receiver always-on minimal + worker oneshot event-driven. Não substitui Claude Code
 > interativo — coexistem.
 
-**Status:** Todas as 9 fases entregues. **556 testes passando, 0 falhas**, lint + TypeScript strict clean. Pronto pra uso pessoal Linux.
+**Status:** Bibliotecas das 9 fases originais implementadas. **Daemon executável em hardening de produção** via plano de remediação ([CONSOLIDATED_FIX_PLAN.md](CONSOLIDATED_FIX_PLAN.md) / [PRODUCTION_READINESS_PLAN.md](PRODUCTION_READINESS_PLAN.md), tracking em [STATUS.md](STATUS.md)). Wave 1 (boot/entrypoints) + Wave 2 (operação consistente: retry, quota gate, SDK errors) + Wave 3 (security core: workspace, sandbox em tools, AGENT.md loader, external input safety, review fresh context) **mergeadas**. Wave 4 (hardening) e Wave 5/6 (alinhamento + ops) parciais. **608+ testes passando, 0 falhas**, lint + TypeScript strict clean. **Não usar em produção** até Wave 5/6 mínimas (smoke service + monitoring + retention) — biblioteca-só pra uso pessoal Linux por enquanto.
 
 ## O que é
 
@@ -63,8 +63,14 @@ bilateral por design.
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | ~1200 | Comparativo OpenClaw/Hermes/Clawde + decisões arquiteturais detalhadas |
 | [`BLUEPRINT.md`](BLUEPRINT.md) | ~1130 | Spec executável: tree, tipos do domínio, OpenAPI, hooks, agents, CLI, config |
 | [`BEST_PRACTICES.md`](BEST_PRACTICES.md) | ~1245 | Manual operacional: 6 invariantes + segurança + testes + logging + audit + dev/ops + incidentes |
-| [`docs/adr/`](docs/adr/) | 13 ADRs | Decisões arquiteturais imutáveis (formato MADR simplificado) |
-| [`docs/BACKLOG.md`](docs/BACKLOG.md) | ~660 | Tasks atômicas (Fases 1–9 entregues) |
+| [`CONSOLIDATED_FIX_PLAN.md`](CONSOLIDATED_FIX_PLAN.md) | ~1200 | Plano de remediação consolidado pós-auditoria dupla (Claude + Codex) — 21 itens P0..P3 |
+| [`PRODUCTION_READINESS_PLAN.md`](PRODUCTION_READINESS_PLAN.md) | ~700 | Versão Codex do plano de readiness — origem dos itens P-X.Y |
+| [`EXECUTION_BACKLOG.md`](EXECUTION_BACKLOG.md) | ~1100 | Backlog atômico: 143 tasks em 6 waves, com critérios de aceite e snippets |
+| [`STATUS.md`](STATUS.md) | live | Estado de cada sub-fase + check-list de tasks; atualizado por PR |
+| [`docs/adr/`](docs/adr/) | 15 ADRs | Decisões arquiteturais imutáveis (formato MADR simplificado) |
+| [`docs/wave-summaries/`](docs/wave-summaries/) | live | Audit de cada wave após fechamento (wave-N.md) |
+| [`docs/BACKLOG.md`](docs/BACKLOG.md) | ~660 | Tasks atômicas das 9 fases originais (entregues como bibliotecas) |
+| [`docs/KNOWN_GAPS.md`](docs/KNOWN_GAPS.md) | ~250 | Gaps documentados que viraram débito pós-MVP |
 
 **Como ler primeira vez (~30 min):**
 1. README (este, ~5min)
@@ -193,10 +199,10 @@ max_memory_mb = 1024
 ```
 
 Defaults sane por agente em `defaultLevelForAgent` (`telegram-bot`/`github-pr-handler` → 3,
-`implementer`/`debugger` → 2, demais → 1). Hoje, no runtime de produção, o worker segue
-com hardening systemd nível 1; os gates de tool calls (`Bash`, `Edit`, `Write`) via hooks
-estão implementados, mas só serão aplicados no path principal após o wire-up de T-064/P2.5a.
-Ver ADR 0015.
+`implementer`/`debugger` → 2, demais → 1). No runtime atual, os gates de tool calls
+(`Bash`, `Edit`, `Write`, `Read`) estão wirados no loop principal. `network="allowlist"`
+permanece aceito no schema por compatibilidade, mas está em **fail-closed** até existir
+backend nftables/netns: use `host` explicitamente para rede aberta. Ver ADR 0015.
 
 ## Inspirações
 
@@ -213,21 +219,62 @@ Validadas via leitura de código (não só docs):
 
 ## Status & roadmap
 
-| Fase | Status | Saída |
-|------|--------|-------|
-| **0** Design | ✅ | ARCHITECTURE + BLUEPRINT + BEST_PRACTICES + 13 ADRs + REQUIREMENTS + BACKLOG |
+### Status por componente: biblioteca vs daemon integrado
+
+`✅ lib` significa que a biblioteca está implementada e testada isoladamente. `✅ integrado`
+significa que o daemon (worker/receiver) consome ativamente o componente em runtime.
+
+| Componente | Lib | Integrado | Tasks de remediação |
+|-----------|-----|-----------|---------------------|
+| Schema + repos (sqlite-vec, FTS5, triggers) | ✅ | ✅ | — |
+| Worker runner (lease, retry, reconcile) | ✅ | ✅ | T-006/T-020/T-021 (P0.1, P1.1) |
+| Receiver server (HTTP/unix, rate-limit, dedup) | ✅ | ✅ | T-001..T-005 (P0.1) |
+| Main entrypoints (`receiver-main.js`, `worker-main.js`) | ✅ | ✅ | T-001..T-013 (P0.1, merged PR #2) |
+| Worker trigger event-driven (systemctl + .path fallback) | ✅ | ✅ | T-014..T-018 (P0.2, merged PR #3) |
+| Config schema (telegram/review/replica) | ✅ | ✅ | T-019 (P0.3, merged PR #1) |
+| Quota policy + defer via `not_before` | ✅ | ✅ | T-024..T-033 (P1.2, merged PR #5) |
+| SDK error tipados + auto-refresh + 429 handler | ✅ | ✅ | T-034..T-040 (P1.3, merged PR #6) |
+| Workspace ephemeral (git worktree + reconcile cleanup) | ✅ | ✅ | T-041..T-046 (P2.1, merged PR #7) |
+| Sandbox em tools (`PreToolUse` allowlist + path policy) | ✅ | ✅ | T-047..T-053 (P2.2, merged PR #10) |
+| AGENT.md loader + agent definitions | ✅ | ✅ | T-063..T-068, T-077, T-078 (P2.5a, merged PR #11) |
+| Agent profiles (.claude/agents/*.md) | ✅ | ✅ | T-069..T-076 (P2.5b, merged PR #12) |
+| External input safety (XML envelope + system prompt) | ✅ | ✅ | T-054..T-057 (P2.3, merged PR #15) |
+| Review pipeline fresh-context (sessionId per stage) | ✅ | ✅ | T-058..T-062 (P2.4, merged PR #16) |
+| EventKind CHECK constraint + json_valid | ✅ | ✅ | T-079..T-085 (P1.4, merged PR #17) |
+| Memória + aprendizado | ✅ | ✅ | (Fase 5 original — em uso via memory inject) |
+| Telegram adapter | ✅ | ✅ | (Fase 6 original — `/webhook/telegram` ativa) |
+| OAuth refresh + Datasette | ✅ | ✅ | (Fase 7 original — auto-refresh em 401) |
+| Multi-host (Litestream) | ✅ | ⚠️ opt-in | (Fase 8 original — config-gated) |
+| Two-stage review pipeline | ✅ | ✅ | (Fase 9 + P2.4 fresh context) |
+| Allowlist real de egress sandbox 2/3 | ✅ lib | ❌ não wirado | T-092..T-096 (P2.6, **pending**) |
+| Redact em events | ✅ lib | ❌ não wirado | T-097..T-100 (P2.7, **pending**) |
+| JSON validity em outras colunas TEXT | — | ❌ | T-086..T-091 (P1.5, **pending**) |
+| CLI ops (panic-stop, diagnose, sessions, reflect) | ❌ | ❌ | T-104..T-115 (P3.2/P3.4, **pending**) |
+| Smoke service + SDK real CI | ❌ | ❌ | T-116..T-124 (P3.5/P3.6, **pending**) |
+| Ops hardening (CI gates, alerts, backup, restore drill) | ❌ | ❌ | T-125..T-143 (Wave 6, **pending**) |
+
+Sub-fases ainda em flight: **2 followups Wave 3** (Read allowlist, agent Bash level) — ver
+[STATUS.md](STATUS.md). Estado live de cada sub-fase + tasks atômicas em
+[STATUS.md](STATUS.md) + [EXECUTION_BACKLOG.md](EXECUTION_BACKLOG.md).
+
+### Roadmap original (9 fases) — bibliotecas
+
+Backlog histórico de implementação inicial em [`docs/BACKLOG.md`](docs/BACKLOG.md).
+
+| Fase | Status lib | Saída |
+|------|------------|-------|
+| **0** Design | ✅ | ARCHITECTURE + BLUEPRINT + BEST_PRACTICES + 15 ADRs + REQUIREMENTS + BACKLOG |
 | **1** Foundation (schema + repos) | ✅ | `src/db/`, `src/domain/`, `src/log/`, `src/config/` |
 | **2** Worker + SDK + sessão | ✅ | `src/worker/`, `src/sdk/`, `src/hooks/`, `src/quota/` |
 | **3** Receiver + CLI local | ✅ | `src/receiver/`, `src/cli/`, E2E lifecycle |
-| **4** Sandbox 2/3 em tools (bwrap, netns) | 🟡 | `src/sandbox/` + hooks `PreToolUse` para `Bash`/`Edit`/`Write` (wire-up runtime pendente em T-064/P2.5a) |
+| **4** Sandbox 2/3 em tools (bwrap, netns) | ✅ | `src/sandbox/` + hooks `PreToolUse` (Bash em level≥2 fail-safe; Estratégia A bwrap-subprocess deferred — ADR 0015) |
 | **5** Memória + aprendizado | ✅ | `src/memory/`, hooks→memory, importance, reflector subagent |
 | **6** Telegram adapter | ✅ | `src/receiver/routes/telegram.ts` + `src/sanitize/` (XML envelope) |
 | **7** OAuth refresh + Datasette | ✅ | `src/auth/`, `deploy/datasette/`, `clawde dashboard` |
 | **8** Multi-host (Litestream) | ✅ | `src/replica/`, `deploy/litestream/`, `clawde replica` |
-| **9** Two-stage review pipeline | ✅ | `src/review/` (implementer + spec + code-quality) |
+| **9** Two-stage review pipeline | ✅ | `src/review/` (implementer + spec + code-quality) + fresh context (P2.4) |
 
-Backlog completo em [`docs/BACKLOG.md`](docs/BACKLOG.md). 556 testes / 0 falhas /
-~14K LOC TS + 13 ADRs + 6 docs estruturais.
+608+ testes / 0 falhas / ~16K LOC TS + 15 ADRs + 9 docs estruturais.
 
 ## Licença
 

@@ -5,7 +5,9 @@
  */
 
 import type { Event, EventKind, NewEvent } from "@clawde/domain/event";
+import { redact } from "@clawde/log";
 import type { ClawdeDatabase } from "../client.ts";
+import { JsonCorruptionError } from "./tasks.ts";
 
 interface RawEventRow {
   id: number;
@@ -19,6 +21,12 @@ interface RawEventRow {
 }
 
 function rowToEvent(r: RawEventRow): Event {
+  let payload: Record<string, unknown>;
+  try {
+    payload = JSON.parse(r.payload) as Record<string, unknown>;
+  } catch (error) {
+    throw new JsonCorruptionError(r.id, "payload", r.payload, { cause: error });
+  }
   return {
     id: r.id,
     ts: r.ts,
@@ -27,8 +35,31 @@ function rowToEvent(r: RawEventRow): Event {
     traceId: r.trace_id,
     spanId: r.span_id,
     kind: r.kind,
-    payload: JSON.parse(r.payload) as Record<string, unknown>,
+    payload,
   };
+}
+
+export interface QueryEventsOptions {
+  readonly onCorruption?: (error: JsonCorruptionError) => void;
+}
+
+function mapEvents(
+  rows: ReadonlyArray<RawEventRow>,
+  options?: QueryEventsOptions,
+): ReadonlyArray<Event> {
+  const events: Event[] = [];
+  for (const row of rows) {
+    try {
+      events.push(rowToEvent(row));
+    } catch (error) {
+      if (error instanceof JsonCorruptionError && options?.onCorruption !== undefined) {
+        options.onCorruption(error);
+        continue;
+      }
+      throw error;
+    }
+  }
+  return events;
 }
 
 export class EventsRepo {
@@ -38,6 +69,7 @@ export class EventsRepo {
    * INSERT em events. Único write permitido (UPDATE/DELETE bloqueados por triggers).
    */
   insert(input: NewEvent): Event {
+    const safePayload = redact(input.payload) as Record<string, unknown>;
     const row = this.db
       .query<
         RawEventRow,
@@ -53,7 +85,7 @@ export class EventsRepo {
         input.traceId,
         input.spanId,
         input.kind,
-        JSON.stringify(input.payload),
+        JSON.stringify(safePayload),
       );
     if (row === null) {
       throw new Error("INSERT...RETURNING returned null");
@@ -61,26 +93,35 @@ export class EventsRepo {
     return rowToEvent(row);
   }
 
-  queryByTaskRun(taskRunId: number): ReadonlyArray<Event> {
+  queryByTaskRun(taskRunId: number, options?: QueryEventsOptions): ReadonlyArray<Event> {
     const rows = this.db
       .query<RawEventRow, [number]>("SELECT * FROM events WHERE task_run_id = ? ORDER BY ts, id")
       .all(taskRunId);
-    return rows.map(rowToEvent);
+    return mapEvents(rows, options);
   }
 
-  queryByTrace(traceId: string): ReadonlyArray<Event> {
+  queryByTrace(traceId: string, options?: QueryEventsOptions): ReadonlyArray<Event> {
     const rows = this.db
       .query<RawEventRow, [string]>("SELECT * FROM events WHERE trace_id = ? ORDER BY ts, id")
       .all(traceId);
-    return rows.map(rowToEvent);
+    return mapEvents(rows, options);
   }
 
-  queryByKind(kind: EventKind, limit = 100): ReadonlyArray<Event> {
+  queryByKind(kind: EventKind, limit = 100, options?: QueryEventsOptions): ReadonlyArray<Event> {
     const rows = this.db
       .query<RawEventRow, [EventKind, number]>(
         "SELECT * FROM events WHERE kind = ? ORDER BY ts DESC LIMIT ?",
       )
       .all(kind, limit);
-    return rows.map(rowToEvent);
+    return mapEvents(rows, options);
+  }
+
+  querySince(cutoffIso: string, limit = 100, options?: QueryEventsOptions): ReadonlyArray<Event> {
+    const rows = this.db
+      .query<RawEventRow, [string, number]>(
+        "SELECT * FROM events WHERE ts >= ? ORDER BY ts DESC LIMIT ?",
+      )
+      .all(cutoffIso, limit);
+    return mapEvents(rows, options);
   }
 }

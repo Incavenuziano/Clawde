@@ -51,6 +51,63 @@ export interface PreToolUseAgentPolicy {
   };
 }
 
+function summarizeBashCommand(toolInput: Readonly<Record<string, unknown>>): string {
+  const raw = toolInput.command;
+  if (typeof raw !== "string") return "";
+  return raw.slice(0, 80);
+}
+
+function extractPath(toolInput: Readonly<Record<string, unknown>>): string {
+  const candidates = [toolInput.path, toolInput.file_path];
+  for (const candidate of candidates) {
+    if (typeof candidate === "string") return candidate;
+  }
+  return "";
+}
+
+function estimateWriteBytes(toolInput: Readonly<Record<string, unknown>>): number {
+  const candidates = [
+    toolInput.content,
+    toolInput.text,
+    toolInput.newText,
+    toolInput.new_str,
+    toolInput.old_str,
+    toolInput.patch,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate === "string") {
+      return Buffer.byteLength(candidate, "utf-8");
+    }
+  }
+  return 0;
+}
+
+function summarizeToolUse(
+  toolName: string,
+  toolInput: Readonly<Record<string, unknown>>,
+): Record<string, unknown> {
+  if (toolName === "Bash") {
+    return {
+      tool_name: "Bash",
+      command_summary: summarizeBashCommand(toolInput),
+    };
+  }
+  if (toolName === "Read") {
+    return {
+      tool_name: "Read",
+      path: extractPath(toolInput),
+    };
+  }
+  if (toolName === "Edit" || toolName === "Write") {
+    return {
+      tool_name: toolName,
+      path: extractPath(toolInput),
+      bytes_count: estimateWriteBytes(toolInput),
+    };
+  }
+  return { tool_name: toolName };
+}
+
 function normalizePath(input: string): string {
   return input.replace(/\\/g, "/").trim();
 }
@@ -134,8 +191,7 @@ export function makePreToolUseHandler(
     }
 
     if (toolName === "Edit" || toolName === "Write") {
-      const rawPath = input.payload.toolInput.path;
-      const path = typeof rawPath === "string" ? rawPath : "";
+      const path = extractPath(input.payload.toolInput);
       const allowedWrites = agent?.sandbox.allowed_writes ?? [];
       if (allowedWrites.length > 0 && !isAllowedWritePath(path, allowedWrites)) {
         emit("tool_blocked", {
@@ -152,8 +208,7 @@ export function makePreToolUseHandler(
     // Empty array = fail-closed, evita exfiltração via Read pra agentes que
     // processam input adversarial com auto-resposta (telegram-bot, etc).
     if (toolName === "Read" && agent?.sandbox.allowed_reads !== undefined) {
-      const rawPath = input.payload.toolInput.path;
-      const path = typeof rawPath === "string" ? rawPath : "";
+      const path = extractPath(input.payload.toolInput);
       if (!isAllowedReadPath(path, agent.sandbox.allowed_reads)) {
         emit("tool_blocked", {
           tool: toolName,
@@ -164,7 +219,7 @@ export function makePreToolUseHandler(
       }
     }
 
-    emit("tool_use", { tool: input.payload.toolName, input: input.payload.toolInput });
+    emit("tool_use", summarizeToolUse(input.payload.toolName, input.payload.toolInput));
     return { ok: true };
   };
 }

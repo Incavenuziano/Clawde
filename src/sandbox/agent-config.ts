@@ -11,6 +11,8 @@ import { parse as parseTOML } from "smol-toml";
 import { z } from "zod";
 import type { SandboxLevel } from "./bwrap.ts";
 
+// Mantemos "allowlist" no schema por compatibilidade de config.
+// Em runtime (P2.6), bwrap falha fechada até backend nftables existir.
 export const NetworkModeSchema = z.enum(["allowlist", "loopback-only", "none", "host"]);
 
 export const SandboxLevelSchema = z.union([z.literal(1), z.literal(2), z.literal(3)]);

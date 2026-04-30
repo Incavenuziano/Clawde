@@ -13,6 +13,7 @@
 
 import { type ClawdeDatabase, closeDb, openDb } from "@clawde/db/client";
 import { EventsRepo } from "@clawde/db/repositories/events";
+import type { JsonCorruptionError } from "@clawde/db/repositories/tasks";
 import type { Event, EventKind } from "@clawde/domain/event";
 import { type OutputFormat, emit, emitErr } from "../output.ts";
 
@@ -63,13 +64,18 @@ export function runLogs(options: LogsOptions): number {
   try {
     const repo = new EventsRepo(db);
     let events: ReadonlyArray<Event> = [];
+    let corruptedRows = 0;
+    const onCorruption = (error: JsonCorruptionError): void => {
+      corruptedRows += 1;
+      emitErr(`WARN: row ${error.rowId} corrupted (column ${error.column}); skipping`);
+    };
 
     if (options.taskRunId !== undefined) {
-      events = repo.queryByTaskRun(options.taskRunId);
+      events = repo.queryByTaskRun(options.taskRunId, { onCorruption });
     } else if (options.traceId !== undefined) {
-      events = repo.queryByTrace(options.traceId);
+      events = repo.queryByTrace(options.traceId, { onCorruption });
     } else if (options.kind !== undefined) {
-      events = repo.queryByKind(options.kind, options.limit);
+      events = repo.queryByKind(options.kind, options.limit, { onCorruption });
     } else if (options.since !== undefined) {
       const ms = parseSinceToMs(options.since);
       if (ms === null) {
@@ -77,31 +83,7 @@ export function runLogs(options: LogsOptions): number {
         return 1;
       }
       const cutoff = new Date(Date.now() - ms).toISOString();
-      events = db
-        .query<
-          {
-            id: number;
-            ts: string;
-            task_run_id: number | null;
-            session_id: string | null;
-            trace_id: string | null;
-            span_id: string | null;
-            kind: EventKind;
-            payload: string;
-          },
-          [string, number]
-        >("SELECT * FROM events WHERE ts >= ? ORDER BY ts DESC LIMIT ?")
-        .all(cutoff, options.limit)
-        .map((r) => ({
-          id: r.id,
-          ts: r.ts,
-          taskRunId: r.task_run_id,
-          sessionId: r.session_id,
-          traceId: r.trace_id,
-          spanId: r.span_id,
-          kind: r.kind,
-          payload: JSON.parse(r.payload) as Record<string, unknown>,
-        }));
+      events = repo.querySince(cutoff, options.limit, { onCorruption });
     } else {
       emitErr("error: at least one of --task, --trace, --since, --kind required");
       return 1;
@@ -109,7 +91,10 @@ export function runLogs(options: LogsOptions): number {
 
     emit(options.format, events, (d) => {
       const list = d as ReadonlyArray<Event>;
-      if (list.length === 0) return "(no events)";
+      if (list.length === 0) {
+        if (corruptedRows > 0) return "(no events; all matching rows were corrupted)";
+        return "(no events)";
+      }
       return list.map(renderEventLine).join("\n");
     });
     return 0;

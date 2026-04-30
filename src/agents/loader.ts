@@ -28,6 +28,13 @@ export interface AgentDefinition {
   readonly sandbox: AgentSandboxConfig;
 }
 
+export interface AgentPolicyWarning {
+  readonly kind: "bash_disallowed_by_sandbox_level";
+  readonly agentName: string;
+  readonly agentDir: string;
+  readonly sandboxLevel: number;
+}
+
 export class AgentDefinitionError extends Error {
   constructor(
     message: string,
@@ -146,6 +153,15 @@ export function loadAgentDefinition(agentDir: string): AgentDefinition {
 }
 
 export function loadAllAgentDefinitions(agentsRoot: string): ReadonlyArray<AgentDefinition> {
+  return loadAllAgentDefinitionsWithWarnings(agentsRoot);
+}
+
+export function loadAllAgentDefinitionsWithWarnings(
+  agentsRoot: string,
+  options?: {
+    readonly onWarning?: (warning: AgentPolicyWarning) => void;
+  },
+): ReadonlyArray<AgentDefinition> {
   if (!existsSync(agentsRoot)) return [];
   const defs: AgentDefinition[] = [];
   for (const entry of readdirSync(agentsRoot)) {
@@ -157,7 +173,16 @@ export function loadAllAgentDefinitions(agentsRoot: string): ReadonlyArray<Agent
       continue;
     }
     if (!stat.isDirectory()) continue;
-    defs.push(loadAgentDefinition(dir));
+    const def = loadAgentDefinition(dir);
+    if (def.frontmatter.allowedTools.includes("Bash") && def.sandbox.level >= 2) {
+      options?.onWarning?.({
+        kind: "bash_disallowed_by_sandbox_level",
+        agentName: def.name,
+        agentDir: dir,
+        sandboxLevel: def.sandbox.level,
+      });
+    }
+    defs.push(def);
   }
   defs.sort((a, b) => a.name.localeCompare(b.name));
   return defs;

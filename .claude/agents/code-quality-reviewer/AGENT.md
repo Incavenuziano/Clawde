@@ -2,8 +2,11 @@
 name: code-quality-reviewer
 role: "Valida qualidade não-funcional e riscos óbvios na implementação"
 model: sonnet
-allowedTools: [Read, Grep, Glob, Bash]
-disallowedTools: [Edit, Write, WebFetch, WebSearch]
+# Bash removido: em level=2 o runtime auto-disallow (P2.2 T-050 fail-safe), e
+# este agente fica fail-honest ao explicitar que é review-by-reading. Lint/format
+# pode rodar antes via verifier (level=1 com Bash). Ver ADR 0015.
+allowedTools: [Read, Grep, Glob]
+disallowedTools: [Bash, Edit, Write, WebFetch, WebSearch]
 maxTurns: 8
 sandboxLevel: 2
 requiresWorkspace: false

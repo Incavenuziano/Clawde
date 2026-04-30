@@ -51,6 +51,35 @@ como `task_run.status='failed'` com `error='review_loop_exhausted'`.
 Tasks `LOW` (cleanup, indexing, smoke test) **podem** pular o pipeline — define-se em
 `tasks.priority` no enqueue.
 
+## Implementação — fresh-context invariants (T-058 / P2.4)
+
+**Stages NUNCA herdam `task.sessionId` nem compartilham sessão entre si.** Cada stage
+do pipeline ganha `sessionId` próprio derivado de:
+
+```
+deriveSessionId({
+  agent: inv.role,                                    // implementer | spec-reviewer | code-quality-reviewer
+  workingDir: workspaceOverride ?? task.workingDir,   // ou "/no-workspace"
+  intent: `task-${task.id}-${inv.role}-attempt-${run.attemptN}`,
+})
+```
+
+Consequências dessa derivação:
+
+- Implementer não vê histórico anterior de spec-reviewer (anchor bias zero).
+- Reviewers não compartilham contexto entre si (spec ≠ qualidade independentes).
+- Retries (`attempt_n+1` após reconcile/falha) ganham novas sessões, garantindo que
+  uma tentativa não envenene a seguinte.
+- Stages do mesmo role dentro do mesmo `attempt_n` (ex: implementer chamado novamente
+  após rejeição do spec-reviewer) reutilizam o mesmo `sessionId` (intent é determinístico),
+  preservando contexto de iteração interna do role mas isolando entre roles.
+
+`systemPrompt` do role (`ROLE_SYSTEM_PROMPTS[role]`) chega via `appendSystemPrompt` da
+SDK — system content confiável — em vez de concatenado ao user prompt (T-059). Isso evita
+contamination do user content e separa instrução curada (system) de iteração da task (user).
+
+Validação em `tests/integration/review-fresh-context.test.ts`.
+
 ## Consequências
 
 **Positivas**
