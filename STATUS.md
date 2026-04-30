@@ -48,7 +48,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P1.5 | `task/P1.5-json-validity` | T-086..T-091 | codex | claude | in-progress, codex | — |
 | P2.6 | `task/P2.6-allowlist-fail` | T-092..T-096 | codex | claude (+ operador) | pending | — |
 | P2.7 | `task/P2.7-redact-events` | T-097..T-100 | codex | claude (+ operador) | pending | — |
-| P3.1 | `task/P3.1-readme-status` | T-101..T-103 | claude | codex | pending | — |
+| P3.1 | `task/P3.1-readme-status` | T-101..T-103 | claude | codex | in-progress, claude | — |
 | P3.2 | `task/P3.2-cli-ops` | T-104a/b/c, T-105..T-111 | claude | codex | pending | — |
 | P3.4 | `task/P3.4-reflect-job` | T-112..T-115 | claude | codex | pending | — |
 | P3.5 | `task/P3.5-smoke-service` | T-116..T-121 | codex | claude | pending | — |
@@ -216,9 +216,9 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 ## Wave 5 — Alinhamento (P3.1, P3.2, P3.4, P3.5, P3.6)
 
 ### P3.1 — README/status
-- [ ] T-101 — pending
-- [ ] T-102 — pending
-- [ ] T-103 — pending
+- [ ] T-101 — in-progress
+- [ ] T-102 — in-progress
+- [ ] T-103 — in-progress
 
 ### P3.2 — CLI commands operacionais
 - [ ] T-104a — pending — subtask de T-104 (panic-stop core: lock + signal)
