@@ -45,6 +45,8 @@ export const EVENT_KIND_VALUES = [
   "migration_fail",
   "maintenance_start",
   "maintenance_end",
+  "smoke.sdk_real_ping_ok",
+  "smoke.sdk_real_ping_fail",
   // security
   "prompt_guard_alert",
   "panic_stop",
