@@ -8,6 +8,8 @@ maxTurns: 10
 # sandboxLevel=1 enquanto Estratégia A (bwrap subprocess wrapper) não existir.
 # Em level >= 2 Bash é auto-disallowed pelo runtime (P2.2 T-050), e este agente
 # precisa rodar `bun test` no workspace. Ver ADR 0015.
+# Trade-off explícito: level=1 mantém risco de execução de comandos influenciados
+# por conteúdo não-confiável já presente no workspace (prompt injection em arquivos).
 sandboxLevel: 1
 requiresWorkspace: true
 ---

@@ -1,6 +1,6 @@
 import { homedir, hostname } from "node:os";
 import { basename, dirname, join } from "node:path";
-import { AgentDefinitionError, loadAllAgentDefinitions } from "@clawde/agents";
+import { AgentDefinitionError, loadAllAgentDefinitionsWithWarnings } from "@clawde/agents";
 import { loadConfig } from "@clawde/config";
 import { closeDb, openDb } from "@clawde/db/client";
 import { applyPending, defaultMigrationsDir } from "@clawde/db/migrations";
@@ -75,7 +75,17 @@ export async function bootstrap(
     const agentsRoot = join(expandHome(config.clawde.home), "agents");
     const agentDefs = (() => {
       try {
-        return loadAllAgentDefinitions(agentsRoot);
+        return loadAllAgentDefinitionsWithWarnings(agentsRoot, {
+          onWarning: (warning) => {
+            if (warning.kind === "bash_disallowed_by_sandbox_level") {
+              logger.warn("agent policy mismatch: Bash will be blocked at runtime", {
+                agent: warning.agentName,
+                sandbox_level: warning.sandboxLevel,
+                hint: "Set sandbox level to 1 or remove Bash from allowedTools (ADR 0015 / T-050).",
+              });
+            }
+          },
+        });
       } catch (err) {
         if (err instanceof AgentDefinitionError) {
           const agentName = basename(dirname(err.agentPath));
