@@ -97,7 +97,10 @@ describe("worker memory inject (opt-in)", () => {
     await processTask(enrichedDeps, task);
     expect(mockClient.invocations.length).toBe(1);
     const sentPrompt = mockClient.invocations[0]?.prompt ?? "";
-    expect(sentPrompt).toContain("RULE_X: never");
+    const sentSystem = mockClient.invocations[0]?.appendSystemPrompt ?? "";
+    // T-055: memory snippet é system prompt confiável, NÃO user content.
+    expect(sentSystem).toContain("RULE_X: never");
+    expect(sentPrompt).not.toContain("RULE_X: never");
     expect(sentPrompt).toContain("explica X");
   });
 
