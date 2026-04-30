@@ -22,6 +22,7 @@ import type { MemoryRepo } from "@clawde/db/repositories/memory";
 import type { TaskRunsRepo } from "@clawde/db/repositories/task-runs";
 import type { TasksRepo } from "@clawde/db/repositories/tasks";
 import type { QuotaPolicy } from "@clawde/domain/quota";
+import { deriveSessionId } from "@clawde/domain/session";
 import type { Task, TaskRun, TaskSource } from "@clawde/domain/task";
 import { type PreToolUsePayload, makePreToolUseHandler } from "@clawde/hooks";
 import type { Logger } from "@clawde/log";
@@ -241,6 +242,7 @@ export async function processTask(deps: RunnerDeps, task: Task): Promise<Process
               deps,
               task,
               run.id,
+              run.attemptN,
               effectivePrompt,
               ephemeralWorkspacePath,
               agentDef,
@@ -519,6 +521,7 @@ async function runWithReviewPipeline(
   deps: RunnerDeps,
   task: Task,
   taskRunId: number,
+  attemptN: number,
   effectivePrompt: string,
   workingDirectoryOverride: string | null,
   agentDef: AgentDefinitionLike | null,
@@ -532,7 +535,11 @@ async function runWithReviewPipeline(
 
   const stageRunner: import("@clawde/review").StageRunner = async (inv) => {
     const parts: string[] = [];
-    const fullPrompt = `${inv.systemPrompt}\n\n${inv.prompt}`;
+    // T-059: prompt do user contém apenas inv.prompt (sem systemPrompt
+    // concatenado). System prompt do role vai pra appendSystemPrompt via
+    // composeAppendSystemPrompt.rolePrompt — separação semântica entre
+    // instrução curada (system) e conteúdo da iteração (user).
+    const stageWorkingDir = workingDirectoryOverride ?? task.workingDir ?? "/no-workspace";
     const streamOpts: {
       prompt: string;
       sessionId?: string;
@@ -542,7 +549,7 @@ async function runWithReviewPipeline(
       disallowedTools?: ReadonlyArray<string>;
       maxTurns?: number;
     } = {
-      prompt: fullPrompt,
+      prompt: inv.prompt,
     };
     if (agentDef?.frontmatter?.maxTurns !== undefined) {
       streamOpts.maxTurns = agentDef.frontmatter.maxTurns;
@@ -553,16 +560,25 @@ async function runWithReviewPipeline(
     if (agentDef?.frontmatter?.disallowedTools?.length) {
       streamOpts.disallowedTools = agentDef.frontmatter.disallowedTools;
     }
-    if (task.sessionId !== null) streamOpts.sessionId = task.sessionId;
+    // T-058: deriva sessionId fresh por stage. Cada role roda em contexto
+    // próprio (não compartilhado com task.sessionId nem entre stages), garantindo
+    // que reviewers não vejam contexto do implementer e vice-versa. Inclui
+    // attemptN pra que retries também ganhem sessões novas.
+    streamOpts.sessionId = deriveSessionId({
+      agent: inv.role,
+      workingDir: stageWorkingDir,
+      intent: `task-${task.id}-${inv.role}-attempt-${attemptN}`,
+    });
     if (workingDirectoryOverride !== null) {
       streamOpts.workingDirectory = workingDirectoryOverride;
     } else if (task.workingDir !== null) {
       streamOpts.workingDirectory = task.workingDir;
     }
-    // T-054 + T-055: appendSystemPrompt compõe role/external/prior_context em
-    // cada stage. inv.systemPrompt continua no user prompt aqui — T-059 (P2.4)
-    // moverá pra rolePrompt quando refizer a composição do user content.
+    // T-054 + T-055 + T-059: appendSystemPrompt compõe rolePrompt (do stage),
+    // EXTERNAL_INPUT_SYSTEM_PROMPT (quando source externa) e prior_context
+    // (memory) sem sobrescrever uns aos outros.
     const appendSystemReview = composeAppendSystemPrompt({
+      rolePrompt: inv.systemPrompt,
       externalInputSafety: isExternalSource(task.source),
       ...(memorySnippet !== null ? { priorContext: memorySnippet } : {}),
     });

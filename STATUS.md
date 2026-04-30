@@ -41,7 +41,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P2.1 | `task/P2.1-workspace-plug` | T-041..T-046 | codex | claude | merged, PR #7, 2026-04-29 | #7 |
 | P2.2 | `task/P2.2-sandbox-tools` | T-047..T-053 | codex | code | merged, PR #10, 2026-04-30 | #10 |
 | P2.3 | `task/P2.3-external-input` | T-054..T-057 | claude | codex | in-review, claude | — |
-| P2.4 | `task/P2.4-review-fresh` | T-058..T-062 | claude | codex | pending | — |
+| P2.4 | `task/P2.4-review-fresh` | T-058..T-062 | claude | codex | in-review, claude | — |
 | P2.5a | `task/P2.5a-agent-loader` | T-063..T-068, T-077, T-078 | codex | claude | merged, PR #11, 2026-04-30 | #11 |
 | P2.5b | `task/P2.5b-agent-files` | T-069..T-076 | codex | claude (+ operador em T-075/076) | merged, PR #12, 2026-04-30 | #12 |
 | P1.4 | `task/P1.4-event-kind` | T-079..T-085 | codex | claude | pending | — |
@@ -153,11 +153,11 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 - [ ] T-057 — in-review
 
 ### P2.4 — Review fresh context
-- [ ] T-058 — pending
-- [ ] T-059 — pending
-- [ ] T-060 — pending
-- [ ] T-061 — pending
-- [ ] T-062 — pending
+- [ ] T-058 — in-review
+- [ ] T-059 — in-review
+- [ ] T-060 — in-review
+- [ ] T-061 — in-review
+- [ ] T-062 — in-review
 
 ### P2.5 — AGENT.md loader + criação de agentes
 - [x] T-063 — merged, PR #11, 2026-04-30
