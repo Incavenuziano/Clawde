@@ -28,7 +28,7 @@ import type { Logger } from "@clawde/log";
 import type { MemoryAwareConfig, buildMemoryContext as buildMemoryContextFn } from "@clawde/memory";
 import type { QuotaTracker } from "@clawde/quota";
 import type { PipelineConfig, runReviewPipeline as runReviewPipelineFn } from "@clawde/review";
-import { EXTERNAL_INPUT_SYSTEM_PROMPT } from "@clawde/sanitize";
+import { composeAppendSystemPrompt } from "@clawde/sanitize";
 import {
   type AgentClient,
   type AgentRunResult,
@@ -201,8 +201,13 @@ export async function processTask(deps: RunnerDeps, task: Task): Promise<Process
   }
 
   try {
-    // Memory inject opcional: prepend snippet de observations relevantes.
-    let effectivePrompt = task.prompt;
+    // T-055: prior_context (memory) é tratado como SYSTEM PROMPT confiável,
+    // não como user content. Capturamos o snippet aqui mas a injeção é via
+    // `composeAppendSystemPrompt` lá embaixo (no streamOpts), separando-o do
+    // user-provided external input que continua dentro de `<external_input>`
+    // no user prompt.
+    const effectivePrompt = task.prompt;
+    let memorySnippet: string | null = null;
     if (deps.memoryInject?.config.enabled) {
       try {
         const ctx = await deps.memoryInject.buildContext(
@@ -211,7 +216,7 @@ export async function processTask(deps: RunnerDeps, task: Task): Promise<Process
           deps.memoryInject.config,
         );
         if (ctx.injected) {
-          effectivePrompt = `${ctx.snippet}\n\n${task.prompt}`;
+          memorySnippet = ctx.snippet;
         }
       } catch (err) {
         log.warn("memory inject failed (continuing without)", { error: (err as Error).message });
@@ -239,6 +244,7 @@ export async function processTask(deps: RunnerDeps, task: Task): Promise<Process
               effectivePrompt,
               ephemeralWorkspacePath,
               agentDef,
+              memorySnippet,
             )
           : await runAgentWithLedger(
               deps,
@@ -247,6 +253,7 @@ export async function processTask(deps: RunnerDeps, task: Task): Promise<Process
               effectivePrompt,
               ephemeralWorkspacePath,
               agentDef,
+              memorySnippet,
             );
     } catch (err) {
       if (err instanceof SdkRateLimitError) {
@@ -372,6 +379,7 @@ async function runAgentWithLedger(
   effectivePrompt: string,
   workingDirectoryOverride: string | null,
   agentDef: AgentDefinitionLike | null,
+  memorySnippet: string | null,
 ): Promise<AgentRunResult> {
   const AUTH_RETRY_TOKEN = { value: "worker-auth-retry", source: "env" as const };
 
@@ -417,11 +425,16 @@ async function runAgentWithLedger(
   } else if (task.workingDir !== null) {
     streamOpts.workingDirectory = task.workingDir;
   }
-  // T-054: sources externas recebem boilerplate de prompt-injection defense.
-  // Memory snippet (system prompt confiável) NÃO é tocado aqui — fica no
-  // user content via `effectivePrompt`. external_input envelope é orthogonal.
-  if (isExternalSource(task.source)) {
-    streamOpts.appendSystemPrompt = EXTERNAL_INPUT_SYSTEM_PROMPT;
+  // T-054 + T-055: appendSystemPrompt compõe (sem sobrescrever):
+  //   EXTERNAL_INPUT_SYSTEM_PROMPT (quando source é externa)
+  //   + prior_context (memory snippet — sempre system prompt confiável).
+  // user prompt continua com o `<external_input>` envelope quando aplicável.
+  const appendSystem = composeAppendSystemPrompt({
+    externalInputSafety: isExternalSource(task.source),
+    ...(memorySnippet !== null ? { priorContext: memorySnippet } : {}),
+  });
+  if (appendSystem !== undefined) {
+    streamOpts.appendSystemPrompt = appendSystem;
   }
 
   const runStreamOnce = async (): Promise<void> => {
@@ -509,6 +522,7 @@ async function runWithReviewPipeline(
   effectivePrompt: string,
   workingDirectoryOverride: string | null,
   agentDef: AgentDefinitionLike | null,
+  memorySnippet: string | null,
 ): Promise<AgentRunResult> {
   if (deps.review === undefined) {
     throw new Error("runWithReviewPipeline called without review deps");
@@ -545,9 +559,15 @@ async function runWithReviewPipeline(
     } else if (task.workingDir !== null) {
       streamOpts.workingDirectory = task.workingDir;
     }
-    // T-054: também aplica em review pipeline pra cada stage.
-    if (isExternalSource(task.source)) {
-      streamOpts.appendSystemPrompt = EXTERNAL_INPUT_SYSTEM_PROMPT;
+    // T-054 + T-055: appendSystemPrompt compõe role/external/prior_context em
+    // cada stage. inv.systemPrompt continua no user prompt aqui — T-059 (P2.4)
+    // moverá pra rolePrompt quando refizer a composição do user content.
+    const appendSystemReview = composeAppendSystemPrompt({
+      externalInputSafety: isExternalSource(task.source),
+      ...(memorySnippet !== null ? { priorContext: memorySnippet } : {}),
+    });
+    if (appendSystemReview !== undefined) {
+      streamOpts.appendSystemPrompt = appendSystemReview;
     }
     for await (const msg of deps.agentClient.stream(streamOpts)) {
       msgsConsumed += 1;

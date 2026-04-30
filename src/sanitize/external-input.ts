@@ -113,3 +113,51 @@ export function buildPromptWithExternalInput(
   const envelope = wrapExternalInput(external);
   return [EXTERNAL_INPUT_SYSTEM_PROMPT, "", envelope, "", operatorPrompt].join("\n");
 }
+
+export interface AppendSystemPromptParts {
+  /**
+   * Role / stage system prompt — texto curado pelo sistema (ex: review stage
+   * role). Vai PRIMEIRO no system content para fixar o papel.
+   */
+  readonly rolePrompt?: string;
+  /**
+   * Quando `true`, anexa `EXTERNAL_INPUT_SYSTEM_PROMPT` para instruir o modelo
+   * a tratar conteúdo dentro de `<external_input>` como dados, nunca instruções.
+   * Marca-se `true` quando `task.source` não é confiável (cli/subagent).
+   */
+  readonly externalInputSafety?: boolean;
+  /**
+   * Snippet de memória já renderizado em `<prior_context source="...">…</prior_context>`.
+   * Por T-055, memory snippet é tratado como SYSTEM PROMPT confiável (não como
+   * user content), separando-o claramente do user-provided external input.
+   */
+  readonly priorContext?: string;
+}
+
+/**
+ * Compõe `appendSystemPrompt` da SDK juntando, na ordem:
+ *   role prompt → EXTERNAL_INPUT_SYSTEM_PROMPT → prior context.
+ *
+ * Cada componente é independente e não sobrescreve os outros. Retorna
+ * `undefined` quando todos os componentes estão ausentes/vazios — o caller
+ * pode então omitir `appendSystemPrompt` do `RunAgentOptions`.
+ *
+ * Separação semântica importante (T-055):
+ *   - `rolePrompt` e `priorContext` são CURADOS pelo sistema → system prompt
+ *     confiável.
+ *   - external input do usuário (telegram/webhook) já vem em `<external_input>`
+ *     dentro do USER prompt; aqui só anexamos o boilerplate de defesa.
+ */
+export function composeAppendSystemPrompt(parts: AppendSystemPromptParts): string | undefined {
+  const sections: string[] = [];
+  if (parts.rolePrompt !== undefined && parts.rolePrompt.trim().length > 0) {
+    sections.push(parts.rolePrompt.trim());
+  }
+  if (parts.externalInputSafety === true) {
+    sections.push(EXTERNAL_INPUT_SYSTEM_PROMPT);
+  }
+  if (parts.priorContext !== undefined && parts.priorContext.trim().length > 0) {
+    sections.push(parts.priorContext.trim());
+  }
+  return sections.length > 0 ? sections.join("\n\n") : undefined;
+}
