@@ -409,6 +409,11 @@ async function runAgentWithLedger(
     sandbox: {
       level: agentDef?.sandbox?.level ?? 1,
       allowed_writes: agentDef?.sandbox?.allowed_writes ?? [],
+      // Propaga allowed_reads SOMENTE quando definido na config; senão deixa
+      // undefined (comportamento legacy permissivo) — `exactOptionalPropertyTypes`.
+      ...(agentDef?.sandbox?.allowed_reads !== undefined
+        ? { allowed_reads: agentDef.sandbox.allowed_reads }
+        : {}),
     },
   });
   if (task.sessionId !== null) streamOpts.sessionId = task.sessionId;

@@ -224,4 +224,86 @@ describe("hooks/handlers default emitem eventos via callback", () => {
     expect(events[0]?.kind).toBe("tool_blocked");
     expect(events[0]?.payload.reason).toBe("write_path_not_allowed");
   });
+
+  test("Read sem allowed_reads (legacy) é permitido", async () => {
+    const events: Array<{ kind: string; payload: Record<string, unknown> }> = [];
+    const handler = makePreToolUseHandler((kind, payload) => events.push({ kind, payload }), {
+      allowedTools: ["Read"],
+      sandbox: { level: 1, allowed_writes: [] },
+    });
+    const out = await handler(
+      preToolInput({
+        toolName: "Read",
+        toolInput: { path: "/home/user/.clawde/state.db" },
+      }) as HookInput & { hook: "PreToolUse"; payload: PreToolUsePayload },
+    );
+    expect(out.ok).toBe(true);
+  });
+
+  test("Read com allowed_reads=[] bloqueia QUALQUER path (fail-closed)", async () => {
+    const events: Array<{ kind: string; payload: Record<string, unknown> }> = [];
+    const handler = makePreToolUseHandler((kind, payload) => events.push({ kind, payload }), {
+      allowedTools: ["Read"],
+      sandbox: { level: 3, allowed_writes: [], allowed_reads: [] },
+    });
+    const out = await handler(
+      preToolInput({
+        toolName: "Read",
+        toolInput: { path: "/home/user/.clawde/state.db" },
+      }) as HookInput & { hook: "PreToolUse"; payload: PreToolUsePayload },
+    );
+    expect(out.ok).toBe(false);
+    expect(out.block).toBe(true);
+    expect(events[0]?.kind).toBe("tool_blocked");
+    expect(events[0]?.payload.reason).toBe("read_path_not_allowed");
+  });
+
+  test("Read dentro de allowed_reads é permitido", async () => {
+    const events: Array<{ kind: string; payload: Record<string, unknown> }> = [];
+    const handler = makePreToolUseHandler((kind, payload) => events.push({ kind, payload }), {
+      allowedTools: ["Read"],
+      sandbox: { level: 1, allowed_writes: [], allowed_reads: ["/workspace"] },
+    });
+    const out = await handler(
+      preToolInput({
+        toolName: "Read",
+        toolInput: { path: "/workspace/src/main.ts" },
+      }) as HookInput & { hook: "PreToolUse"; payload: PreToolUsePayload },
+    );
+    expect(out.ok).toBe(true);
+  });
+
+  test("Read fora de allowed_reads (sensitive path) é bloqueado", async () => {
+    const events: Array<{ kind: string; payload: Record<string, unknown> }> = [];
+    const handler = makePreToolUseHandler((kind, payload) => events.push({ kind, payload }), {
+      allowedTools: ["Read"],
+      sandbox: { level: 1, allowed_writes: [], allowed_reads: ["/workspace"] },
+    });
+    const out = await handler(
+      preToolInput({
+        toolName: "Read",
+        toolInput: { path: "/etc/passwd" },
+      }) as HookInput & { hook: "PreToolUse"; payload: PreToolUsePayload },
+    );
+    expect(out.ok).toBe(false);
+    expect(out.block).toBe(true);
+    expect(events[0]?.payload.reason).toBe("read_path_not_allowed");
+  });
+
+  test("Read com path traversal é rejeitado mesmo dentro de allowed_reads", async () => {
+    const events: Array<{ kind: string; payload: Record<string, unknown> }> = [];
+    const handler = makePreToolUseHandler((kind, payload) => events.push({ kind, payload }), {
+      allowedTools: ["Read"],
+      sandbox: { level: 1, allowed_writes: [], allowed_reads: ["/workspace"] },
+    });
+    const out = await handler(
+      preToolInput({
+        toolName: "Read",
+        toolInput: { path: "/workspace/../etc/passwd" },
+      }) as HookInput & { hook: "PreToolUse"; payload: PreToolUsePayload },
+    );
+    expect(out.ok).toBe(false);
+    expect(out.block).toBe(true);
+    expect(events[0]?.payload.reason).toBe("read_path_not_allowed");
+  });
 });

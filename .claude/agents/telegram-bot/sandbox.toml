@@ -2,6 +2,11 @@ level = 3
 network = "loopback-only"
 allowed_egress = []
 allowed_writes = []
+# Fail-closed: ZERO Read paths. Telegram-bot processa input adversarial e a
+# resposta é auto-forwardada pro chat — sem essa allowlist, um prompt
+# injection bem-sucedido conseguiria exfiltrar state.db, OAuth tokens, etc.
+# Veja Wave 3 followup (PR Read-allowlist) e ADR 0015.
+allowed_reads = []
 read_only_mounts = ["/usr", "/etc/ssl"]
 max_memory_mb = 512
 max_cpu_seconds = 180
