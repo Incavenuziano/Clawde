@@ -52,7 +52,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P3.2 | `task/P3.2-cli-ops` | T-104a/b/c, T-105..T-111 | claude | codex | merged, PR #25, 2026-04-30 | #25 |
 | P3.4 | `task/P3.4-reflect-job` | T-112..T-115 | claude | codex | merged, PR #20, 2026-04-30 | #20 |
 | P3.5 | `task/P3.5-smoke-service` | T-116..T-121 | codex | claude | merged, PR #24, 2026-04-30 | #24 |
-| P3.6 | `task/P3.6-sdk-real-ci` | T-122..T-124 | codex | claude | in-progress, codex | — |
+| P3.6 | `task/P3.6-sdk-real-ci` | T-122..T-124 | codex | claude | in-review, PR #26, 2026-04-30 | #26 |
 | P6.1 | `task/P6.1-ci-security-gates` | T-125..T-127 | codex | claude (+ operador em T-125) | pending | — |
 | P6.2 | `task/P6.2-db-integrity` | T-128..T-130 | codex | claude | pending | — |
 | P6.3 | `task/P6.3-events-retention` | T-131..T-133 | codex | claude (+ operador em T-132) | pending | — |
@@ -250,9 +250,9 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 - [x] T-121 — merged, PR #24, 2026-04-30
 
 ### P3.6 — SDK real validation
-- [ ] T-122 — in-progress, codex
-- [ ] T-123 — pending
-- [ ] T-124 — pending
+- [x] T-122 — in-review, PR #26, 2026-04-30
+- [x] T-123 — in-review, PR #26, 2026-04-30
+- [x] T-124 — in-review, PR #26, 2026-04-30
 
 ---
 
