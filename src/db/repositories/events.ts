@@ -5,6 +5,7 @@
  */
 
 import type { Event, EventKind, NewEvent } from "@clawde/domain/event";
+import { redact } from "@clawde/log";
 import type { ClawdeDatabase } from "../client.ts";
 import { JsonCorruptionError } from "./tasks.ts";
 
@@ -68,6 +69,7 @@ export class EventsRepo {
    * INSERT em events. Único write permitido (UPDATE/DELETE bloqueados por triggers).
    */
   insert(input: NewEvent): Event {
+    const safePayload = redact(input.payload) as Record<string, unknown>;
     const row = this.db
       .query<
         RawEventRow,
@@ -83,7 +85,7 @@ export class EventsRepo {
         input.traceId,
         input.spanId,
         input.kind,
-        JSON.stringify(input.payload),
+        JSON.stringify(safePayload),
       );
     if (row === null) {
       throw new Error("INSERT...RETURNING returned null");
