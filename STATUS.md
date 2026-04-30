@@ -50,7 +50,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P2.7 | `task/P2.7-redact-events` | T-097..T-100 | codex | claude (+ operador) | merged, PR #22, 2026-04-30 | #22 |
 | P3.1 | `task/P3.1-readme-status` | T-101..T-103 | claude | codex | merged, PR #18, 2026-04-30 | #18 |
 | P3.2 | `task/P3.2-cli-ops` | T-104a/b/c, T-105..T-111 | claude | codex | pending | — |
-| P3.4 | `task/P3.4-reflect-job` | T-112..T-115 | claude | codex | pending | — |
+| P3.4 | `task/P3.4-reflect-job` | T-112..T-115 | claude | codex | in-progress, claude | — |
 | P3.5 | `task/P3.5-smoke-service` | T-116..T-121 | codex | claude | pending | — |
 | P3.6 | `task/P3.6-sdk-real-ci` | T-122..T-124 | codex | claude | pending | — |
 | P6.1 | `task/P6.1-ci-security-gates` | T-125..T-127 | codex | claude (+ operador em T-125) | pending | — |
@@ -236,10 +236,10 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 - [ ] T-111 — pending
 
 ### P3.4 — Reflect job estruturado
-- [ ] T-112 — pending
-- [ ] T-113 — pending
-- [ ] T-114 — pending
-- [ ] T-115 — pending
+- [ ] T-112 — in-progress
+- [ ] T-113 — in-progress
+- [ ] T-114 — in-progress
+- [ ] T-115 — in-progress
 
 ### P3.5 — Smoke service alinhado
 - [ ] T-116 — pending
