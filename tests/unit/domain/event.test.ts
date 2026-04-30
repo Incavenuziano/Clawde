@@ -36,6 +36,11 @@ describe("domain/event EVENT_KIND_VALUES", () => {
     expect(EVENT_KIND_VALUES).toContain("sandbox_violation");
   });
 
+  test("contains smoke sdk ping kinds", () => {
+    expect(EVENT_KIND_VALUES).toContain("smoke.sdk_real_ping_ok");
+    expect(EVENT_KIND_VALUES).toContain("smoke.sdk_real_ping_fail");
+  });
+
   test("contains learning kinds (ADR 0009)", () => {
     expect(EVENT_KIND_VALUES).toContain("lesson");
     expect(EVENT_KIND_VALUES).toContain("reflection_start");

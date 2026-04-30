@@ -16,6 +16,7 @@ import { OAuthLoadError, getTokenExpiry, loadOAuthToken } from "@clawde/auth";
 import { loadConfig } from "@clawde/config";
 import { type ClawdeDatabase, closeDb, openDb } from "@clawde/db/client";
 import { defaultMigrationsDir, status } from "@clawde/db/migrations";
+import { EventsRepo } from "@clawde/db/repositories/events";
 import { RealAgentClient } from "@clawde/sdk";
 import { type OutputFormat, emit, emitErr } from "../output.ts";
 
@@ -34,6 +35,7 @@ interface CheckResult {
   readonly name: string;
   readonly ok: boolean;
   readonly detail?: string;
+  readonly eventKind?: "smoke.sdk_real_ping_ok" | "smoke.sdk_real_ping_fail";
 }
 
 interface SmokeReport {
@@ -242,15 +244,22 @@ async function checkSdkRealPing(include: boolean): Promise<CheckResult> {
         name: "sdk.real_ping",
         ok: false,
         detail: result.error ?? "unknown sdk error",
+        eventKind: "smoke.sdk_real_ping_fail",
       };
     }
     return {
       name: "sdk.real_ping",
       ok: true,
       detail: `ok (${result.msgsConsumed} msgs, stop=${result.stopReason})`,
+      eventKind: "smoke.sdk_real_ping_ok",
     };
   } catch (err) {
-    return { name: "sdk.real_ping", ok: false, detail: (err as Error).message };
+    return {
+      name: "sdk.real_ping",
+      ok: false,
+      detail: (err as Error).message,
+      eventKind: "smoke.sdk_real_ping_fail",
+    };
   }
 }
 
@@ -274,7 +283,8 @@ export async function runSmokeTest(options: SmokeTestOptions): Promise<number> {
   checks.push(await checkWorkerDryRun());
   checks.push(checkBwrapForSandboxAgents());
   checks.push(checkOAuthExpiry());
-  checks.push(await checkSdkRealPing(options.includeSdkPing === true));
+  const sdkPing = await checkSdkRealPing(options.includeSdkPing === true);
+  checks.push(sdkPing);
 
   if (options.receiverUrl !== undefined && options.receiverUrl.length > 0) {
     checks.push(await checkReceiverHealth(options.receiverUrl, options.receiverTimeoutMs ?? 2000));
@@ -282,6 +292,30 @@ export async function runSmokeTest(options: SmokeTestOptions): Promise<number> {
 
   const allOk = checks.every((c) => c.ok);
   const report: SmokeReport = { ok: allOk, checks };
+
+  if (sdkPing.eventKind !== undefined) {
+    try {
+      const eventsDb = openDb(options.dbPath);
+      try {
+        const events = new EventsRepo(eventsDb);
+        events.insert({
+          taskRunId: null,
+          sessionId: null,
+          traceId: null,
+          spanId: null,
+          kind: sdkPing.eventKind,
+          payload: {
+            detail: sdkPing.detail ?? "",
+            ok: sdkPing.ok,
+          },
+        });
+      } finally {
+        closeDb(eventsDb);
+      }
+    } catch {
+      // Smoke não falha por erro de telemetria.
+    }
+  }
 
   emit(options.format, report, (d) => {
     const data = d as SmokeReport;
