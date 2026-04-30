@@ -12,14 +12,18 @@
 import type { EventKind } from "@clawde/domain/event";
 import { runAgents } from "./commands/agents.ts";
 import { runAuth } from "./commands/auth.ts";
+import { runConfigShow, runConfigValidate } from "./commands/config.ts";
 import { runDashboard } from "./commands/dashboard.ts";
+import { DIAGNOSE_SUBJECTS, type DiagnoseSubject, runDiagnose } from "./commands/diagnose.ts";
 import { runLogs } from "./commands/logs.ts";
 import { runMemory } from "./commands/memory.ts";
 import { runMigrate } from "./commands/migrate.ts";
+import { runPanicResume, runPanicStop } from "./commands/panic.ts";
 import { runQueue } from "./commands/queue.ts";
 import { runQuota } from "./commands/quota.ts";
 import { runReplica } from "./commands/replica.ts";
 import { runReview } from "./commands/review.ts";
+import { runSessionsList, runSessionsShow } from "./commands/sessions.ts";
 import { runSmokeTest } from "./commands/smoke-test.ts";
 import { runTrace } from "./commands/trace.ts";
 import { type OutputFormat, emit, emitErr } from "./output.ts";
@@ -81,6 +85,10 @@ function getOutputFormat(parsed: ParsedArgs): OutputFormat {
   return v === "json" ? "json" : "text";
 }
 
+function defaultLockPath(): string {
+  return `${process.env.HOME ?? ""}/.clawde/panic.lock`;
+}
+
 function getDbPath(parsed: ParsedArgs): string {
   return (
     getFlag(parsed, "db") ?? process.env.CLAWDE_DB ?? `${process.env.HOME ?? ""}/.clawde/state.db`
@@ -101,6 +109,11 @@ Commands:
   replica <status|verify>  Saúde do Litestream replica
   review history <run-id>  Histórico do pipeline de review (Fase 9)
   agents list             Lista AGENT.md carregados
+  diagnose <db|quota|oauth|sandbox|agents|all>  Health check por subsistema
+  panic-stop [--reason <s>]  Trava o daemon (lock + stop receiver/worker.path)
+  panic-resume           Destrava após panic-stop (requer diagnose all=ok)
+  sessions <list|show <id>>  Inspeciona sessões persistentes do SDK
+  config <show|validate <path>>  Dump/valida config TOML resolvida
   version                Mostra semver
   help                   Esta mensagem
 
@@ -146,6 +159,96 @@ export async function runMain(argv: ReadonlyArray<string>): Promise<number> {
       Object.assign(opts, { includeSdkPing: true });
     }
     return await runSmokeTest(opts);
+  }
+
+  if (parsed.command === "diagnose") {
+    const subject = (parsed.positional[0] ?? "all") as DiagnoseSubject;
+    if (!DIAGNOSE_SUBJECTS.includes(subject)) {
+      emitErr(`unknown diagnose subject: ${subject} (use ${DIAGNOSE_SUBJECTS.join("|")})`);
+      return 1;
+    }
+    const diagOpts: Parameters<typeof runDiagnose>[0] = {
+      dbPath: getDbPath(parsed),
+      format: getOutputFormat(parsed),
+      subject,
+    };
+    const aRoot = getFlag(parsed, "agents-root");
+    if (aRoot !== undefined && aRoot.length > 0) Object.assign(diagOpts, { agentsRoot: aRoot });
+    return await runDiagnose(diagOpts);
+  }
+
+  if (parsed.command === "panic-stop") {
+    const lockPath = getFlag(parsed, "lock-path") ?? defaultLockPath();
+    const opts: Parameters<typeof runPanicStop>[0] = {
+      dbPath: getDbPath(parsed),
+      lockPath,
+      format: getOutputFormat(parsed),
+    };
+    const reason = getFlag(parsed, "reason");
+    if (reason !== undefined && reason.length > 0) Object.assign(opts, { reason });
+    return await runPanicStop(opts);
+  }
+
+  if (parsed.command === "panic-resume") {
+    const lockPath = getFlag(parsed, "lock-path") ?? defaultLockPath();
+    const opts: Parameters<typeof runPanicResume>[0] = {
+      dbPath: getDbPath(parsed),
+      lockPath,
+      format: getOutputFormat(parsed),
+    };
+    const aRoot = getFlag(parsed, "agents-root");
+    if (aRoot !== undefined && aRoot.length > 0) Object.assign(opts, { agentsRoot: aRoot });
+    return await runPanicResume(opts);
+  }
+
+  if (parsed.command === "sessions") {
+    const action = parsed.positional[0] ?? "list";
+    if (action === "list") {
+      const limStr = getFlag(parsed, "limit");
+      const opts: Parameters<typeof runSessionsList>[0] = {
+        dbPath: getDbPath(parsed),
+        format: getOutputFormat(parsed),
+      };
+      if (limStr !== undefined) {
+        const lim = Number.parseInt(limStr, 10);
+        if (Number.isFinite(lim) && lim > 0) Object.assign(opts, { limit: lim });
+      }
+      return runSessionsList(opts);
+    }
+    if (action === "show") {
+      const id = parsed.positional[1];
+      if (id === undefined || id.length === 0) {
+        emitErr("error: sessions show requires <session-id>");
+        return 1;
+      }
+      return runSessionsShow({
+        dbPath: getDbPath(parsed),
+        format: getOutputFormat(parsed),
+        sessionId: id,
+      });
+    }
+    emitErr(`unknown sessions action: ${action} (use list|show <id>)`);
+    return 1;
+  }
+
+  if (parsed.command === "config") {
+    const action = parsed.positional[0] ?? "show";
+    if (action === "show") {
+      const path = getFlag(parsed, "path");
+      const opts: Parameters<typeof runConfigShow>[0] = { format: getOutputFormat(parsed) };
+      if (path !== undefined && path.length > 0) Object.assign(opts, { path });
+      return runConfigShow(opts);
+    }
+    if (action === "validate") {
+      const path = parsed.positional[1] ?? getFlag(parsed, "path");
+      if (path === undefined || path.length === 0) {
+        emitErr("error: config validate requires <path>");
+        return 1;
+      }
+      return runConfigValidate({ format: getOutputFormat(parsed), path });
+    }
+    emitErr(`unknown config action: ${action} (use show|validate <path>)`);
+    return 1;
   }
 
   if (parsed.command === "migrate") {
