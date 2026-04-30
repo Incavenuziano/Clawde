@@ -300,7 +300,7 @@ e produz `docs/wave-summaries/wave-N.md`.
 - [ ] Wave 1 audit — pending (reviewer: codex)
 - [x] Wave 2 audit — done (reviewer: claude, docs/wave-summaries/wave-2.md)
 - [ ] Wave 3 audit — pending (reviewer: codex)
-- [ ] Wave 4 audit — pending (reviewer: claude)
+- [x] Wave 4 audit — done (reviewer: claude, docs/wave-summaries/wave-4.md, PR #23, 2026-04-30)
 - [ ] Wave 5 audit — pending (reviewer: codex)
 - [ ] Wave 6 audit — pending (reviewer: claude)
 
