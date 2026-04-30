@@ -128,4 +128,77 @@ describe("cli/commands/config show+validate", () => {
     expect(exit).toBe(1);
     expect(stderr).toContain("not found");
   });
+
+  test("show classifica origem por campo: toml vence default, env vence toml", async () => {
+    // TOML define apenas clawde.home. quota.plan vai vir de env;
+    // log_level fica default (não setado).
+    writeFileSync(configPath, `[clawde]\nhome = "${dir}"\n`, "utf-8");
+    const prevPlan = process.env.CLAWDE_QUOTA_PLAN;
+    process.env.CLAWDE_QUOTA_PLAN = "max5x";
+    try {
+      const { exit, stdout } = await captureOutput(() =>
+        runConfigShow({ format: "json", path: configPath }),
+      );
+      expect(exit).toBe(0);
+      const report = JSON.parse(stdout) as ConfigShowReport;
+      expect(report.sources["clawde.home"]).toBe("toml");
+      expect(report.sources["quota.plan"]).toBe("env");
+      expect(report.sources["clawde.log_level"]).toBe("default");
+    } finally {
+      if (prevPlan !== undefined) {
+        process.env.CLAWDE_QUOTA_PLAN = prevPlan;
+      } else {
+        delete process.env.CLAWDE_QUOTA_PLAN;
+      }
+    }
+  });
+
+  test("show: env vence toml para o mesmo campo", async () => {
+    writeFileSync(
+      configPath,
+      `[clawde]\nhome = "${dir}"\nlog_level = "INFO"\n`,
+      "utf-8",
+    );
+    const prevLevel = process.env.CLAWDE_LOG_LEVEL;
+    process.env.CLAWDE_LOG_LEVEL = "DEBUG";
+    try {
+      const { exit, stdout } = await captureOutput(() =>
+        runConfigShow({ format: "json", path: configPath }),
+      );
+      expect(exit).toBe(0);
+      const report = JSON.parse(stdout) as ConfigShowReport;
+      expect(report.sources["clawde.log_level"]).toBe("env");
+      expect(report.sources["clawde.home"]).toBe("toml");
+    } finally {
+      if (prevLevel !== undefined) {
+        process.env.CLAWDE_LOG_LEVEL = prevLevel;
+      } else {
+        delete process.env.CLAWDE_LOG_LEVEL;
+      }
+    }
+  });
+
+  test("show: campo no TOML mas com env var vazia continua toml (não env)", async () => {
+    writeFileSync(
+      configPath,
+      `[clawde]\nhome = "${dir}"\nlog_level = "INFO"\n`,
+      "utf-8",
+    );
+    const prevLevel = process.env.CLAWDE_LOG_LEVEL;
+    process.env.CLAWDE_LOG_LEVEL = "";
+    try {
+      const { stdout } = await captureOutput(() =>
+        runConfigShow({ format: "json", path: configPath }),
+      );
+      const report = JSON.parse(stdout) as ConfigShowReport;
+      // Per load.ts, env var vazia é ignorada — log_level deve refletir TOML.
+      expect(report.sources["clawde.log_level"]).toBe("toml");
+    } finally {
+      if (prevLevel !== undefined) {
+        process.env.CLAWDE_LOG_LEVEL = prevLevel;
+      } else {
+        delete process.env.CLAWDE_LOG_LEVEL;
+      }
+    }
+  });
 });
