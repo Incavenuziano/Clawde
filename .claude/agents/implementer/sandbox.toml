@@ -1,0 +1,7 @@
+level = 2
+network = "loopback-only"
+allowed_egress = []
+allowed_writes = ["/workspace"]
+read_only_mounts = ["/usr", "/etc/ssl"]
+max_memory_mb = 1024
+max_cpu_seconds = 600

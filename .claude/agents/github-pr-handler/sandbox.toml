@@ -1,0 +1,9 @@
+level = 3
+network = "loopback-only"
+allowed_egress = []
+# Futuro (quando allowlist real de egress estiver ativa):
+# allowed_egress = ["api.github.com"]
+allowed_writes = []
+read_only_mounts = ["/usr", "/etc/ssl"]
+max_memory_mb = 512
+max_cpu_seconds = 240
