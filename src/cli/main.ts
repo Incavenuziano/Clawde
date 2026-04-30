@@ -18,6 +18,7 @@ import { runMemory } from "./commands/memory.ts";
 import { runMigrate } from "./commands/migrate.ts";
 import { runQueue } from "./commands/queue.ts";
 import { runQuota } from "./commands/quota.ts";
+import { runReflect } from "./commands/reflect.ts";
 import { runReplica } from "./commands/replica.ts";
 import { runReview } from "./commands/review.ts";
 import { runSmokeTest } from "./commands/smoke-test.ts";
@@ -101,6 +102,7 @@ Commands:
   replica <status|verify>  Saúde do Litestream replica
   review history <run-id>  Histórico do pipeline de review (Fase 9)
   agents list             Lista AGENT.md carregados
+  reflect [--since 24h]   Enfileira reflection job (events+observations recentes)
   version                Mostra semver
   help                   Esta mensagem
 
@@ -201,6 +203,19 @@ export async function runMain(argv: ReadonlyArray<string>): Promise<number> {
     const dk = getFlag(parsed, "dedup-key");
     if (dk !== undefined) Object.assign(queueOpts, { dedupKey: dk });
     return await runQueue(queueOpts);
+  }
+
+  if (parsed.command === "reflect") {
+    const reflectOpts: Parameters<typeof runReflect>[0] = {
+      since: getFlag(parsed, "since", "24h") ?? "24h",
+      receiverUrl:
+        getFlag(parsed, "receiver-url") ??
+        process.env.CLAWDE_RECEIVER_URL ??
+        "http://127.0.0.1:18790",
+      dbPath: getDbPath(parsed),
+      format: getOutputFormat(parsed),
+    };
+    return await runReflect(reflectOpts);
   }
 
   if (parsed.command === "logs") {

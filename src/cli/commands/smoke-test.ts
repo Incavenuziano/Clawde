@@ -10,12 +10,21 @@
  */
 
 import { existsSync } from "node:fs";
+<<<<<<< HEAD
+import { join } from "node:path";
+import { AgentDefinitionError, loadAllAgentDefinitions } from "@clawde/agents";
+import { OAuthLoadError, getTokenExpiry, loadOAuthToken } from "@clawde/auth";
+import { loadConfig } from "@clawde/config";
+import { type ClawdeDatabase, closeDb, openDb } from "@clawde/db/client";
+import { defaultMigrationsDir, status } from "@clawde/db/migrations";
+=======
 import { dirname, join } from "node:path";
 import { AgentDefinitionError, loadAllAgentDefinitions } from "@clawde/agents";
 import { OAuthLoadError, getTokenExpiry, loadOAuthToken } from "@clawde/auth";
 import { type ClawdeDatabase, closeDb, openDb } from "@clawde/db/client";
 import { defaultMigrationsDir, status } from "@clawde/db/migrations";
 import { EventsRepo } from "@clawde/db/repositories/events";
+>>>>>>> origin/main
 import { RealAgentClient } from "@clawde/sdk";
 import { type OutputFormat, emit, emitErr } from "../output.ts";
 
@@ -125,7 +134,11 @@ async function checkReceiverHealth(url: string, timeoutMs: number): Promise<Chec
   }
 }
 
+<<<<<<< HEAD
+async function checkWorkerDryRun(): Promise<CheckResult> {
+=======
 async function checkWorkerDryRun(dbPath: string): Promise<CheckResult> {
+>>>>>>> origin/main
   const bunPath = Bun.which("bun") ?? "bun";
   const workerPath = "dist/worker-main.js";
   if (!existsSync(workerPath)) {
@@ -138,7 +151,11 @@ async function checkWorkerDryRun(dbPath: string): Promise<CheckResult> {
   const proc = Bun.spawn([bunPath, "run", workerPath, "--dry-run"], {
     stdout: "pipe",
     stderr: "pipe",
+<<<<<<< HEAD
+    env: { ...process.env },
+=======
     env: envForSmokeChecks(dbPath),
+>>>>>>> origin/main
   });
   const [exitCode, stdout, stderr] = await Promise.all([
     proc.exited,
@@ -161,10 +178,17 @@ async function checkWorkerDryRun(dbPath: string): Promise<CheckResult> {
   };
 }
 
+<<<<<<< HEAD
+function checkBwrapForSandboxAgents(): CheckResult {
+  try {
+    const config = loadConfig();
+    const root = join(config.clawde.home, "agents");
+=======
 function checkBwrapForSandboxAgents(dbPath: string): CheckResult {
   try {
     const env = envForSmokeChecks(dbPath);
     const root = join(env.CLAWDE_HOME ?? dirname(dbPath), "agents");
+>>>>>>> origin/main
     const defs = loadAllAgentDefinitions(root);
     const needsBwrap = defs.some((d) => d.sandbox.level >= 2);
     if (!needsBwrap) {
@@ -258,13 +282,21 @@ async function checkSdkRealPing(include: boolean): Promise<CheckResult> {
         name: "sdk.real_ping",
         ok: false,
         detail: result.error ?? "unknown sdk error",
+<<<<<<< HEAD
+=======
         eventKind: "smoke.sdk_real_ping_fail",
+>>>>>>> origin/main
       };
     }
     return {
       name: "sdk.real_ping",
       ok: true,
       detail: `ok (${result.msgsConsumed} msgs, stop=${result.stopReason})`,
+<<<<<<< HEAD
+    };
+  } catch (err) {
+    return { name: "sdk.real_ping", ok: false, detail: (err as Error).message };
+=======
       eventKind: "smoke.sdk_real_ping_ok",
     };
   } catch (err) {
@@ -274,6 +306,7 @@ async function checkSdkRealPing(include: boolean): Promise<CheckResult> {
       detail: (err as Error).message,
       eventKind: "smoke.sdk_real_ping_fail",
     };
+>>>>>>> origin/main
   }
 }
 
@@ -294,11 +327,18 @@ export async function runSmokeTest(options: SmokeTestOptions): Promise<number> {
     closeDb(db);
   }
 
+<<<<<<< HEAD
+  checks.push(await checkWorkerDryRun());
+  checks.push(checkBwrapForSandboxAgents());
+  checks.push(checkOAuthExpiry());
+  checks.push(await checkSdkRealPing(options.includeSdkPing === true));
+=======
   checks.push(await checkWorkerDryRun(options.dbPath));
   checks.push(checkBwrapForSandboxAgents(options.dbPath));
   checks.push(checkOAuthExpiry());
   const sdkPing = await checkSdkRealPing(options.includeSdkPing === true);
   checks.push(sdkPing);
+>>>>>>> origin/main
 
   if (options.receiverUrl !== undefined && options.receiverUrl.length > 0) {
     checks.push(await checkReceiverHealth(options.receiverUrl, options.receiverTimeoutMs ?? 2000));

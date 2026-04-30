@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+<<<<<<< HEAD
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+=======
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+>>>>>>> origin/main
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runSmokeTest } from "@clawde/cli/commands/smoke-test";
@@ -35,7 +39,10 @@ describe("cli/smoke-test", () => {
   let dir: string;
   let dbPath: string;
   let prevConfigEnv: string | undefined;
+<<<<<<< HEAD
+=======
   let prevHomeEnv: string | undefined;
+>>>>>>> origin/main
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), "clawde-smoke-"));
@@ -43,7 +50,10 @@ describe("cli/smoke-test", () => {
     const configPath = join(dir, "clawde.toml");
     writeFileSync(configPath, `[clawde]\nhome = "${dir}"\nlog_level = "INFO"\n`, "utf-8");
     prevConfigEnv = process.env.CLAWDE_CONFIG;
+<<<<<<< HEAD
+=======
     prevHomeEnv = process.env.HOME;
+>>>>>>> origin/main
     process.env.CLAWDE_CONFIG = configPath;
   });
   afterEach(() => {
@@ -52,11 +62,14 @@ describe("cli/smoke-test", () => {
     } else {
       process.env.CLAWDE_CONFIG = undefined;
     }
+<<<<<<< HEAD
+=======
     if (prevHomeEnv !== undefined) {
       process.env.HOME = prevHomeEnv;
     } else {
       process.env.HOME = undefined;
     }
+>>>>>>> origin/main
     rmSync(dir, { recursive: true, force: true });
   });
 
@@ -141,6 +154,8 @@ describe("cli/smoke-test", () => {
       if (envBak !== undefined) process.env.CLAUDE_CODE_OAUTH_TOKEN = envBak;
     }
   });
+<<<<<<< HEAD
+=======
 
   test("não acopla em config global implícita do HOME", async () => {
     const db = openDb(dbPath);
@@ -163,4 +178,5 @@ describe("cli/smoke-test", () => {
       rmSync(fakeHome, { recursive: true, force: true });
     }
   });
+>>>>>>> origin/main
 });
