@@ -10,10 +10,9 @@
  */
 
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { AgentDefinitionError, loadAllAgentDefinitions } from "@clawde/agents";
 import { OAuthLoadError, getTokenExpiry, loadOAuthToken } from "@clawde/auth";
-import { loadConfig } from "@clawde/config";
 import { type ClawdeDatabase, closeDb, openDb } from "@clawde/db/client";
 import { defaultMigrationsDir, status } from "@clawde/db/migrations";
 import { EventsRepo } from "@clawde/db/repositories/events";
@@ -41,6 +40,21 @@ interface CheckResult {
 interface SmokeReport {
   readonly ok: boolean;
   readonly checks: ReadonlyArray<CheckResult>;
+}
+
+function envForSmokeChecks(dbPath: string): Record<string, string | undefined> {
+  const explicitConfig = process.env.CLAWDE_CONFIG;
+  return {
+    ...(process.env as Record<string, string | undefined>),
+    // Torna smoke independente de ~/.clawde global em ambientes de teste.
+    CLAWDE_HOME:
+      process.env.CLAWDE_HOME !== undefined && process.env.CLAWDE_HOME.length > 0
+        ? process.env.CLAWDE_HOME
+        : dirname(dbPath),
+    // Evita acoplamento com config global implícita via $HOME quando não há
+    // CLAWDE_CONFIG explícito no ambiente.
+    CLAWDE_CONFIG: explicitConfig !== undefined && explicitConfig.length > 0 ? explicitConfig : "",
+  };
 }
 
 function checkIntegrity(db: ClawdeDatabase): CheckResult {
@@ -111,7 +125,7 @@ async function checkReceiverHealth(url: string, timeoutMs: number): Promise<Chec
   }
 }
 
-async function checkWorkerDryRun(): Promise<CheckResult> {
+async function checkWorkerDryRun(dbPath: string): Promise<CheckResult> {
   const bunPath = Bun.which("bun") ?? "bun";
   const workerPath = "dist/worker-main.js";
   if (!existsSync(workerPath)) {
@@ -124,7 +138,7 @@ async function checkWorkerDryRun(): Promise<CheckResult> {
   const proc = Bun.spawn([bunPath, "run", workerPath, "--dry-run"], {
     stdout: "pipe",
     stderr: "pipe",
-    env: { ...process.env },
+    env: envForSmokeChecks(dbPath),
   });
   const [exitCode, stdout, stderr] = await Promise.all([
     proc.exited,
@@ -147,10 +161,10 @@ async function checkWorkerDryRun(): Promise<CheckResult> {
   };
 }
 
-function checkBwrapForSandboxAgents(): CheckResult {
+function checkBwrapForSandboxAgents(dbPath: string): CheckResult {
   try {
-    const config = loadConfig();
-    const root = join(config.clawde.home, "agents");
+    const env = envForSmokeChecks(dbPath);
+    const root = join(env.CLAWDE_HOME ?? dirname(dbPath), "agents");
     const defs = loadAllAgentDefinitions(root);
     const needsBwrap = defs.some((d) => d.sandbox.level >= 2);
     if (!needsBwrap) {
@@ -280,8 +294,8 @@ export async function runSmokeTest(options: SmokeTestOptions): Promise<number> {
     closeDb(db);
   }
 
-  checks.push(await checkWorkerDryRun());
-  checks.push(checkBwrapForSandboxAgents());
+  checks.push(await checkWorkerDryRun(options.dbPath));
+  checks.push(checkBwrapForSandboxAgents(options.dbPath));
   checks.push(checkOAuthExpiry());
   const sdkPing = await checkSdkRealPing(options.includeSdkPing === true);
   checks.push(sdkPing);
