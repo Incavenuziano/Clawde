@@ -110,6 +110,10 @@ Common options:
   --db <path>            DB path (default ~/.clawde/state.db ou env CLAWDE_DB)
   --output {text|json}   Formato de output (default text)
 
+Smoke options:
+  --receiver-url <url>   Inclui check GET /health do receiver
+  --include-sdk-ping     Faz ping real no SDK se CLAUDE_CODE_OAUTH_TOKEN presente
+
 Migrate options:
   --audit-sandbox        Em migrate status, audita agentes com network="allowlist"
   --fail-on-allowlist    Com --audit-sandbox, retorna exit 2 se houver achados
@@ -140,6 +144,9 @@ export async function runMain(argv: ReadonlyArray<string>): Promise<number> {
     };
     const recv = getFlag(parsed, "receiver-url");
     if (recv !== undefined) Object.assign(opts, { receiverUrl: recv });
+    if (parsed.flags["include-sdk-ping"] === true) {
+      Object.assign(opts, { includeSdkPing: true });
+    }
     return await runSmokeTest(opts);
   }
 

@@ -29,6 +29,10 @@ export function parseMaxTasks(argv: ReadonlyArray<string>, fallback = DEFAULT_MA
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+export function parseDryRun(argv: ReadonlyArray<string>): boolean {
+  return argv.includes("--dry-run");
+}
+
 export type LoopExitReason = "empty" | "deferred" | "max_tasks";
 
 export interface LoopResult {
@@ -104,6 +108,25 @@ export async function bootstrap(
       cleaned_orphans: reconcileResult.cleanedOrphans,
     });
     const maxTasks = parseMaxTasks(argv);
+    const dryRun = parseDryRun(argv);
+    const queueSize = tasksRepo.findPending(1000).length;
+    const quotaState = quotaTracker.currentWindow().state;
+    logger.info("worker bootstrap state", {
+      dry_run: dryRun,
+      agents_loaded: agentDefs.length,
+      queue_size: queueSize,
+      quota_state: quotaState,
+    });
+
+    if (dryRun) {
+      logger.info("worker dry-run complete", {
+        agents_loaded: agentDefs.length,
+        queue_size: queueSize,
+        quota_state: quotaState,
+      });
+      return;
+    }
+
     const loop = await runProcessLoop(
       {
         tasksRepo,

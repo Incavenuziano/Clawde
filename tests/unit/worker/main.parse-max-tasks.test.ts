@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseMaxTasks } from "@clawde/worker/main";
+import { parseDryRun, parseMaxTasks } from "@clawde/worker/main";
 
 describe("worker/main parseMaxTasks", () => {
   test("default 50 quando flag ausente", () => {
@@ -25,5 +25,12 @@ describe("worker/main parseMaxTasks", () => {
   test("respeita fallback custom", () => {
     expect(parseMaxTasks([], 25)).toBe(25);
     expect(parseMaxTasks(["--max-tasks", "abc"], 25)).toBe(25);
+  });
+
+  test("parseDryRun detecta --dry-run", () => {
+    expect(parseDryRun([])).toBe(false);
+    expect(parseDryRun(["--max-tasks", "5"])).toBe(false);
+    expect(parseDryRun(["--dry-run"])).toBe(true);
+    expect(parseDryRun(["--foo", "1", "--dry-run"])).toBe(true);
   });
 });
