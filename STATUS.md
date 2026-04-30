@@ -42,7 +42,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P2.2 | `task/P2.2-sandbox-tools` | T-047..T-053 | codex | code | merged, PR #10, 2026-04-30 | #10 |
 | P2.3 | `task/P2.3-external-input` | T-054..T-057 | claude | codex | pending | — |
 | P2.4 | `task/P2.4-review-fresh` | T-058..T-062 | claude | codex | pending | — |
-| P2.5a | `task/P2.5a-agent-loader` | T-063..T-068, T-077, T-078 | codex | claude | pending | — |
+| P2.5a | `task/P2.5a-agent-loader` | T-063..T-068, T-077, T-078 | codex | claude | in-progress, codex | — |
 | P2.5b | `task/P2.5b-agent-files` | T-069..T-076 | codex | claude (+ operador em T-075/076) | pending | — |
 | P1.4 | `task/P1.4-event-kind` | T-079..T-085 | codex | claude | pending | — |
 | P1.5 | `task/P1.5-json-validity` | T-086..T-091 | codex | claude | pending | — |
@@ -160,12 +160,12 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 - [ ] T-062 — pending
 
 ### P2.5 — AGENT.md loader + criação de agentes
-- [ ] T-063 — pending
-- [ ] T-064 — pending
-- [ ] T-065 — pending
-- [ ] T-066 — pending
-- [ ] T-067 — pending
-- [ ] T-068 — pending
+- [ ] T-063 — in-progress, codex
+- [ ] T-064 — in-progress, codex
+- [ ] T-065 — in-progress, codex
+- [ ] T-066 — in-progress, codex
+- [ ] T-067 — in-progress, codex
+- [ ] T-068 — in-progress, codex
 - [ ] T-069 — pending
 - [ ] T-070 — pending
 - [ ] T-071 — pending
@@ -174,8 +174,8 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 - [ ] T-074 — pending
 - [ ] T-075 — pending
 - [ ] T-076 — pending
-- [ ] T-077 — pending
-- [ ] T-078 — pending
+- [ ] T-077 — in-progress, codex
+- [ ] T-078 — in-progress, codex
 
 ---
 
