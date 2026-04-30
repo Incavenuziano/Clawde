@@ -46,7 +46,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P2.5b | `task/P2.5b-agent-files` | T-069..T-076 | codex | claude (+ operador em T-075/076) | merged, PR #12, 2026-04-30 | #12 |
 | P1.4 | `task/P1.4-event-kind` | T-079..T-085 | codex | claude | merged, PR #17, 2026-04-30 | #17 |
 | P1.5 | `task/P1.5-json-validity` | T-086..T-091 | codex | claude | merged, PR #19, 2026-04-30 | #19 |
-| P2.6 | `task/P2.6-allowlist-fail` | T-092..T-096 | codex | claude (+ operador) | pending | — |
+| P2.6 | `task/P2.6-allowlist-fail` | T-092..T-096 | codex | claude (+ operador) | in-review, codex | — |
 | P2.7 | `task/P2.7-redact-events` | T-097..T-100 | codex | claude (+ operador) | pending | — |
 | P3.1 | `task/P3.1-readme-status` | T-101..T-103 | claude | codex | merged, PR #18, 2026-04-30 | #18 |
 | P3.2 | `task/P3.2-cli-ops` | T-104a/b/c, T-105..T-111 | claude | codex | pending | — |
@@ -199,11 +199,11 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 - [x] T-091 — merged, PR #19, 2026-04-30
 
 ### P2.6 — Allowlist falsa
-- [ ] T-092 — pending
-- [ ] T-093 — pending
-- [ ] T-094 — pending
-- [ ] T-095 — pending
-- [ ] T-096 — pending
+- [x] T-092 — in-review, codex, 2026-04-30
+- [x] T-093 — in-review, codex, 2026-04-30
+- [x] T-094 — in-review, codex, 2026-04-30
+- [x] T-095 — in-review, codex, 2026-04-30
+- [x] T-096 — in-review, codex, 2026-04-30
 
 ### P2.7 — Redact em events
 - [ ] T-097 — pending

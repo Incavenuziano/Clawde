@@ -47,6 +47,9 @@ default_level             = 1                                          # 1 (syst
 bwrap_path                = "/usr/bin/bwrap"
 allow_levels_per_agent    = true
 egress_allowlist_path     = "~/.clawde/config/egress_allowlist.txt"
+# Nota: network="allowlist" nos sandbox.toml dos agentes permanece em roadmap
+# (backend nftables/netns). Runtime atual é fail-closed para esse modo; use
+# network="host" explicitamente quando quiser rede aberta.
 
 [memory]
 backend                  = "native"                          # native | claude-mem-deprecated

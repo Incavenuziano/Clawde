@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runMigrate } from "@clawde/cli/commands/migrate";
@@ -107,5 +107,53 @@ describe("cli/commands/migrate", () => {
     );
     expect(exit).toBe(2);
     expect(stderr).toContain("error:");
+  });
+
+  test("status com auditoria sem allowlist retorna 0", () => {
+    const agentsRoot = join(dir, ".claude", "agents");
+    mkdirSync(join(agentsRoot, "default"), { recursive: true });
+    writeFileSync(
+      join(agentsRoot, "default", "sandbox.toml"),
+      ["level = 1", 'network = "none"'].join("\n"),
+      "utf-8",
+    );
+
+    runMigrate({ action: "up", dbPath, format: "text" });
+    const { exit, stderr } = captureOutput(() =>
+      runMigrate({
+        action: "status",
+        dbPath,
+        format: "text",
+        agentsRoot,
+        auditSandboxAllowlist: true,
+      }),
+    );
+    expect(exit).toBe(0);
+    expect(stderr).not.toContain("network='allowlist'");
+  });
+
+  test("status com auditoria e fail-on-allowlist retorna 2 quando encontra allowlist", () => {
+    const agentsRoot = join(dir, ".claude", "agents");
+    mkdirSync(join(agentsRoot, "telegram-bot"), { recursive: true });
+    writeFileSync(
+      join(agentsRoot, "telegram-bot", "sandbox.toml"),
+      ["level = 3", 'network = "allowlist"'].join("\n"),
+      "utf-8",
+    );
+
+    runMigrate({ action: "up", dbPath, format: "text" });
+    const { exit, stderr } = captureOutput(() =>
+      runMigrate({
+        action: "status",
+        dbPath,
+        format: "text",
+        agentsRoot,
+        auditSandboxAllowlist: true,
+        failOnSandboxAllowlist: true,
+      }),
+    );
+    expect(exit).toBe(2);
+    expect(stderr).toContain("network='allowlist'");
+    expect(stderr).toContain("telegram-bot");
   });
 });

@@ -72,6 +72,36 @@ describe("sandbox/bwrap buildBwrapArgs", () => {
     expect(args).not.toContain("--share-net");
     expect(args).toContain("--unshare-all");
   });
+
+  test("network=allowlist falha fechada sem backend nftables", () => {
+    expect(() =>
+      buildBwrapArgs(
+        {
+          readOnlyMounts: [],
+          readWritePaths: [],
+          network: "allowlist",
+        },
+        "/bin/true",
+        [],
+      ),
+    ).toThrow(
+      "network='allowlist' requires nftables backend not yet implemented. Use 'host' explicitly.",
+    );
+  });
+
+  test("network=allowlist com backend disponível adiciona --share-net", () => {
+    const args = buildBwrapArgs(
+      {
+        readOnlyMounts: [],
+        readWritePaths: [],
+        network: "allowlist",
+        allowlistBackendAvailable: true,
+      },
+      "/bin/true",
+      [],
+    );
+    expect(args).toContain("--share-net");
+  });
 });
 
 describe("sandbox/bwrap isBwrapAvailable", () => {

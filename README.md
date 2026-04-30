@@ -199,10 +199,10 @@ max_memory_mb = 1024
 ```
 
 Defaults sane por agente em `defaultLevelForAgent` (`telegram-bot`/`github-pr-handler` → 3,
-`implementer`/`debugger` → 2, demais → 1). Hoje, no runtime de produção, o worker segue
-com hardening systemd nível 1; os gates de tool calls (`Bash`, `Edit`, `Write`) via hooks
-estão implementados, mas só serão aplicados no path principal após o wire-up de T-064/P2.5a.
-Ver ADR 0015.
+`implementer`/`debugger` → 2, demais → 1). No runtime atual, os gates de tool calls
+(`Bash`, `Edit`, `Write`, `Read`) estão wirados no loop principal. `network="allowlist"`
+permanece aceito no schema por compatibilidade, mas está em **fail-closed** até existir
+backend nftables/netns: use `host` explicitamente para rede aberta. Ver ADR 0015.
 
 ## Inspirações
 
