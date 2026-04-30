@@ -13,6 +13,18 @@ export class DedupConflictError extends Error {
   }
 }
 
+export class JsonCorruptionError extends Error {
+  constructor(
+    public readonly rowId: number,
+    public readonly column: "depends_on" | "source_metadata" | "payload",
+    public readonly rawValue: string,
+    options?: { cause?: unknown },
+  ) {
+    super(`row ${rowId} has invalid JSON in column '${column}'`, options);
+    this.name = "JsonCorruptionError";
+  }
+}
+
 interface RawTaskRow {
   id: number;
   priority: Priority;
@@ -28,6 +40,20 @@ interface RawTaskRow {
 }
 
 function rowToTask(row: RawTaskRow): Task {
+  let dependsOn: ReadonlyArray<number>;
+  try {
+    dependsOn = JSON.parse(row.depends_on) as ReadonlyArray<number>;
+  } catch (error) {
+    throw new JsonCorruptionError(row.id, "depends_on", row.depends_on, { cause: error });
+  }
+
+  let sourceMetadata: Record<string, unknown>;
+  try {
+    sourceMetadata = JSON.parse(row.source_metadata) as Record<string, unknown>;
+  } catch (error) {
+    throw new JsonCorruptionError(row.id, "source_metadata", row.source_metadata, { cause: error });
+  }
+
   return {
     id: row.id,
     priority: row.priority,
@@ -35,9 +61,9 @@ function rowToTask(row: RawTaskRow): Task {
     agent: row.agent,
     sessionId: row.session_id,
     workingDir: row.working_dir,
-    dependsOn: JSON.parse(row.depends_on) as ReadonlyArray<number>,
+    dependsOn,
     source: row.source,
-    sourceMetadata: JSON.parse(row.source_metadata) as Record<string, unknown>,
+    sourceMetadata,
     dedupKey: row.dedup_key,
     createdAt: row.created_at,
   };
