@@ -62,6 +62,9 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 
 **Cross-wave dependencies**:
 - T-008 do P0.1 foi desbloqueado após merge de P1.2 (T-029) e concluído no followup PR #9 (2026-04-29).
+- Wave 3 followups concluídos:
+  - PR #13 (`task/wave3-followup-bash-level`) merged, 2026-04-30.
+  - PR #14 (`task/wave3-followup-read-allowlist`) merged, 2026-04-30.
 
 **Estados de branch**: `pending` | `in-progress, <quem>` | `in-review, PR #N` | `merged, PR #N, YYYY-MM-DD` | `blocked, after P-X.Y`
 
