@@ -5,7 +5,12 @@ model: sonnet
 allowedTools: [Read, Edit, Write, Bash, Grep, Glob]
 disallowedTools: [WebFetch, WebSearch]
 maxTurns: 15
-sandboxLevel: 2
+# sandboxLevel=1 enquanto Estratégia A (subprocess wrapper bwrap) não existir.
+# Em level >= 2 o runtime adiciona Bash ao disallowedTools (P2.2 T-050 fail-safe),
+# o que quebraria builds/testes do implementer. Ver ADR 0015.
+# Trade-off explícito: level=1 mantém risco de execução de comandos influenciados
+# por conteúdo não-confiável já presente no workspace (prompt injection em arquivos).
+sandboxLevel: 1
 requiresWorkspace: true
 ---
 

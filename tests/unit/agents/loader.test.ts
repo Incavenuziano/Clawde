@@ -6,6 +6,7 @@ import {
   AgentDefinitionError,
   loadAgentDefinition,
   loadAllAgentDefinitions,
+  loadAllAgentDefinitionsWithWarnings,
   parseAgentFrontmatter,
 } from "@clawde/agents";
 
@@ -123,5 +124,42 @@ describe("agents/loader loadAllAgentDefinitions", () => {
     const dir = mkdtempSync(join(tmpdir(), "clawde-agent-"));
     cleanups.push(dir);
     expect(() => loadAgentDefinition(dir)).toThrow(AgentDefinitionError);
+  });
+
+  test("emite warning quando agent declara Bash com sandbox level >= 2", () => {
+    const root = mkdtempSync(join(tmpdir(), "clawde-agents-"));
+    cleanups.push(root);
+    const impl = join(root, "implementer");
+    mkdirSync(impl);
+    writeAgent(
+      impl,
+      [
+        "name: implementer",
+        'role: "Implementa"',
+        "model: sonnet",
+        "allowedTools: [Read, Bash]",
+        "disallowedTools: []",
+        "maxTurns: 10",
+        "sandboxLevel: 2",
+        "requiresWorkspace: true",
+      ].join("\n"),
+    );
+    writeFileSync(join(impl, "sandbox.toml"), 'level = 2\nnetwork = "none"\n');
+
+    const warnings: Array<{
+      kind: string;
+      agentName: string;
+      sandboxLevel: number;
+    }> = [];
+    const defs = loadAllAgentDefinitionsWithWarnings(root, {
+      onWarning: (warning) => warnings.push(warning),
+    });
+    expect(defs).toHaveLength(1);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toMatchObject({
+      kind: "bash_disallowed_by_sandbox_level",
+      agentName: "implementer",
+      sandboxLevel: 2,
+    });
   });
 });
