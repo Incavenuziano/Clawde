@@ -51,7 +51,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P3.1 | `task/P3.1-readme-status` | T-101..T-103 | claude | codex | merged, PR #18, 2026-04-30 | #18 |
 | P3.2 | `task/P3.2-cli-ops` | T-104a/b/c, T-105..T-111 | claude | codex | pending | — |
 | P3.4 | `task/P3.4-reflect-job` | T-112..T-115 | claude | codex | pending | — |
-| P3.5 | `task/P3.5-smoke-service` | T-116..T-121 | codex | claude | in-progress, codex | — |
+| P3.5 | `task/P3.5-smoke-service` | T-116..T-121 | codex | claude | in-review, PR #23 | #23 |
 | P3.6 | `task/P3.6-sdk-real-ci` | T-122..T-124 | codex | claude | pending | — |
 | P6.1 | `task/P6.1-ci-security-gates` | T-125..T-127 | codex | claude (+ operador em T-125) | pending | — |
 | P6.2 | `task/P6.2-db-integrity` | T-128..T-130 | codex | claude | pending | — |
@@ -242,12 +242,12 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 - [ ] T-115 — pending
 
 ### P3.5 — Smoke service alinhado
-- [ ] T-116 — in-progress, codex
-- [ ] T-117 — pending
-- [ ] T-118 — pending
-- [ ] T-119 — pending
-- [ ] T-120 — pending
-- [ ] T-121 — pending
+- [x] T-116 — in-review, PR #23
+- [x] T-117 — in-review, PR #23
+- [x] T-118 — in-review, PR #23
+- [x] T-119 — in-review, PR #23
+- [x] T-120 — in-review, PR #23
+- [x] T-121 — in-review, PR #23
 
 ### P3.6 — SDK real validation
 - [ ] T-122 — pending
