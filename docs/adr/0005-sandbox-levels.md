@@ -47,6 +47,9 @@ MemoryDenyWriteExecute=yes
 não-confiável + tools com I/O de rede)
 - `--unshare-net --share-net` desligado, loopback only OU allowlist via nftables.
 - DNS via resolver local que só responde domínios da allowlist.
+- **Estado atual (P2.6):** `network='allowlist'` fica fail-closed no runtime até o
+  backend nftables/netns ser implementado; `host` deve ser usado explicitamente quando
+  a intenção for rede aberta.
 
 Matriz padrão por agente em §5.3 do `BLUEPRINT.md`. Verificação contínua via testes E2E
 de fuga (BEST_PRACTICES §3.5) e `systemd-analyze security` (score ≤2.0).

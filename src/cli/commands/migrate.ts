@@ -5,12 +5,16 @@
 
 import { type ClawdeDatabase, closeDb, openDb } from "@clawde/db/client";
 import { applyPending, defaultMigrationsDir, rollbackTo, status } from "@clawde/db/migrations";
+import { loadAllAgents } from "@clawde/sandbox";
 import { type OutputFormat, emit, emitErr } from "../output.ts";
 
 export interface MigrateOptions {
   readonly dbPath: string;
   readonly migrationsDir?: string;
   readonly format: OutputFormat;
+  readonly agentsRoot?: string;
+  readonly auditSandboxAllowlist?: boolean;
+  readonly failOnSandboxAllowlist?: boolean;
 }
 
 interface MigrateUpOptions extends MigrateOptions {
@@ -29,11 +33,37 @@ interface MigrateDownOptions extends MigrateOptions {
 
 export type MigrateAction = MigrateUpOptions | MigrateStatusOptions | MigrateDownOptions;
 
+function runSandboxAllowlistAudit(
+  agentsRoot: string,
+  failOnFindings: boolean,
+): { readonly findings: ReadonlyArray<string>; readonly shouldFail: boolean } {
+  const agents = loadAllAgents(agentsRoot);
+  const findings = agents
+    .filter((agent) => agent.sandbox.network === "allowlist")
+    .map((agent) => `${agent.name} (${agent.dir}/sandbox.toml)`);
+
+  if (findings.length === 0) {
+    return { findings, shouldFail: false };
+  }
+
+  emitErr("WARN: sandbox allowlist backend is not implemented yet (P2.6 fail-closed).");
+  emitErr("Agents using network='allowlist':");
+  for (const finding of findings) {
+    emitErr(`  - ${finding}`);
+  }
+  emitErr("Use network='host' explicitly for open network, or loopback-only/none for isolation.");
+
+  return { findings, shouldFail: failOnFindings };
+}
+
 /**
  * Executa o subcomando. Retorna exit code (0 = sucesso, 1+ = erro).
  */
 export function runMigrate(action: MigrateAction): number {
   const dir = action.migrationsDir ?? defaultMigrationsDir();
+  const agentsRoot = action.agentsRoot ?? ".claude/agents";
+  const auditSandboxAllowlist = action.auditSandboxAllowlist === true;
+  const failOnSandboxAllowlist = action.failOnSandboxAllowlist === true;
   let db: ClawdeDatabase;
   try {
     db = openDb(action.dbPath);
@@ -64,6 +94,12 @@ export function runMigrate(action: MigrateAction): number {
         ];
         return lines.join("\n");
       });
+      if (auditSandboxAllowlist) {
+        const audit = runSandboxAllowlistAudit(agentsRoot, failOnSandboxAllowlist);
+        if (audit.shouldFail && audit.findings.length > 0) {
+          return 2;
+        }
+      }
       return 0;
     }
     // down

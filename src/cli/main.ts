@@ -107,6 +107,11 @@ Commands:
 Common options:
   --db <path>            DB path (default ~/.clawde/state.db ou env CLAWDE_DB)
   --output {text|json}   Formato de output (default text)
+
+Migrate options:
+  --audit-sandbox        Em migrate status, audita agentes com network="allowlist"
+  --fail-on-allowlist    Com --audit-sandbox, retorna exit 2 se houver achados
+  --agents-root <path>   Root dos agentes (default .claude/agents)
 `;
 
 export async function runMain(argv: ReadonlyArray<string>): Promise<number> {
@@ -140,12 +145,27 @@ export async function runMain(argv: ReadonlyArray<string>): Promise<number> {
     const action = parsed.positional[0] ?? "status";
     const dbPath = getDbPath(parsed);
     const format = getOutputFormat(parsed);
-    if (action === "up") return runMigrate({ action: "up", dbPath, format });
-    if (action === "status") return runMigrate({ action: "status", dbPath, format });
+    const migrateCommon: Omit<Parameters<typeof runMigrate>[0], "action"> = {
+      dbPath,
+      format,
+    };
+    if (parsed.flags["audit-sandbox"] === true) {
+      Object.assign(migrateCommon, { auditSandboxAllowlist: true });
+    }
+    if (parsed.flags["fail-on-allowlist"] === true) {
+      Object.assign(migrateCommon, { failOnSandboxAllowlist: true });
+    }
+    const agentsRoot = getFlag(parsed, "agents-root");
+    if (agentsRoot !== undefined && agentsRoot.length > 0) {
+      Object.assign(migrateCommon, { agentsRoot });
+    }
+
+    if (action === "up") return runMigrate({ action: "up", ...migrateCommon });
+    if (action === "status") return runMigrate({ action: "status", ...migrateCommon });
     if (action === "down") {
       const target = Number.parseInt(getFlag(parsed, "target", "0") ?? "0", 10);
       const confirm = parsed.flags.confirm === true;
-      return runMigrate({ action: "down", dbPath, format, target, confirm });
+      return runMigrate({ action: "down", ...migrateCommon, target, confirm });
     }
     emitErr(`unknown migrate action: ${action}`);
     return 1;

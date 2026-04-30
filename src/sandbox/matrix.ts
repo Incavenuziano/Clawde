@@ -5,8 +5,8 @@
  * Nível 1: systemd hardening only (sem bwrap). materializeSandbox retorna
  *   "level": 1 com runDirect = true; chamador usa execFile direto.
  *
- * Nível 2: bwrap com bind read-only de /usr|/lib|/etc/ssl, RW só do worktree,
- *   network='allowlist' (host net por enquanto, allowlist real fica futuro).
+ * Nível 2: bwrap com bind read-only de /usr|/lib|/etc/ssl, RW só do worktree.
+ *   network='allowlist' falha fechada até backend nftables existir (P2.6).
  *
  * Nível 3: bwrap nivel 2 + applyNetnsToConfig (loopback-only, custom resolv.conf).
  */
@@ -51,6 +51,7 @@ export function materializeSandbox(input: MaterializeInput): MaterializedSandbox
       { host: input.workspacePath, sandbox: "/workspace" },
     ],
     network: input.agent.network,
+    allowlistBackendAvailable: false,
     workdir: "/workspace",
     env: {
       HOME: "/workspace",
