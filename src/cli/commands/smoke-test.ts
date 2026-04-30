@@ -9,8 +9,14 @@
  * Worker dry-run + CLI version checks vêm em fases posteriores.
  */
 
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { AgentDefinitionError, loadAllAgentDefinitions } from "@clawde/agents";
+import { OAuthLoadError, getTokenExpiry, loadOAuthToken } from "@clawde/auth";
+import { loadConfig } from "@clawde/config";
 import { type ClawdeDatabase, closeDb, openDb } from "@clawde/db/client";
 import { defaultMigrationsDir, status } from "@clawde/db/migrations";
+import { RealAgentClient } from "@clawde/sdk";
 import { type OutputFormat, emit, emitErr } from "../output.ts";
 
 export interface SmokeTestOptions {
@@ -20,6 +26,8 @@ export interface SmokeTestOptions {
   readonly receiverUrl?: string;
   /** Timeout pra check de receiver. */
   readonly receiverTimeoutMs?: number;
+  /** Habilita ping real no SDK quando token estiver presente. */
+  readonly includeSdkPing?: boolean;
 }
 
 interface CheckResult {
@@ -101,6 +109,151 @@ async function checkReceiverHealth(url: string, timeoutMs: number): Promise<Chec
   }
 }
 
+async function checkWorkerDryRun(): Promise<CheckResult> {
+  const bunPath = Bun.which("bun") ?? "bun";
+  const workerPath = "dist/worker-main.js";
+  if (!existsSync(workerPath)) {
+    return {
+      name: "worker.dry_run",
+      ok: false,
+      detail: `${workerPath} not found (run bun run build:worker)`,
+    };
+  }
+  const proc = Bun.spawn([bunPath, "run", workerPath, "--dry-run"], {
+    stdout: "pipe",
+    stderr: "pipe",
+    env: { ...process.env },
+  });
+  const [exitCode, stdout, stderr] = await Promise.all([
+    proc.exited,
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+  ]);
+  const output = `${stdout}\n${stderr}`;
+  if (exitCode !== 0) {
+    return {
+      name: "worker.dry_run",
+      ok: false,
+      detail: `exit=${exitCode}`,
+    };
+  }
+  return {
+    name: "worker.dry_run",
+    ok: true,
+    detail:
+      output.trim().length > 0 ? "worker dry-run exited 0" : "worker dry-run exited 0 (silent)",
+  };
+}
+
+function checkBwrapForSandboxAgents(): CheckResult {
+  try {
+    const config = loadConfig();
+    const root = join(config.clawde.home, "agents");
+    const defs = loadAllAgentDefinitions(root);
+    const needsBwrap = defs.some((d) => d.sandbox.level >= 2);
+    if (!needsBwrap) {
+      return {
+        name: "sandbox.bwrap_presence",
+        ok: true,
+        detail: "no level>=2 agents loaded",
+      };
+    }
+    const bwrapPath = "/usr/bin/bwrap";
+    return {
+      name: "sandbox.bwrap_presence",
+      ok: existsSync(bwrapPath),
+      detail: existsSync(bwrapPath)
+        ? `${bwrapPath} present`
+        : `${bwrapPath} missing but level>=2 agents exist`,
+    };
+  } catch (err) {
+    const detail = err instanceof AgentDefinitionError ? err.message : (err as Error).message;
+    return {
+      name: "sandbox.bwrap_presence",
+      ok: false,
+      detail,
+    };
+  }
+}
+
+function checkOAuthExpiry(): CheckResult {
+  try {
+    const token = loadOAuthToken();
+    const expiry = getTokenExpiry(token.value);
+    if (expiry.daysUntilExpiry === null) {
+      return {
+        name: "auth.oauth_expiry",
+        ok: true,
+        detail: "token loaded; expiry unknown (non-JWT or missing exp)",
+      };
+    }
+    const days = Math.round(expiry.daysUntilExpiry * 10) / 10;
+    if (days < 7) {
+      return {
+        name: "auth.oauth_expiry",
+        ok: false,
+        detail: `expires in ${days}d (<7d)`,
+      };
+    }
+    if (days < 30) {
+      return {
+        name: "auth.oauth_expiry",
+        ok: true,
+        detail: `warning: expires in ${days}d (<30d)`,
+      };
+    }
+    return {
+      name: "auth.oauth_expiry",
+      ok: true,
+      detail: `expires in ${days}d`,
+    };
+  } catch (err) {
+    if (err instanceof OAuthLoadError) {
+      return {
+        name: "auth.oauth_expiry",
+        ok: true,
+        detail: "token not found; check skipped",
+      };
+    }
+    return {
+      name: "auth.oauth_expiry",
+      ok: false,
+      detail: (err as Error).message,
+    };
+  }
+}
+
+async function checkSdkRealPing(include: boolean): Promise<CheckResult> {
+  if (!include) {
+    return { name: "sdk.real_ping", ok: true, detail: "skipped (flag disabled)" };
+  }
+  const token = process.env.CLAUDE_CODE_OAUTH_TOKEN;
+  if (token === undefined || token.length === 0) {
+    return { name: "sdk.real_ping", ok: true, detail: "skipped (token missing)" };
+  }
+  try {
+    const client = new RealAgentClient();
+    const result = await client.run({
+      prompt: "Reply with exactly: pong",
+      maxTurns: 1,
+    });
+    if (result.stopReason === "error" || result.error !== null) {
+      return {
+        name: "sdk.real_ping",
+        ok: false,
+        detail: result.error ?? "unknown sdk error",
+      };
+    }
+    return {
+      name: "sdk.real_ping",
+      ok: true,
+      detail: `ok (${result.msgsConsumed} msgs, stop=${result.stopReason})`,
+    };
+  } catch (err) {
+    return { name: "sdk.real_ping", ok: false, detail: (err as Error).message };
+  }
+}
+
 export async function runSmokeTest(options: SmokeTestOptions): Promise<number> {
   let db: ClawdeDatabase;
   try {
@@ -117,6 +270,11 @@ export async function runSmokeTest(options: SmokeTestOptions): Promise<number> {
   } finally {
     closeDb(db);
   }
+
+  checks.push(await checkWorkerDryRun());
+  checks.push(checkBwrapForSandboxAgents());
+  checks.push(checkOAuthExpiry());
+  checks.push(await checkSdkRealPing(options.includeSdkPing === true));
 
   if (options.receiverUrl !== undefined && options.receiverUrl.length > 0) {
     checks.push(await checkReceiverHealth(options.receiverUrl, options.receiverTimeoutMs ?? 2000));

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { runSmokeTest } from "@clawde/cli/commands/smoke-test";
@@ -34,12 +34,22 @@ function captureOutput(fn: () => Promise<number> | number): Promise<{
 describe("cli/smoke-test", () => {
   let dir: string;
   let dbPath: string;
+  let prevConfigEnv: string | undefined;
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), "clawde-smoke-"));
     dbPath = join(dir, "state.db");
+    const configPath = join(dir, "clawde.toml");
+    writeFileSync(configPath, `[clawde]\nhome = "${dir}"\nlog_level = "INFO"\n`, "utf-8");
+    prevConfigEnv = process.env.CLAWDE_CONFIG;
+    process.env.CLAWDE_CONFIG = configPath;
   });
   afterEach(() => {
+    if (prevConfigEnv !== undefined) {
+      process.env.CLAWDE_CONFIG = prevConfigEnv;
+    } else {
+      process.env.CLAWDE_CONFIG = undefined;
+    }
     rmSync(dir, { recursive: true, force: true });
   });
 
@@ -52,6 +62,8 @@ describe("cli/smoke-test", () => {
     expect(exit).toBe(0);
     expect(stdout).toContain("[OK ] db.integrity_check");
     expect(stdout).toContain("[OK ] db.migrations");
+    expect(stdout).toContain("[OK ] worker.dry_run");
+    expect(stdout).toContain("[OK ] auth.oauth_expiry");
     expect(stdout).toContain("overall: OK");
   });
 
@@ -76,7 +88,7 @@ describe("cli/smoke-test", () => {
     expect(exit).toBe(0);
     const parsed = JSON.parse(stdout);
     expect(parsed.ok).toBe(true);
-    expect(parsed.checks).toHaveLength(2);
+    expect(parsed.checks.length).toBeGreaterThanOrEqual(5);
     expect(parsed.checks[0].name).toBe("db.integrity_check");
   });
 
@@ -103,5 +115,23 @@ describe("cli/smoke-test", () => {
     );
     expect(exit).toBe(1);
     expect(stdout).toContain("[FAIL] receiver.health");
+  });
+
+  test("--include-sdk-ping sem token não falha (skip)", async () => {
+    const db = openDb(dbPath);
+    applyPending(db, defaultMigrationsDir());
+    closeDb(db);
+
+    const envBak = process.env.CLAUDE_CODE_OAUTH_TOKEN;
+    process.env.CLAUDE_CODE_OAUTH_TOKEN = undefined;
+    try {
+      const { exit, stdout } = await captureOutput(() =>
+        runSmokeTest({ dbPath, format: "text", includeSdkPing: true }),
+      );
+      expect(exit).toBe(0);
+      expect(stdout).toContain("[OK ] sdk.real_ping: skipped (token missing)");
+    } finally {
+      if (envBak !== undefined) process.env.CLAUDE_CODE_OAUTH_TOKEN = envBak;
+    }
   });
 });
