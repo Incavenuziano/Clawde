@@ -11,6 +11,7 @@ import { dirname } from "node:path";
 import { closeDb, openDb } from "@clawde/db/client";
 import { EventsRepo } from "@clawde/db/repositories/events";
 import { type OutputFormat, emit, emitErr } from "../output.ts";
+import { type DiagnoseReport, runDiagnose } from "./diagnose.ts";
 
 export interface PanicLockInfo {
   readonly ts: string;
@@ -237,6 +238,119 @@ export async function runPanicStop(options: PanicStopOptions): Promise<number> {
   });
 
   return 0;
+}
+
+/**
+ * `clawde panic-resume` — destrava após panic-stop. Pré-requisito: `clawde
+ * diagnose all` retorna status=ok (sem warnings, sem errors). Se warn ou
+ * error, recusa resume e mantém lock (exit 1). Per spec T-105.
+ *
+ * Happy path (exit 0): remove lock + systemctl start clawde-receiver.
+ * Falha de start retorna exit 2 (lock já removido — estado conhecido pra
+ * operador investigar; resume não é idempotente por design).
+ */
+export interface PanicResumeOptions {
+  readonly dbPath: string;
+  readonly lockPath: string;
+  readonly format: OutputFormat;
+  readonly systemd?: SystemdController;
+  readonly diagnose?: () => Promise<DiagnoseReport>;
+  readonly agentsRoot?: string;
+}
+
+export interface PanicResumeReport {
+  readonly ok: boolean;
+  readonly diagnose: DiagnoseReport;
+  readonly start?: { unit: string; ok: boolean; detail?: string };
+  readonly lockRemoved: boolean;
+  readonly refusedReason?: string;
+}
+
+export async function runPanicResume(options: PanicResumeOptions): Promise<number> {
+  const sd = options.systemd ?? realSystemdController();
+  const diagnose =
+    options.diagnose ??
+    (async () => captureDiagnoseAll(options.dbPath, options.agentsRoot));
+  const diagnoseReport = await diagnose();
+
+  if (diagnoseReport.status !== "ok") {
+    const refusedReason = `diagnose status=${diagnoseReport.status}; resume refused`;
+    const report: PanicResumeReport = {
+      ok: false,
+      diagnose: diagnoseReport,
+      lockRemoved: false,
+      refusedReason,
+    };
+    emitResume(options.format, report);
+    return 1;
+  }
+
+  removePanicLock(options.lockPath);
+  const lockRemoved = !panicLockExists(options.lockPath);
+
+  const startResult = await sd.start("clawde-receiver");
+  const start: { unit: string; ok: boolean; detail?: string } = {
+    unit: "clawde-receiver",
+    ok: startResult.ok,
+    ...(startResult.detail !== undefined ? { detail: startResult.detail } : {}),
+  };
+
+  const report: PanicResumeReport = {
+    ok: startResult.ok && lockRemoved,
+    diagnose: diagnoseReport,
+    start,
+    lockRemoved,
+  };
+  emitResume(options.format, report);
+  return report.ok ? 0 : 2;
+}
+
+function emitResume(format: OutputFormat, report: PanicResumeReport): void {
+  emit(format, report, (d) => {
+    const r = d as PanicResumeReport;
+    const lines: string[] = [];
+    lines.push(`diagnose: ${r.diagnose.status} (${r.diagnose.checks.length} checks)`);
+    for (const c of r.diagnose.checks) {
+      lines.push(`  [${c.status}] ${c.name}: ${c.detail ?? ""}`);
+    }
+    if (r.refusedReason !== undefined) {
+      lines.push(`refused: ${r.refusedReason}`);
+      return lines.join("\n");
+    }
+    if (r.start !== undefined) {
+      lines.push(
+        `[${r.start.ok ? "OK " : "FAIL"}] systemctl start ${r.start.unit}${r.start.detail !== undefined ? `: ${r.start.detail}` : ""}`,
+      );
+    }
+    lines.push(`lock removed: ${r.lockRemoved}`);
+    lines.push(`overall: ${r.ok ? "OK" : "FAIL"}`);
+    return lines.join("\n");
+  });
+}
+
+async function captureDiagnoseAll(
+  dbPath: string,
+  agentsRoot?: string,
+): Promise<DiagnoseReport> {
+  // Captura stdout do runDiagnose pra extrair report estruturado sem
+  // duplicar lógica. format=json garante JSON parseável.
+  const orig = process.stdout.write.bind(process.stdout);
+  let captured = "";
+  process.stdout.write = ((c: unknown): boolean => {
+    captured += String(c);
+    return true;
+  }) as typeof process.stdout.write;
+  try {
+    await runDiagnose({
+      dbPath,
+      format: "json",
+      subject: "all",
+      ...(agentsRoot !== undefined ? { agentsRoot } : {}),
+    });
+  } finally {
+    process.stdout.write = orig;
+  }
+  return JSON.parse(captured) as DiagnoseReport;
 }
 
 async function runSystemctl(args: ReadonlyArray<string>): Promise<SystemdResult> {
