@@ -22,6 +22,14 @@ export const AgentSandboxSchema = z.object({
   network: NetworkModeSchema.default("none"),
   allowed_egress: z.array(z.string()).default([]),
   allowed_writes: z.array(z.string()).default([]),
+  /**
+   * Path allowlist para `Read` tool no `PreToolUse` hook.
+   * - Omitido (`undefined`): comportamento legacy permissivo (read libera-tudo).
+   * - Definido como `[]`: fail-closed, nenhum read permitido (use pra
+   *   agentes que processam input adversarial com auto-resposta).
+   * - Lista não-vazia: strict allowlist por path prefix.
+   */
+  allowed_reads: z.array(z.string()).optional(),
   read_only_mounts: z.array(z.string()).default([]),
   max_memory_mb: z.number().int().positive().default(1024),
   max_cpu_seconds: z.number().int().positive().default(600),

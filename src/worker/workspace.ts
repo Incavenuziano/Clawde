@@ -34,6 +34,7 @@ export interface AgentDefinitionLike {
   readonly sandbox?: {
     readonly level: 1 | 2 | 3;
     readonly allowed_writes: ReadonlyArray<string>;
+    readonly allowed_reads?: ReadonlyArray<string> | undefined;
   };
 }
 

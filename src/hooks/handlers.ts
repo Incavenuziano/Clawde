@@ -36,6 +36,18 @@ export interface PreToolUseAgentPolicy {
   readonly sandbox: {
     readonly level: 1 | 2 | 3;
     readonly allowed_writes: ReadonlyArray<string>;
+    /**
+     * Path allowlist for `Read`. Semantics:
+     *   - `undefined`     → no enforcement (legacy behavior, all reads allowed).
+     *   - `[]` (defined)  → fail-closed, NO reads allowed.
+     *   - non-empty list  → strict allowlist (read iff target matches a prefix).
+     *
+     * The "defined empty" form is the one to use for adversarial-input agents
+     * (telegram-bot, github-pr-handler) — closes the exfiltration vector where
+     * an attacker socially engineers the agent to read secrets and the response
+     * is auto-forwarded back.
+     */
+    readonly allowed_reads?: ReadonlyArray<string>;
   };
 }
 
@@ -116,6 +128,17 @@ function isAllowedWritePath(path: string, allowedWrites: ReadonlyArray<string>):
   return false;
 }
 
+function isAllowedReadPath(path: string, allowedReads: ReadonlyArray<string>): boolean {
+  const target = normalizePath(path);
+  if (isPathTraversal(target)) return false;
+  for (const allowed of allowedReads) {
+    const base = normalizePath(allowed);
+    if (base.length === 0) continue;
+    if (target === base || target.startsWith(`${base}/`)) return true;
+  }
+  return false;
+}
+
 export function makeSessionStartHandler(
   emit: EventCallback,
 ): HookHandler<HookInput & { hook: "SessionStart"; payload: SessionStartPayload }> {
@@ -177,6 +200,22 @@ export function makePreToolUseHandler(
           path,
         });
         return { ok: false, block: true, message: `write path '${path}' is not allowed` };
+      }
+    }
+
+    // Read path policy: enforced apenas quando `allowed_reads` está definido
+    // (mesmo que vazio). `undefined` mantém comportamento legacy permissivo.
+    // Empty array = fail-closed, evita exfiltração via Read pra agentes que
+    // processam input adversarial com auto-resposta (telegram-bot, etc).
+    if (toolName === "Read" && agent?.sandbox.allowed_reads !== undefined) {
+      const path = extractPath(input.payload.toolInput);
+      if (!isAllowedReadPath(path, agent.sandbox.allowed_reads)) {
+        emit("tool_blocked", {
+          tool: toolName,
+          reason: "read_path_not_allowed",
+          path,
+        });
+        return { ok: false, block: true, message: `read path '${path}' is not allowed` };
       }
     }
 

@@ -4,6 +4,10 @@ allowed_egress = []
 # Futuro (quando allowlist real de egress estiver ativa):
 # allowed_egress = ["api.github.com"]
 allowed_writes = []
+# Fail-closed: ZERO Read paths. Mesmo princípio do telegram-bot — se PR
+# triagem auto-comentar de volta no GitHub, exfiltração é direta. Quando
+# Estratégia A (bwrap) existir, dá pra liberar workspace específico.
+allowed_reads = []
 read_only_mounts = ["/usr", "/etc/ssl"]
 max_memory_mb = 512
 max_cpu_seconds = 240
