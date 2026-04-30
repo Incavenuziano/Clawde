@@ -8,6 +8,9 @@
 
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { closeDb, openDb } from "@clawde/db/client";
+import { EventsRepo } from "@clawde/db/repositories/events";
+import { type OutputFormat, emit, emitErr } from "../output.ts";
 
 export interface PanicLockInfo {
   readonly ts: string;
@@ -145,6 +148,95 @@ export function fakeSystemdController(): FakeSystemdController {
       return active.get(unit) ?? false;
     },
   };
+}
+
+/**
+ * `clawde panic-stop` — para receiver+worker, registra event panic_stop,
+ * cria lock pra travar panic-resume sem diagnose ok. Idempotente per
+ * BLUEPRINT §6.2.
+ */
+export interface PanicStopOptions {
+  readonly dbPath: string;
+  readonly lockPath: string;
+  readonly format: OutputFormat;
+  readonly reason?: string;
+  readonly systemd?: SystemdController;
+}
+
+export interface PanicStopReport {
+  readonly ok: boolean;
+  readonly alreadyLocked: boolean;
+  readonly lock: PanicLockInfo;
+  readonly stops: ReadonlyArray<{ unit: string; ok: boolean; detail?: string }>;
+}
+
+export async function runPanicStop(options: PanicStopOptions): Promise<number> {
+  const sd = options.systemd ?? realSystemdController();
+  const alreadyLocked = panicLockExists(options.lockPath);
+  const lock = createPanicLock(options.lockPath, options.reason);
+
+  const units = ["clawde-receiver", "clawde-worker.path"];
+  const stops: Array<{ unit: string; ok: boolean; detail?: string }> = [];
+  for (const unit of units) {
+    const r = await sd.stop(unit);
+    stops.push({
+      unit,
+      ok: r.ok,
+      ...(r.detail !== undefined ? { detail: r.detail } : {}),
+    });
+  }
+
+  let dbOk = true;
+  try {
+    const db = openDb(options.dbPath);
+    try {
+      const events = new EventsRepo(db);
+      events.insert({
+        taskRunId: null,
+        sessionId: null,
+        traceId: null,
+        spanId: null,
+        kind: "panic_stop",
+        payload: {
+          lock_ts: lock.ts,
+          hostname: lock.hostname,
+          pid: lock.pid,
+          reason: lock.reason ?? null,
+          already_locked: alreadyLocked,
+          stops: stops.map((s) => ({ unit: s.unit, ok: s.ok })),
+        },
+      });
+    } finally {
+      closeDb(db);
+    }
+  } catch (err) {
+    dbOk = false;
+    emitErr(`warning: failed to persist panic_stop event: ${(err as Error).message}`);
+  }
+
+  const allStopsOk = stops.every((s) => s.ok);
+  const report: PanicStopReport = {
+    ok: allStopsOk && dbOk,
+    alreadyLocked,
+    lock,
+    stops,
+  };
+
+  emit(options.format, report, (d) => {
+    const r = d as PanicStopReport;
+    const lines = [
+      `lock:         ${r.lock.ts} (${r.alreadyLocked ? "preexisting" : "new"})`,
+      `host/pid:     ${r.lock.hostname}/${r.lock.pid}`,
+      ...(r.lock.reason !== undefined ? [`reason:       ${r.lock.reason}`] : []),
+      ...r.stops.map(
+        (s) => `[${s.ok ? "OK " : "FAIL"}] systemctl stop ${s.unit}${s.detail !== undefined ? `: ${s.detail}` : ""}`,
+      ),
+      `overall: ${r.ok ? "OK" : "DEGRADED"}`,
+    ];
+    return lines.join("\n");
+  });
+
+  return 0;
 }
 
 async function runSystemctl(args: ReadonlyArray<string>): Promise<SystemdResult> {
