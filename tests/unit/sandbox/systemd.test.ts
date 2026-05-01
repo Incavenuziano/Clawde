@@ -115,4 +115,15 @@ describe("deploy/systemd unit files reais", () => {
     expect(content).toContain("OnCalendar=*-*-* 04:00:00");
     expect(content).toContain("Persistent=true");
   });
+
+  test("clawde-integrity.timer roda 02:30 diariamente", () => {
+    const content = readUnit("clawde-integrity.timer");
+    expect(content).toContain("OnCalendar=*-*-* 02:30:00");
+    expect(content).toContain("Unit=clawde-integrity.service");
+  });
+
+  test("clawde-integrity.service chama diagnose db json", () => {
+    const content = readUnit("clawde-integrity.service");
+    expect(content).toContain("ExecStart=%h/.clawde/dist/clawde diagnose db --output json");
+  });
 });
