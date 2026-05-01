@@ -2,10 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  type DiagnoseReport,
-  runDiagnose,
-} from "@clawde/cli/commands/diagnose";
+import { type DiagnoseReport, runDiagnose } from "@clawde/cli/commands/diagnose";
 import { closeDb, openDb } from "@clawde/db/client";
 import { applyPending, defaultMigrationsDir } from "@clawde/db/migrations";
 
@@ -53,6 +50,29 @@ describe("cli/commands/diagnose", () => {
     expect(report.subject).toBe("db");
     expect(report.status).toBe("ok");
     expect(report.checks[0]?.name).toBe("db.integrity");
+  });
+
+  test("subject=db retorna exit 1 quando foreign_key_check encontra diff", async () => {
+    const db = openDb(dbPath);
+    try {
+      db.exec("PRAGMA foreign_keys = OFF");
+      db.run("INSERT INTO task_runs (task_id, worker_id, status) VALUES (?, ?, ?)", [
+        999_999,
+        "corrupt-fixture",
+        "pending",
+      ]);
+      db.exec("PRAGMA foreign_keys = ON");
+    } finally {
+      closeDb(db);
+    }
+
+    const { exit, stdout } = await captureOutput(() =>
+      runDiagnose({ dbPath, format: "json", subject: "db" }),
+    );
+    expect(exit).toBe(1);
+    const report = JSON.parse(stdout) as DiagnoseReport;
+    expect(report.status).toBe("error");
+    expect(report.checks[0]?.detail).toContain("foreign_key_violations=1");
   });
 
   test("subject=db retorna error em DB inexistente", async () => {

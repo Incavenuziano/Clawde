@@ -50,6 +50,7 @@ export const EVENT_KIND_VALUES = [
   // security
   "prompt_guard_alert",
   "panic_stop",
+  "db_corrupted",
   // hooks (BLUEPRINT §4.5)
   "hook_error",
   "hook_timeout",

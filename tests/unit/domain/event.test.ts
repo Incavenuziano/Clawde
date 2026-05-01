@@ -41,6 +41,10 @@ describe("domain/event EVENT_KIND_VALUES", () => {
     expect(EVENT_KIND_VALUES).toContain("smoke.sdk_real_ping_fail");
   });
 
+  test("contains db corruption kind", () => {
+    expect(EVENT_KIND_VALUES).toContain("db_corrupted");
+  });
+
   test("contains learning kinds (ADR 0009)", () => {
     expect(EVENT_KIND_VALUES).toContain("lesson");
     expect(EVENT_KIND_VALUES).toContain("reflection_start");

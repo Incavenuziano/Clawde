@@ -12,6 +12,11 @@ import { dirname, join } from "node:path";
 import { loadAllAgentDefinitions } from "@clawde/agents";
 import { OAuthLoadError, getTokenExpiry, loadOAuthToken } from "@clawde/auth";
 import { closeDb, openDb } from "@clawde/db/client";
+import {
+  SLOW_INTEGRITY_CHECK_MS,
+  isDbIntegrityOk,
+  runDbIntegrityChecks,
+} from "@clawde/db/integrity";
 import { QuotaLedgerRepo } from "@clawde/db/repositories/quota-ledger";
 import { DEFAULT_TRACKER_CONFIG, QuotaTracker } from "@clawde/quota";
 import { type OutputFormat, emit } from "../output.ts";
@@ -62,13 +67,15 @@ export async function runDiagnose(options: DiagnoseOptions): Promise<number> {
 
   emit(options.format, report, (d) => {
     const r = d as DiagnoseReport;
-    const lines = r.checks.map(
-      (c) => `[${statusBadge(c.status)}] ${c.name}: ${c.detail ?? ""}`,
-    );
+    const lines = r.checks.map((c) => `[${statusBadge(c.status)}] ${c.name}: ${c.detail ?? ""}`);
     lines.push(`overall: ${statusBadge(r.status)}`);
     return lines.join("\n");
   });
 
+  if (options.subject === "db" && status !== "ok") {
+    // T-128: `diagnose db` deve retornar 1 quando qualquer PRAGMA divergir.
+    return 1;
+  }
   return statusToExit(status);
 }
 
@@ -94,14 +101,26 @@ function checkDb(dbPath: string): DiagnoseCheck {
   try {
     const db = openDb(dbPath);
     try {
-      const row = db.query<{ integrity_check: string }, []>("PRAGMA integrity_check").get();
-      if (row?.integrity_check === "ok") {
-        return { name: "db.integrity", status: "ok", detail: "PRAGMA integrity_check ok" };
+      const report = runDbIntegrityChecks(db);
+      const detail = formatDbIntegrityDetail(report);
+      if (!isDbIntegrityOk(report)) {
+        return {
+          name: "db.integrity",
+          status: "error",
+          detail,
+        };
+      }
+      if (report.elapsedMs > SLOW_INTEGRITY_CHECK_MS) {
+        return {
+          name: "db.integrity",
+          status: "warn",
+          detail,
+        };
       }
       return {
         name: "db.integrity",
-        status: "error",
-        detail: row?.integrity_check ?? "unknown",
+        status: "ok",
+        detail,
       };
     } finally {
       closeDb(db);
@@ -109,6 +128,26 @@ function checkDb(dbPath: string): DiagnoseCheck {
   } catch (err) {
     return { name: "db.integrity", status: "error", detail: (err as Error).message };
   }
+}
+
+function formatDbIntegrityDetail(report: ReturnType<typeof runDbIntegrityChecks>): string {
+  const parts = [
+    `integrity_check=${report.integrityCheck}`,
+    `quick_check=${report.quickCheck}`,
+    `foreign_key_violations=${report.foreignKeyViolations.length}`,
+    `elapsed_ms=${report.elapsedMs}`,
+  ];
+  if (report.foreignKeyViolations.length > 0) {
+    const sample = report.foreignKeyViolations
+      .slice(0, 3)
+      .map((v) => `${v.table}#${v.rowid}->${v.parent}(${v.fkid})`)
+      .join(", ");
+    parts.push(`fk_diff_sample=${sample}`);
+  }
+  if (report.elapsedMs > SLOW_INTEGRITY_CHECK_MS) {
+    parts.push(`slow_check_warn=>${SLOW_INTEGRITY_CHECK_MS}ms`);
+  }
+  return parts.join("; ");
 }
 
 function checkQuota(dbPath: string): DiagnoseCheck {

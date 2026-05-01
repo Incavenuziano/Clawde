@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -36,6 +36,19 @@ describe("cli/smoke-test", () => {
   let dbPath: string;
   let prevConfigEnv: string | undefined;
   let prevHomeEnv: string | undefined;
+
+  beforeAll(() => {
+    const bunBin = Bun.which("bun") ?? "bun";
+    const build = Bun.spawnSync([bunBin, "run", "build:worker"], {
+      stdout: "ignore",
+      stderr: "pipe",
+    });
+    if (build.exitCode !== 0) {
+      throw new Error(
+        `failed to build worker bundle (exit=${build.exitCode}): ${new TextDecoder().decode(build.stderr)}`,
+      );
+    }
+  });
 
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), "clawde-smoke-"));
@@ -162,5 +175,23 @@ describe("cli/smoke-test", () => {
     } finally {
       rmSync(fakeHome, { recursive: true, force: true });
     }
+  });
+
+  test("worker.dry_run falha quando startup detecta db_corrupted", async () => {
+    const db = openDb(dbPath);
+    applyPending(db, defaultMigrationsDir());
+    db.exec("PRAGMA foreign_keys = OFF");
+    db.run("INSERT INTO task_runs (task_id, worker_id, status) VALUES (?, ?, ?)", [
+      999_999,
+      "corrupt-fixture",
+      "pending",
+    ]);
+    db.exec("PRAGMA foreign_keys = ON");
+    closeDb(db);
+
+    const { exit, stdout } = await captureOutput(() => runSmokeTest({ dbPath, format: "text" }));
+    expect(exit).toBe(1);
+    expect(stdout).toContain("[FAIL] worker.dry_run");
+    expect(stdout).toContain("overall: FAIL");
   });
 });

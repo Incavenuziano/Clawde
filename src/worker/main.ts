@@ -3,6 +3,11 @@ import { basename, dirname, join } from "node:path";
 import { AgentDefinitionError, loadAllAgentDefinitionsWithWarnings } from "@clawde/agents";
 import { loadConfig } from "@clawde/config";
 import { closeDb, openDb } from "@clawde/db/client";
+import {
+  SLOW_INTEGRITY_CHECK_MS,
+  isDbIntegrityOk,
+  runDbIntegrityChecks,
+} from "@clawde/db/integrity";
 import { applyPending, defaultMigrationsDir } from "@clawde/db/migrations";
 import { EventsRepo } from "@clawde/db/repositories/events";
 import { QuotaLedgerRepo } from "@clawde/db/repositories/quota-ledger";
@@ -40,6 +45,48 @@ export interface LoopResult {
   readonly exitReason: LoopExitReason;
 }
 
+function assertStartupDbIntegrity(
+  db: ReturnType<typeof openDb>,
+  logger: ReturnType<typeof createLogger>,
+): void {
+  const report = runDbIntegrityChecks(db);
+  if (report.elapsedMs > SLOW_INTEGRITY_CHECK_MS) {
+    logger.warn("startup integrity_check slow", {
+      elapsed_ms: report.elapsedMs,
+      threshold_ms: SLOW_INTEGRITY_CHECK_MS,
+    });
+  }
+  if (isDbIntegrityOk(report)) {
+    return;
+  }
+
+  const payload = {
+    integrity_check: report.integrityCheck,
+    quick_check: report.quickCheck,
+    foreign_key_violations: report.foreignKeyViolations.length,
+    elapsed_ms: report.elapsedMs,
+  } as const;
+  try {
+    new EventsRepo(db).insert({
+      taskRunId: null,
+      sessionId: null,
+      traceId: null,
+      spanId: null,
+      kind: "db_corrupted",
+      payload,
+    });
+  } catch (err) {
+    logger.error("failed to persist db_corrupted event", {
+      error: (err as Error).message,
+    });
+  }
+
+  logger.error("db integrity failed; entering readonly mode", payload);
+  throw new Error(
+    `db integrity failed (integrity_check=${report.integrityCheck}, quick_check=${report.quickCheck}, fk=${report.foreignKeyViolations.length})`,
+  );
+}
+
 export async function runProcessLoop(deps: RunnerDeps, maxTasks: number): Promise<LoopResult> {
   let processed = 0;
   while (processed < maxTasks) {
@@ -63,6 +110,7 @@ export async function bootstrap(
   const db = openDb(dbPath);
   try {
     applyPending(db, defaultMigrationsDir());
+    assertStartupDbIntegrity(db, logger);
     const tasksRepo = new TasksRepo(db);
     const runsRepo = new TaskRunsRepo(db);
     const eventsRepo = new EventsRepo(db);
@@ -154,5 +202,10 @@ export async function bootstrap(
 }
 
 if (import.meta.main) {
-  bootstrap().then(() => process.exit(0));
+  bootstrap()
+    .then(() => process.exit(0))
+    .catch((err) => {
+      console.error((err as Error).message);
+      process.exit(1);
+    });
 }
