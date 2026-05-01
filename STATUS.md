@@ -53,7 +53,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P3.4 | `task/P3.4-reflect-job` | T-112..T-115 | claude | codex | merged, PR #20, 2026-04-30 | #20 |
 | P3.5 | `task/P3.5-smoke-service` | T-116..T-121 | codex | claude | merged, PR #24, 2026-04-30 | #24 |
 | P3.6 | `task/P3.6-sdk-real-ci` | T-122..T-124 | codex | claude | merged, PR #26, 2026-05-01 | #26 |
-| P6.1 | `task/P6.1-ci-security-gates` | T-125..T-127 | codex | claude (+ operador em T-125) | in-progress, codex | — |
+| P6.1 | `task/P6.1-ci-security-gates` | T-125..T-127 | codex | claude (+ operador em T-125) | in-review, PR #29 | #29 |
 | P6.2 | `task/P6.2-db-integrity` | T-128..T-130 | codex | claude | pending | — |
 | P6.3 | `task/P6.3-events-retention` | T-131..T-133 | codex | claude (+ operador em T-132) | pending | — |
 | P6.4 | `task/P6.4-alerts-system` | T-134..T-137 | codex | claude | pending | — |
@@ -259,9 +259,9 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 ## Wave 6 — Hardening operacional (gaps do BEST_PRACTICES)
 
 ### P6.1 — CI security gates
-- [ ] T-125 — in-progress, codex — gitleaks (security)
-- [ ] T-126 — in-progress, codex — bun audit
-- [ ] T-127 — in-progress, codex — coverage gate
+- [ ] T-125 — in-review, PR #29 — gitleaks (security)
+- [ ] T-126 — in-review, PR #29 — bun audit
+- [ ] T-127 — in-review, PR #29 — coverage gate
 
 ### P6.2 — DB integrity automation
 - [ ] T-128 — pending
