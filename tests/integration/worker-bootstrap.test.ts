@@ -7,7 +7,7 @@
  * Requires: bun run build:worker (or build) before running.
  */
 
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeAll, describe, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -22,6 +22,18 @@ const BUN_BIN = Bun.which("bun") ?? "bun";
 describe("worker bootstrap integration", () => {
   const cleanups: Array<() => void> = [];
 
+  beforeAll(() => {
+    const build = Bun.spawnSync([BUN_BIN, "run", "build:worker"], {
+      stdout: "ignore",
+      stderr: "pipe",
+    });
+    if (build.exitCode !== 0) {
+      throw new Error(
+        `failed to build worker bundle (exit=${build.exitCode}): ${new TextDecoder().decode(build.stderr)}`,
+      );
+    }
+  });
+
   afterEach(() => {
     for (const fn of cleanups.splice(0)) fn();
   });
@@ -29,10 +41,7 @@ describe("worker bootstrap integration", () => {
   test(
     "exits 0 in <5s on empty queue; no task_start or lease_expired events",
     async () => {
-      if (!existsSync(DIST)) {
-        console.warn(`SKIP: ${DIST} not built — run bun run build:worker first`);
-        return;
-      }
+      if (!existsSync(DIST)) return;
 
       const dir = mkdtempSync(join(tmpdir(), "clawde-worker-boot-"));
       const dbPath = join(dir, "state.db");
@@ -75,6 +84,60 @@ describe("worker bootstrap integration", () => {
 
       expect(taskStartCount).toBe(0);
       expect(leaseExpiredCount).toBe(0);
+    },
+    { timeout: 8_000 },
+  );
+
+  test(
+    "exits 1 + emits db_corrupted when startup integrity check finds FK diff",
+    async () => {
+      if (!existsSync(DIST)) return;
+
+      const dir = mkdtempSync(join(tmpdir(), "clawde-worker-corrupt-"));
+      const dbPath = join(dir, "state.db");
+      const configPath = join(dir, "clawde.toml");
+      writeFileSync(configPath, `[clawde]\nhome = "${dir}"\nlog_level = "ERROR"\n`);
+
+      const preDb = openDb(dbPath);
+      applyPending(preDb, MIGRATIONS_DIR);
+      preDb.exec("PRAGMA foreign_keys = OFF");
+      preDb.run("INSERT INTO task_runs (task_id, worker_id, status) VALUES (?, ?, ?)", [
+        999_999,
+        "corrupt-fixture",
+        "pending",
+      ]);
+      preDb.exec("PRAGMA foreign_keys = ON");
+      closeDb(preDb);
+
+      const proc = Bun.spawn([BUN_BIN, "run", DIST], {
+        env: { ...process.env, CLAWDE_CONFIG: configPath },
+        stdout: "ignore",
+        stderr: "ignore",
+      });
+
+      cleanups.push(() => {
+        try {
+          proc.kill();
+        } catch {}
+        rmSync(dir, { recursive: true, force: true });
+      });
+
+      const exitCode = await Promise.race([
+        proc.exited,
+        Bun.sleep(5000).then(() => {
+          proc.kill();
+          return -1 as number;
+        }),
+      ]);
+
+      expect(exitCode).toBe(1);
+
+      const db = openDb(dbPath);
+      const eventsRepo = new EventsRepo(db);
+      const dbCorruptedCount = eventsRepo.queryByKind("db_corrupted").length;
+      closeDb(db);
+
+      expect(dbCorruptedCount).toBe(1);
     },
     { timeout: 8_000 },
   );
