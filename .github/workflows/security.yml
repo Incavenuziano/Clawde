@@ -1,0 +1,107 @@
+name: Security Gates
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 4 * * *"
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install gitleaks
+        run: |
+          install_dir="$(bash scripts/ci/install-gitleaks.sh)"
+          echo "${install_dir}" >> "${GITHUB_PATH}"
+          gitleaks version
+
+      - name: Run gitleaks against git history
+        run: |
+          gitleaks git \
+            --log-opts="--all" \
+            --redact \
+            --config .gitleaks.toml \
+            --report-format sarif \
+            --report-path gitleaks.sarif \
+            .
+
+      - name: Upload gitleaks report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: gitleaks.sarif
+          if-no-files-found: ignore
+
+  bun-audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run bun audit (json)
+        run: |
+          set +e
+          bun audit --json > bun-audit.json
+          status=$?
+          set -e
+          echo "bun_audit_exit_code=${status}"
+        id: bun-audit
+
+      - name: Build audit summary + enforce severity gate
+        id: audit
+        run: bun scripts/ci/audit-summary.mjs bun-audit.json bun-audit-summary.md
+
+      - name: Upload audit artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bun-audit-report
+          path: |
+            bun-audit.json
+            bun-audit-summary.md
+          if-no-files-found: ignore
+
+      - name: Post audit summary on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("node:fs");
+            const marker = "<!-- clawde-bun-audit -->";
+            const body = fs.readFileSync("bun-audit-summary.md", "utf8");
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number, per_page: 100
+            });
+            const existing = comments.find((comment) =>
+              comment.user?.type === "Bot" && comment.body?.includes(marker)
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner, repo, comment_id: existing.id, body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number, body
+              });
+            }
