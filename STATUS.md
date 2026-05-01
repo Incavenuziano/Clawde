@@ -56,7 +56,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P6.1 | `task/P6.1-ci-security-gates` | T-125..T-127 | codex | claude (+ operador em T-125) | merged, PR #29, 2026-05-01 | #29 |
 | P6.2 | `task/P6.2-db-integrity` | T-128..T-130 | codex | claude | merged, PR #30, 2026-05-01 | #30 |
 | P6.3 | `task/P6.3-events-retention` | T-131..T-133 | codex | claude (+ operador em T-132) | merged, PR #31, 2026-05-01 | #31 |
-| P6.4 | `task/P6.4-alerts-system` | T-134..T-137 | codex | claude | pending | — |
+| P6.4 | `task/P6.4-alerts-system` | T-134..T-137 | codex | claude | in-progress, codex | — |
 | P6.5 | `task/P6.5-backup-cadence` | T-138..T-140 | codex | claude | pending | — |
 | P6.6 | `task/P6.6-restore-drill` | T-141..T-143 | codex | claude | pending | — |
 
@@ -274,10 +274,10 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 - [x] T-133 — merged, PR #31, 2026-05-01
 
 ### P6.4 — Alerts system
-- [ ] T-134 — pending
-- [ ] T-135 — pending
-- [ ] T-136 — pending
-- [ ] T-137 — pending
+- [ ] T-134 — in-progress, codex
+- [ ] T-135 — in-progress, codex
+- [ ] T-136 — in-progress, codex
+- [ ] T-137 — in-progress, codex
 
 ### P6.5 — Backup cadenciado
 - [ ] T-138 — pending
