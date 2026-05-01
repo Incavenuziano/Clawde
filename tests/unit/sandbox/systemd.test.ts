@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import {
   HARDENING_DIRECTIVES,
@@ -137,5 +137,45 @@ describe("deploy/systemd unit files reais", () => {
     const content = readUnit("clawde-events-retention.service");
     expect(content).toContain("clawde events export --since-cutoff 90d &&");
     expect(content).toContain("clawde events purge --before $(date -d '90 days ago' -I) --confirm");
+  });
+
+  test("clawde-backup-hourly.timer roda hourly", () => {
+    const content = readUnit("clawde-backup-hourly.timer");
+    expect(content).toContain("OnCalendar=hourly");
+    expect(content).toContain("Unit=clawde-backup-hourly.service");
+  });
+
+  test("clawde-backup-daily.timer roda diariamente às 03:00", () => {
+    const content = readUnit("clawde-backup-daily.timer");
+    expect(content).toContain("OnCalendar=*-*-* 03:00:00");
+    expect(content).toContain("Unit=clawde-backup-daily.service");
+  });
+
+  test("clawde-backup-weekly.timer roda domingos às 03:30", () => {
+    const content = readUnit("clawde-backup-weekly.timer");
+    expect(content).toContain("OnCalendar=Sun *-*-* 03:30:00");
+    expect(content).toContain("Unit=clawde-backup-weekly.service");
+  });
+
+  test("backup services executam snapshot + prune", () => {
+    const hourly = readUnit("clawde-backup-hourly.service");
+    const daily = readUnit("clawde-backup-daily.service");
+    const weekly = readUnit("clawde-backup-weekly.service");
+
+    expect(hourly).toContain("backup-snapshot.sh %h/.clawde/backups/hourly/");
+    expect(hourly).toContain("backup-prune.sh %h/.clawde/backups/");
+
+    expect(daily).toContain("backup-snapshot.sh %h/.clawde/backups/daily/");
+    expect(daily).toContain("backup-prune.sh %h/.clawde/backups/");
+
+    expect(weekly).toContain("backup-snapshot.sh %h/.clawde/backups/weekly/");
+    expect(weekly).toContain("backup-prune.sh %h/.clawde/backups/");
+  });
+
+  test("backup scripts têm exec bit", () => {
+    const snapshotPath = join(import.meta.dirname, "../../../scripts/backup-snapshot.sh");
+    const prunePath = join(import.meta.dirname, "../../../scripts/backup-prune.sh");
+    expect(statSync(snapshotPath).mode & 0o111).toBeGreaterThan(0);
+    expect(statSync(prunePath).mode & 0o111).toBeGreaterThan(0);
   });
 });
