@@ -126,4 +126,16 @@ describe("deploy/systemd unit files reais", () => {
     const content = readUnit("clawde-integrity.service");
     expect(content).toContain("ExecStart=%h/.clawde/dist/clawde diagnose db --output json");
   });
+
+  test("clawde-events-retention.timer roda mensal dia 1 às 04:00", () => {
+    const content = readUnit("clawde-events-retention.timer");
+    expect(content).toContain("OnCalendar=*-*-01 04:00:00");
+    expect(content).toContain("Unit=clawde-events-retention.service");
+  });
+
+  test("clawde-events-retention.service exporta e purga com abort em falha", () => {
+    const content = readUnit("clawde-events-retention.service");
+    expect(content).toContain("clawde events export --since-cutoff 90d &&");
+    expect(content).toContain("clawde events purge --before $(date -d '90 days ago' -I) --confirm");
+  });
 });
