@@ -1,0 +1,36 @@
+title = "clawde-gitleaks-config"
+
+[[rules]]
+id = "anthropic-api-key"
+description = "Anthropic API key (sk-ant-...)"
+regex = '''sk-ant-[A-Za-z0-9_-]{20,}'''
+tags = ["key", "anthropic", "security"]
+keywords = ["sk-ant-"]
+
+[[rules]]
+id = "anthropic-oauth-token"
+description = "Anthropic OAuth token (sk-ant-oat01-...)"
+regex = '''sk-ant-oat01-[A-Za-z0-9_-]{20,}'''
+tags = ["oauth", "anthropic", "security"]
+keywords = ["sk-ant-oat01-"]
+
+[[rules]]
+id = "github-pat-classic"
+description = "GitHub classic personal access token (ghp_...)"
+regex = '''ghp_[A-Za-z0-9]{36}'''
+tags = ["pat", "github", "security"]
+keywords = ["ghp_"]
+
+[[rules]]
+id = "github-pat-fine-grained"
+description = "GitHub fine-grained personal access token (github_pat_...)"
+regex = '''github_pat_[A-Za-z0-9_]{60,255}'''
+tags = ["pat", "github", "security"]
+keywords = ["github_pat_"]
+
+[[rules]]
+id = "telegram-bot-token"
+description = "Telegram bot token"
+regex = '''[0-9]{8,10}:[A-Za-z0-9_-]{35}'''
+tags = ["telegram", "security"]
+keywords = [":"]

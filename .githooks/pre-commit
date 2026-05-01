@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+CONFIG_PATH="${ROOT_DIR}/.gitleaks.toml"
+LOCAL_BIN="${ROOT_DIR}/.tools/bin/gitleaks"
+
+if command -v gitleaks >/dev/null 2>&1; then
+  GITLEAKS_BIN="$(command -v gitleaks)"
+elif [[ -x "${LOCAL_BIN}" ]]; then
+  GITLEAKS_BIN="${LOCAL_BIN}"
+else
+  echo "pre-commit blocked: gitleaks not found in PATH or ${LOCAL_BIN}." >&2
+  echo "Install gitleaks or run: scripts/ci/install-gitleaks.sh .tools/bin" >&2
+  exit 1
+fi
+
+"${GITLEAKS_BIN}" git --pre-commit --staged --redact --config "${CONFIG_PATH}" --verbose "${ROOT_DIR}"

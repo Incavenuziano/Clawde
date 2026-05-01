@@ -38,3 +38,6 @@ coverage/
 
 # Logs (dev local)
 *.log
+
+# Local tooling cache
+.tools/
