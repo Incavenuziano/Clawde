@@ -58,7 +58,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P6.3 | `task/P6.3-events-retention` | T-131..T-133 | codex | claude (+ operador em T-132) | merged, PR #31, 2026-05-01 | #31 |
 | P6.4 | `task/P6.4-alerts-system` | T-134..T-137 | codex | claude | merged, PR #32, 2026-05-01 | #32 |
 | P6.5 | `task/P6.5-backup-cadence` | T-138..T-140 | codex | claude | merged, PR #33, 2026-05-01 | #33 |
-| P6.6 | `task/P6.6-restore-drill` | T-141..T-143 | codex | claude | in-progress, codex | — |
+| P6.6 | `task/P6.6-restore-drill` | T-141..T-143 | codex | claude | in-review, PR #34 | #34 |
 
 **Cross-wave dependencies**:
 - T-008 do P0.1 foi desbloqueado após merge de P1.2 (T-029) e concluído no followup PR #9 (2026-04-29).
@@ -285,9 +285,9 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 - [x] T-140 — merged, PR #33, 2026-05-01
 
 ### P6.6 — Restore drill
-- [ ] T-141 — in-progress, codex
-- [ ] T-142 — in-progress, codex
-- [ ] T-143 — in-progress, codex
+- [x] T-141 — in-review, PR #34
+- [x] T-142 — in-review, PR #34
+- [x] T-143 — in-review, PR #34
 
 ---
 
