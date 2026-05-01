@@ -2,10 +2,12 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 
 const MIN_COVERAGE = Number(process.env.MIN_DIFF_COVERAGE ?? "80");
+const MAX_OVERALL_DROP = Number(process.env.MAX_OVERALL_DROP ?? "0.5");
 const BASE_SHA = process.env.BASE_SHA;
 const HEAD_SHA = process.env.HEAD_SHA;
 const LCOV_PATH = process.env.LCOV_PATH ?? "coverage/lcov.info";
 const REPORT_PATH = process.env.DIFF_COVERAGE_REPORT ?? "coverage/diff-coverage.md";
+const BASELINE_PATH = process.env.COVERAGE_BASELINE_PATH ?? ".github/coverage-baseline.json";
 
 if (!BASE_SHA || !HEAD_SHA) {
   console.error("Missing BASE_SHA or HEAD_SHA env vars.");
@@ -14,6 +16,8 @@ if (!BASE_SHA || !HEAD_SHA) {
 
 function parseLcov(content) {
   const coverageByFile = new Map();
+  let totalLf = 0;
+  let totalLh = 0;
   const records = content.split("end_of_record");
 
   for (const record of records) {
@@ -32,6 +36,12 @@ function parseLcov(content) {
       }
 
       if (!line.startsWith("DA:")) {
+        if (line.startsWith("LF:")) {
+          totalLf += Number(line.slice(3));
+        }
+        if (line.startsWith("LH:")) {
+          totalLh += Number(line.slice(3));
+        }
         continue;
       }
 
@@ -50,7 +60,7 @@ function parseLcov(content) {
     }
   }
 
-  return coverageByFile;
+  return { coverageByFile, totalLf, totalLh };
 }
 
 function normalizePath(path) {
@@ -157,6 +167,14 @@ function buildReport(result) {
   lines.push("<!-- clawde-diff-coverage -->");
   lines.push(`## Diff Coverage Report (threshold: ${MIN_COVERAGE.toFixed(0)}%)`);
   lines.push("");
+  lines.push(`Overall line coverage (HEAD): **${result.overall.currentPct.toFixed(2)}%**`);
+  lines.push(
+    `Overall baseline: **${result.overall.baselinePct.toFixed(2)}%** (max drop: ${MAX_OVERALL_DROP.toFixed(2)}pp)`,
+  );
+  lines.push(
+    `Overall gate minimum: **${(result.overall.baselinePct - MAX_OVERALL_DROP).toFixed(2)}%**`,
+  );
+  lines.push("");
 
   if (result.files.length === 0) {
     lines.push("No changed lines detected under `src/` or `tests/`.");
@@ -184,15 +202,34 @@ function buildReport(result) {
 }
 
 const lcovContent = readFileSync(LCOV_PATH, "utf8");
-const coverageByFile = parseLcov(lcovContent);
+const { coverageByFile, totalLf, totalLh } = parseLcov(lcovContent);
 const addedByFile = parseAddedLinesFromDiff(BASE_SHA, HEAD_SHA);
+const baselineJson = JSON.parse(readFileSync(BASELINE_PATH, "utf8"));
+const baselinePct = Number(baselineJson.overallLineCoveragePct);
+if (!Number.isFinite(baselinePct)) {
+  console.error(`Invalid baseline coverage in ${BASELINE_PATH}. Expected numeric overallLineCoveragePct.`);
+  process.exit(2);
+}
+const currentOverallPct = totalLf > 0 ? (totalLh / totalLf) * 100 : 0;
+
 const result = computeDiffCoverage(coverageByFile, addedByFile);
+result.overall = {
+  currentPct: currentOverallPct,
+  baselinePct,
+};
 const report = buildReport(result);
 writeFileSync(REPORT_PATH, `${report}\n`, "utf8");
 
 if (result.totalCoverable > 0 && (result.totalPercent ?? 0) < MIN_COVERAGE) {
   console.error(
     `Diff coverage ${result.totalPercent?.toFixed(2)}% is below required ${MIN_COVERAGE.toFixed(0)}%.`,
+  );
+  process.exit(1);
+}
+
+if (currentOverallPct < baselinePct - MAX_OVERALL_DROP) {
+  console.error(
+    `Overall coverage ${currentOverallPct.toFixed(2)}% is below baseline gate ${(baselinePct - MAX_OVERALL_DROP).toFixed(2)}%.`,
   );
   process.exit(1);
 }

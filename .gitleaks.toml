@@ -34,3 +34,10 @@ description = "Telegram bot token"
 regex = '''[0-9]{8,10}:[A-Za-z0-9_-]{35}'''
 tags = ["telegram", "security"]
 keywords = [":"]
+
+[[allowlists]]
+description = "Allowlist test fixtures — fake tokens for redaction/parser tests"
+paths = [
+  '''tests/.*\.test\.ts''',
+  '''tests/security/.*''',
+]

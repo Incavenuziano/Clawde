@@ -52,7 +52,9 @@ jobs:
           HEAD_SHA: ${{ steps.shas.outputs.head_sha }}
           LCOV_PATH: coverage/lcov.info
           DIFF_COVERAGE_REPORT: coverage/diff-coverage.md
+          COVERAGE_BASELINE_PATH: .github/coverage-baseline.json
           MIN_DIFF_COVERAGE: "80"
+          MAX_OVERALL_DROP: "0.5"
         run: bun scripts/ci/check-diff-coverage.mjs
 
       - name: Upload coverage artifacts
