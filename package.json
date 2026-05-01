@@ -13,6 +13,7 @@
   },
   "scripts": {
     "test": "bun test",
+    "test:coverage": "bun test --config=bunfig.coverage.toml --coverage --coverage-reporter=lcov --coverage-dir=coverage",
     "test:unit": "bun test tests/unit",
     "test:integration": "bun test tests/integration",
     "typecheck": "tsc --noEmit",
