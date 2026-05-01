@@ -15,6 +15,7 @@ import { runAuth } from "./commands/auth.ts";
 import { runConfigShow, runConfigValidate } from "./commands/config.ts";
 import { runDashboard } from "./commands/dashboard.ts";
 import { DIAGNOSE_SUBJECTS, type DiagnoseSubject, runDiagnose } from "./commands/diagnose.ts";
+import { runEvents } from "./commands/events.ts";
 import { runLogs } from "./commands/logs.ts";
 import { runMemory } from "./commands/memory.ts";
 import { runMigrate } from "./commands/migrate.ts";
@@ -115,6 +116,7 @@ Commands:
   panic-resume           Destrava após panic-stop (requer diagnose all=ok)
   sessions <list|show <id>>  Inspeciona sessões persistentes do SDK
   config <show|validate <path>>  Dump/valida config TOML resolvida
+  events <export|purge>      Exporta/purge events antigos (retenção)
   reflect [--since 24h]   Enfileira reflection job (events+observations recentes)
   version                Mostra semver
   help                   Esta mensagem
@@ -131,6 +133,10 @@ Migrate options:
   --audit-sandbox        Em migrate status, audita agentes com network="allowlist"
   --fail-on-allowlist    Com --audit-sandbox, retorna exit 2 se houver achados
   --agents-root <path>   Root dos agentes (default .claude/agents)
+
+Events options:
+  export --since-cutoff 90d
+  purge --before YYYY-MM-DD --confirm
 `;
 
 export async function runMain(argv: ReadonlyArray<string>): Promise<number> {
@@ -280,6 +286,39 @@ export async function runMain(argv: ReadonlyArray<string>): Promise<number> {
       return runMigrate({ action: "down", ...migrateCommon, target, confirm });
     }
     emitErr(`unknown migrate action: ${action}`);
+    return 1;
+  }
+
+  if (parsed.command === "events") {
+    const action = parsed.positional[0];
+    if (action === "export") {
+      const sinceCutoff = getFlag(parsed, "since-cutoff");
+      if (sinceCutoff === undefined || sinceCutoff.length === 0) {
+        emitErr("error: events export requires --since-cutoff <duration>");
+        return 1;
+      }
+      return runEvents({
+        action: "export",
+        dbPath: getDbPath(parsed),
+        format: getOutputFormat(parsed),
+        sinceCutoff,
+      });
+    }
+    if (action === "purge") {
+      const before = getFlag(parsed, "before");
+      if (before === undefined || before.length === 0) {
+        emitErr("error: events purge requires --before YYYY-MM-DD");
+        return 1;
+      }
+      return runEvents({
+        action: "purge",
+        dbPath: getDbPath(parsed),
+        format: getOutputFormat(parsed),
+        before,
+        confirm: parsed.flags.confirm === true,
+      });
+    }
+    emitErr("unknown events action: use export|purge");
     return 1;
   }
 
