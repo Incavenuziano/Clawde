@@ -5,7 +5,7 @@ Description=Clawde smoke test diário
 Type=oneshot
 WorkingDirectory=%h/.clawde
 EnvironmentFile=-%h/.clawde/config/clawde.env
-ExecStart=%h/.clawde/dist/clawde smoke-test --output json
+ExecStart=%h/.clawde/dist/clawde smoke-test --output json --include-sdk-ping
 
 # Hardening idêntico ao worker (BEST_PRACTICES §10.4)
 PrivateTmp=yes
