@@ -1,0 +1,10 @@
+[Unit]
+Description=Clawde backup snapshot agendado (diário 03:00 local)
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Unit=clawde-backup-daily.service
+Persistent=true
+
+[Install]
+WantedBy=timers.target

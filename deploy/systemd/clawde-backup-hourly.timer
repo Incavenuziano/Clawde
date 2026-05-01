@@ -1,0 +1,10 @@
+[Unit]
+Description=Clawde backup snapshot agendado (hourly)
+
+[Timer]
+OnCalendar=hourly
+Unit=clawde-backup-hourly.service
+Persistent=true
+
+[Install]
+WantedBy=timers.target

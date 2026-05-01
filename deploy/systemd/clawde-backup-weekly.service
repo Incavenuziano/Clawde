@@ -1,0 +1,34 @@
+[Unit]
+Description=Clawde backup snapshot semanal
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/.clawde
+EnvironmentFile=-%h/.clawde/config/clawde.env
+ExecStart=%h/.clawde/scripts/backup-snapshot.sh %h/.clawde/backups/weekly/
+
+# Hardening idêntico ao worker (BEST_PRACTICES §10.4)
+PrivateTmp=yes
+ProtectHome=read-only
+ProtectSystem=strict
+NoNewPrivileges=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+ReadWritePaths=%h/.clawde /tmp
+
+[Install]
+WantedBy=default.target
