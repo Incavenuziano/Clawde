@@ -84,6 +84,8 @@ export const TelegramConfigSchema = z.object({
   allowed_user_ids: z.array(z.number().int().positive()).default([]),
   default_priority: z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]).default("NORMAL"),
   default_agent: z.string().default("telegram-bot"),
+  bot_token_credential: z.string().default("clawde-telegram-bot-token"),
+  alert_chat_id_credential: z.string().default("clawde-telegram-alert-chat-id"),
 });
 
 export const ReviewConfigSchema = z.object({
@@ -97,6 +99,19 @@ export const ReplicaConfigSchema = z.object({
   max_age_minutes: z.number().int().positive().default(90),
 });
 
+export const AlertsEmailConfigSchema = z.object({
+  smtp_host: z.string().min(1),
+  smtp_port: z.number().int().positive().default(587),
+  smtp_username_credential: z.string().min(1),
+  smtp_password_credential: z.string().min(1),
+  from: z.string().default("clawde@localhost"),
+  to: z.string().default("root@localhost"),
+});
+
+export const AlertsConfigSchema = z.object({
+  email: AlertsEmailConfigSchema.optional(),
+});
+
 export const ClawdeConfigSchema = z.object({
   clawde: ClawdeBaseSchema.default(() => ClawdeBaseSchema.parse({})),
   worker: WorkerSchema.default(() => WorkerSchema.parse({})),
@@ -108,6 +123,7 @@ export const ClawdeConfigSchema = z.object({
   telegram: TelegramConfigSchema.optional(),
   review: ReviewConfigSchema.optional(),
   replica: ReplicaConfigSchema.optional(),
+  alerts: AlertsConfigSchema.optional(),
 });
 
 export type ClawdeConfig = z.infer<typeof ClawdeConfigSchema>;

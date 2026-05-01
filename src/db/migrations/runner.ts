@@ -8,6 +8,7 @@
 
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { sendAlertBestEffort } from "@clawde/alerts";
 import type { ClawdeDatabase } from "../client.ts";
 
 export interface MigrationFile {
@@ -153,6 +154,16 @@ export function applyPending(db: ClawdeDatabase, dir: string): ReadonlyArray<num
       db.exec("COMMIT");
     } catch (err) {
       db.exec("ROLLBACK");
+      void sendAlertBestEffort({
+        severity: "critical",
+        trigger: "migration_fail",
+        cooldownKey: `migration_fail_${m.version}`,
+        payload: {
+          version: m.version,
+          slug: m.slug,
+          error: (err as Error).message,
+        },
+      });
       throw new Error(`migration ${m.version} (${m.slug}) failed: ${(err as Error).message}`);
     }
     newlyApplied.push(m.version);
@@ -196,6 +207,16 @@ export function rollbackTo(
       db.exec("COMMIT");
     } catch (err) {
       db.exec("ROLLBACK");
+      void sendAlertBestEffort({
+        severity: "critical",
+        trigger: "migration_fail",
+        cooldownKey: `migration_rollback_fail_${v}`,
+        payload: {
+          version: v,
+          slug: m.slug,
+          error: (err as Error).message,
+        },
+      });
       throw new Error(`rollback ${v} (${m.slug}) failed: ${(err as Error).message}`);
     }
     reverted.push(v);

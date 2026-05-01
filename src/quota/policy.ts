@@ -13,6 +13,7 @@
  * `restrito`/`critico` (default 15%, configurável).
  */
 
+import { sendAlertBestEffort } from "@clawde/alerts";
 import type {
   Plan,
   QuotaDecision,
@@ -66,6 +67,21 @@ export function makeQuotaPolicy(_config: PolicyConfig = DEFAULT_POLICY_CONFIG): 
   // Config aceito para extensibilidade futura (custom thresholds/reserve).
   return {
     canAccept(window: QuotaWindow, priority: Priority): QuotaDecision {
+      if (window.state === "critico") {
+        void sendAlertBestEffort({
+          severity: "high",
+          trigger: "quota_critical",
+          cooldownKey: `quota_critical_${window.plan}`,
+          cooldownMs: 60 * 60 * 1000,
+          payload: {
+            plan: window.plan,
+            state: window.state,
+            msgs_consumed: window.msgsConsumed,
+            window_start: window.windowStart,
+            resets_at: window.resetsAt,
+          },
+        });
+      }
       const requiredRank = STATE_MIN_PRIORITY[window.state];
       const priorityRank = PRIORITY_RANK[priority];
 

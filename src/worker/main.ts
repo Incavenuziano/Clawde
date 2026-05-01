@@ -1,6 +1,7 @@
 import { homedir, hostname } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { AgentDefinitionError, loadAllAgentDefinitionsWithWarnings } from "@clawde/agents";
+import { sendAlertBestEffort } from "@clawde/alerts";
 import { loadConfig } from "@clawde/config";
 import { closeDb, openDb } from "@clawde/db/client";
 import {
@@ -82,6 +83,12 @@ function assertStartupDbIntegrity(
   }
 
   logger.error("db integrity failed; entering readonly mode", payload);
+  void sendAlertBestEffort({
+    severity: "critical",
+    trigger: "db_corrupted",
+    cooldownKey: "db_corrupted",
+    payload,
+  });
   throw new Error(
     `db integrity failed (integrity_check=${report.integrityCheck}, quick_check=${report.quickCheck}, fk=${report.foreignKeyViolations.length})`,
   );

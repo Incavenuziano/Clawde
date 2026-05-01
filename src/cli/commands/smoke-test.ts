@@ -12,6 +12,7 @@
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { AgentDefinitionError, loadAllAgentDefinitions } from "@clawde/agents";
+import { sendAlertBestEffort } from "@clawde/alerts";
 import { OAuthLoadError, getTokenExpiry, loadOAuthToken } from "@clawde/auth";
 import { type ClawdeDatabase, closeDb, openDb } from "@clawde/db/client";
 import { defaultMigrationsDir, status } from "@clawde/db/migrations";
@@ -212,6 +213,13 @@ function checkOAuthExpiry(): CheckResult {
       };
     }
     if (days < 30) {
+      void sendAlertBestEffort({
+        severity: "medium",
+        trigger: "oauth_expiry_warning",
+        cooldownKey: "oauth_expiry_warning",
+        cooldownMs: 24 * 60 * 60 * 1000,
+        payload: { days_until_expiry: days },
+      });
       return {
         name: "auth.oauth_expiry",
         ok: true,
@@ -306,6 +314,17 @@ export async function runSmokeTest(options: SmokeTestOptions): Promise<number> {
 
   const allOk = checks.every((c) => c.ok);
   const report: SmokeReport = { ok: allOk, checks };
+
+  if (!allOk) {
+    void sendAlertBestEffort({
+      severity: "high",
+      trigger: "smoke_test_fail",
+      cooldownKey: "smoke_test_fail",
+      payload: {
+        failed_checks: checks.filter((c) => !c.ok).map((c) => c.name),
+      },
+    });
+  }
 
   if (sdkPing.eventKind !== undefined) {
     try {
