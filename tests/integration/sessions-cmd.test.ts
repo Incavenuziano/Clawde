@@ -55,9 +55,7 @@ describe("cli/commands/sessions list+show", () => {
   });
 
   test("list em DB sem sessões retorna stdout '(no sessions)'", async () => {
-    const { exit, stdout } = await captureOutput(() =>
-      runSessionsList({ dbPath, format: "text" }),
-    );
+    const { exit, stdout } = await captureOutput(() => runSessionsList({ dbPath, format: "text" }));
     expect(exit).toBe(0);
     expect(stdout).toContain("(no sessions)");
   });
@@ -68,9 +66,7 @@ describe("cli/commands/sessions list+show", () => {
     repo.upsert({ sessionId: "sess-b", agent: "verifier" });
     repo.markUsed("sess-a", 3, 120);
 
-    const { exit, stdout } = await captureOutput(() =>
-      runSessionsList({ dbPath, format: "json" }),
-    );
+    const { exit, stdout } = await captureOutput(() => runSessionsList({ dbPath, format: "json" }));
     expect(exit).toBe(0);
     const list = JSON.parse(stdout) as Array<{ sessionId: string; msgCount: number }>;
     expect(list).toHaveLength(2);
