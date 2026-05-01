@@ -178,4 +178,22 @@ describe("deploy/systemd unit files reais", () => {
     expect(statSync(snapshotPath).mode & 0o111).toBeGreaterThan(0);
     expect(statSync(prunePath).mode & 0o111).toBeGreaterThan(0);
   });
+
+  test("clawde-restore-drill.timer roda mensal dia 1 às 04:30", () => {
+    const content = readUnit("clawde-restore-drill.timer");
+    expect(content).toContain("OnCalendar=*-*-01 04:30:00");
+    expect(content).toContain("Unit=clawde-restore-drill.service");
+  });
+
+  test("clawde-restore-drill.service roda script e emite alerta high em falha", () => {
+    const content = readUnit("clawde-restore-drill.service");
+    expect(content).toContain("scripts/restore-drill.sh ||");
+    expect(content).toContain("clawde smoke-test --db /nonexistent/clawde-restore-drill-alert.db");
+    expect(content).toContain("ReadWritePaths=%h/.clawde /tmp");
+  });
+
+  test("restore-drill script tem exec bit", () => {
+    const scriptPath = join(import.meta.dirname, "../../../scripts/restore-drill.sh");
+    expect(statSync(scriptPath).mode & 0o111).toBeGreaterThan(0);
+  });
 });
