@@ -297,7 +297,7 @@ Quando todas as tasks de uma wave estiverem `merged`, reviewer da wave (alternar
 Claude/Codex — Codex revisa Wave 1, Claude revisa Wave 2, ...) faz audit final
 e produz `docs/wave-summaries/wave-N.md`.
 
-- [ ] Wave 1 audit — pending (reviewer: codex)
+- [ ] Wave 1 audit — in-review (reviewer: codex, docs/wave-summaries/wave-1.md, PR #27, 2026-05-01)
 - [x] Wave 2 audit — done (reviewer: claude, docs/wave-summaries/wave-2.md)
 - [ ] Wave 3 audit — pending (reviewer: codex)
 - [x] Wave 4 audit — done (reviewer: claude, docs/wave-summaries/wave-4.md, PR #23, 2026-04-30)
@@ -306,4 +306,4 @@ e produz `docs/wave-summaries/wave-N.md`.
 
 ---
 
-*Última atualização: criação inicial 2026-04-29.*
+*Última atualização: 2026-05-01.*
