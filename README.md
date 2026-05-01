@@ -4,7 +4,16 @@
 > Receiver always-on minimal + worker oneshot event-driven. Não substitui Claude Code
 > interativo — coexistem.
 
-**Status:** Bibliotecas das 9 fases originais implementadas. **Daemon executável em hardening de produção** via plano de remediação ([CONSOLIDATED_FIX_PLAN.md](CONSOLIDATED_FIX_PLAN.md) / [PRODUCTION_READINESS_PLAN.md](PRODUCTION_READINESS_PLAN.md), tracking em [STATUS.md](STATUS.md)). Wave 1 (boot/entrypoints) + Wave 2 (operação consistente: retry, quota gate, SDK errors) + Wave 3 (security core: workspace, sandbox em tools, AGENT.md loader, external input safety, review fresh context) **mergeadas**. Wave 4 (hardening) e Wave 5/6 (alinhamento + ops) parciais. **608+ testes passando, 0 falhas**, lint + TypeScript strict clean. **Não usar em produção** até Wave 5/6 mínimas (smoke service + monitoring + retention) — biblioteca-só pra uso pessoal Linux por enquanto.
+**Status:** Plano de remediação completo — **todas as 6 waves merged** ([STATUS.md](STATUS.md)) com audits por wave em [docs/wave-summaries/](docs/wave-summaries/). Cobertura entregue:
+
+- **Wave 1** boot/entrypoints (receiver + worker + build/systemd alignment + schema config)
+- **Wave 2** operação consistente (retry, quota gate via `task_runs.not_before`, SDK errors tipados)
+- **Wave 3** security core (workspace ephemeral, sandbox em tools, AGENT.md loader, external input safety, review fresh context)
+- **Wave 4** hardening (EventKind CHECK constraint, JSON validity, fail-closed allowlist, redact em events)
+- **Wave 5** alinhamento (CLI ops `panic-stop`/`panic-resume`/`diagnose`/`sessions`/`config`, reflect job estruturado, smoke service alinhado, SDK real validation)
+- **Wave 6** hardening operacional (CI security gates: gitleaks/bun-audit/coverage; DB integrity automation; events retention 90d; alerts via Telegram+SMTP com 7 triggers; backup 3-2-1 cadenciado; restore drill mensal)
+
+**719 testes passando** (0 falhas em rodada estável; 1 reprodução intermitente do flaky histórico `findExpiredLeases` é conhecida), TypeScript strict clean. Pronto pra uso pessoal Linux. Para deploy, ver [`docs/wave-summaries/`](docs/wave-summaries/) pra o que cada wave entregou + STATUS.md pra estado atual.
 
 ## O que é
 
