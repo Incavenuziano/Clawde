@@ -133,14 +133,16 @@ export function fakeSystemdController(): FakeSystemdController {
     async stop(unit) {
       calls.push({ op: "stop", unit });
       const fail = fails.get(failKey("stop", unit));
-      if (fail !== undefined) return { ok: false, ...(fail.detail !== undefined ? { detail: fail.detail } : {}) };
+      if (fail !== undefined)
+        return { ok: false, ...(fail.detail !== undefined ? { detail: fail.detail } : {}) };
       active.set(unit, false);
       return { ok: true };
     },
     async start(unit) {
       calls.push({ op: "start", unit });
       const fail = fails.get(failKey("start", unit));
-      if (fail !== undefined) return { ok: false, ...(fail.detail !== undefined ? { detail: fail.detail } : {}) };
+      if (fail !== undefined)
+        return { ok: false, ...(fail.detail !== undefined ? { detail: fail.detail } : {}) };
       active.set(unit, true);
       return { ok: true };
     },
@@ -230,7 +232,8 @@ export async function runPanicStop(options: PanicStopOptions): Promise<number> {
       `host/pid:     ${r.lock.hostname}/${r.lock.pid}`,
       ...(r.lock.reason !== undefined ? [`reason:       ${r.lock.reason}`] : []),
       ...r.stops.map(
-        (s) => `[${s.ok ? "OK " : "FAIL"}] systemctl stop ${s.unit}${s.detail !== undefined ? `: ${s.detail}` : ""}`,
+        (s) =>
+          `[${s.ok ? "OK " : "FAIL"}] systemctl stop ${s.unit}${s.detail !== undefined ? `: ${s.detail}` : ""}`,
       ),
       `overall: ${r.ok ? "OK" : "DEGRADED"}`,
     ];
@@ -269,8 +272,7 @@ export interface PanicResumeReport {
 export async function runPanicResume(options: PanicResumeOptions): Promise<number> {
   const sd = options.systemd ?? realSystemdController();
   const diagnose =
-    options.diagnose ??
-    (async () => captureDiagnoseAll(options.dbPath, options.agentsRoot));
+    options.diagnose ?? (async () => captureDiagnoseAll(options.dbPath, options.agentsRoot));
   const diagnoseReport = await diagnose();
 
   if (diagnoseReport.status !== "ok") {
@@ -328,10 +330,7 @@ function emitResume(format: OutputFormat, report: PanicResumeReport): void {
   });
 }
 
-async function captureDiagnoseAll(
-  dbPath: string,
-  agentsRoot?: string,
-): Promise<DiagnoseReport> {
+async function captureDiagnoseAll(dbPath: string, agentsRoot?: string): Promise<DiagnoseReport> {
   // Captura stdout do runDiagnose pra extrair report estruturado sem
   // duplicar lógica. format=json garante JSON parseável.
   const orig = process.stdout.write.bind(process.stdout);
