@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import {
   HARDENING_DIRECTIVES,
@@ -170,5 +170,12 @@ describe("deploy/systemd unit files reais", () => {
 
     expect(weekly).toContain("backup-snapshot.sh %h/.clawde/backups/weekly/");
     expect(weekly).toContain("backup-prune.sh %h/.clawde/backups/");
+  });
+
+  test("backup scripts têm exec bit", () => {
+    const snapshotPath = join(import.meta.dirname, "../../../scripts/backup-snapshot.sh");
+    const prunePath = join(import.meta.dirname, "../../../scripts/backup-prune.sh");
+    expect(statSync(snapshotPath).mode & 0o111).toBeGreaterThan(0);
+    expect(statSync(prunePath).mode & 0o111).toBeGreaterThan(0);
   });
 });
