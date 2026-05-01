@@ -49,17 +49,13 @@ describe("cli/commands/config show+validate", () => {
     if (prevConfigEnv !== undefined) {
       process.env.CLAWDE_CONFIG = prevConfigEnv;
     } else {
-      delete process.env.CLAWDE_CONFIG;
+      process.env.CLAWDE_CONFIG = undefined;
     }
     rmSync(dir, { recursive: true, force: true });
   });
 
   test("show com config válido retorna 0 + report estruturado", async () => {
-    writeFileSync(
-      configPath,
-      `[clawde]\nhome = "${dir}"\nlog_level = "INFO"\n`,
-      "utf-8",
-    );
+    writeFileSync(configPath, `[clawde]\nhome = "${dir}"\nlog_level = "INFO"\n`, "utf-8");
     const { exit, stdout } = await captureOutput(() =>
       runConfigShow({ format: "json", path: configPath }),
     );
@@ -95,11 +91,7 @@ describe("cli/commands/config show+validate", () => {
   });
 
   test("validate retorna 0 em TOML válido", async () => {
-    writeFileSync(
-      configPath,
-      `[clawde]\nhome = "${dir}"\nlog_level = "INFO"\n`,
-      "utf-8",
-    );
+    writeFileSync(configPath, `[clawde]\nhome = "${dir}"\nlog_level = "INFO"\n`, "utf-8");
     const { exit, stdout } = await captureOutput(() =>
       runConfigValidate({ format: "json", path: configPath }),
     );
@@ -148,17 +140,13 @@ describe("cli/commands/config show+validate", () => {
       if (prevPlan !== undefined) {
         process.env.CLAWDE_QUOTA_PLAN = prevPlan;
       } else {
-        delete process.env.CLAWDE_QUOTA_PLAN;
+        process.env.CLAWDE_QUOTA_PLAN = undefined;
       }
     }
   });
 
   test("show: env vence toml para o mesmo campo", async () => {
-    writeFileSync(
-      configPath,
-      `[clawde]\nhome = "${dir}"\nlog_level = "INFO"\n`,
-      "utf-8",
-    );
+    writeFileSync(configPath, `[clawde]\nhome = "${dir}"\nlog_level = "INFO"\n`, "utf-8");
     const prevLevel = process.env.CLAWDE_LOG_LEVEL;
     process.env.CLAWDE_LOG_LEVEL = "DEBUG";
     try {
@@ -173,17 +161,13 @@ describe("cli/commands/config show+validate", () => {
       if (prevLevel !== undefined) {
         process.env.CLAWDE_LOG_LEVEL = prevLevel;
       } else {
-        delete process.env.CLAWDE_LOG_LEVEL;
+        process.env.CLAWDE_LOG_LEVEL = undefined;
       }
     }
   });
 
   test("show: campo no TOML mas com env var vazia continua toml (não env)", async () => {
-    writeFileSync(
-      configPath,
-      `[clawde]\nhome = "${dir}"\nlog_level = "INFO"\n`,
-      "utf-8",
-    );
+    writeFileSync(configPath, `[clawde]\nhome = "${dir}"\nlog_level = "INFO"\n`, "utf-8");
     const prevLevel = process.env.CLAWDE_LOG_LEVEL;
     process.env.CLAWDE_LOG_LEVEL = "";
     try {
@@ -197,7 +181,7 @@ describe("cli/commands/config show+validate", () => {
       if (prevLevel !== undefined) {
         process.env.CLAWDE_LOG_LEVEL = prevLevel;
       } else {
-        delete process.env.CLAWDE_LOG_LEVEL;
+        process.env.CLAWDE_LOG_LEVEL = undefined;
       }
     }
   });

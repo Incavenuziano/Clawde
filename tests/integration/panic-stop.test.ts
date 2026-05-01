@@ -84,7 +84,11 @@ describe("cli/commands/panic runPanicStop", () => {
         )
         .all();
       expect(rows).toHaveLength(1);
-      const payload = JSON.parse(rows[0]!.payload) as Record<string, unknown>;
+      const row = rows.at(0);
+      if (!row) {
+        throw new Error("expected panic_stop event row");
+      }
+      const payload = JSON.parse(row.payload) as Record<string, unknown>;
       expect(payload.reason).toBe("incident #42");
       expect(payload.already_locked).toBe(false);
     } finally {
@@ -109,7 +113,9 @@ describe("cli/commands/panic runPanicStop", () => {
     const db = openDb(dbPath);
     try {
       const events = new EventsRepo(db);
-      const all = events.querySince("1970-01-01T00:00:00Z", 100).filter((e) => e.kind === "panic_stop");
+      const all = events
+        .querySince("1970-01-01T00:00:00Z", 100)
+        .filter((e) => e.kind === "panic_stop");
       expect(all).toHaveLength(2);
     } finally {
       closeDb(db);

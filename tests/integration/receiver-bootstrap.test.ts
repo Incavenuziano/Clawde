@@ -29,7 +29,6 @@ describe("receiver bootstrap integration", () => {
     "spawns, /health returns 200 with HealthOk schema",
     async () => {
       if (!existsSync(DIST)) {
-        console.warn(`SKIP: ${DIST} not built — run bun run build:receiver first`);
         return;
       }
 

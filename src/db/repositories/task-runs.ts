@@ -176,7 +176,7 @@ export class TaskRunsRepo {
         `SELECT * FROM task_runs
          WHERE status = 'running'
            AND lease_until IS NOT NULL
-           AND lease_until < datetime('now')`,
+           AND lease_until <= datetime('now')`,
       )
       .all();
     return rows.map(rowToTaskRun);

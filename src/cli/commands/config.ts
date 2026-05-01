@@ -6,9 +6,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { parse as parseTOML } from "smol-toml";
 import { ClawdeConfigSchema } from "@clawde/config";
 import { ConfigError, loadConfig } from "@clawde/config";
+import { parse as parseTOML } from "smol-toml";
 import { type OutputFormat, emit, emitErr } from "../output.ts";
 
 export interface ConfigShowOptions {

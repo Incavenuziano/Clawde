@@ -3,8 +3,8 @@
  * persistentes do SDK. Sub-fase P3.2 (T-107, T-108).
  */
 
-import type { Session, SessionState } from "@clawde/domain/session";
 import { closeDb, openDb } from "@clawde/db/client";
+import type { Session, SessionState } from "@clawde/domain/session";
 import { type OutputFormat, emit, emitErr } from "../output.ts";
 
 export interface SessionsListOptions {
@@ -104,9 +104,7 @@ export function runSessionsShow(options: SessionsShowOptions): number {
       }
       const session = rowToSession(row);
       const eventsRow = db
-        .query<{ n: number }, [string]>(
-          `SELECT COUNT(*) AS n FROM events WHERE session_id = ?`,
-        )
+        .query<{ n: number }, [string]>("SELECT COUNT(*) AS n FROM events WHERE session_id = ?")
         .get(options.sessionId);
       const eventsCount = eventsRow?.n ?? 0;
       const warnings: string[] = [];
