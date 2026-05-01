@@ -7,6 +7,7 @@
  * Payload é redacted antes de serializar.
  */
 
+import { sendAlertBestEffort } from "@clawde/alerts";
 import { redact } from "./redact.ts";
 import { getTraceContext } from "./trace.ts";
 
@@ -105,6 +106,20 @@ export function createLogger(ctx: LoggerContext = {}): Logger {
     // baseCtx pode conter secrets também; redact aplicado no entry inteiro.
     const safe = redact(entry) as LogEntry;
     activeSink(JSON.stringify(safe));
+
+    if (level === "FATAL") {
+      queueMicrotask(() => {
+        void sendAlertBestEffort({
+          severity: "critical",
+          trigger: "fatal_log",
+          cooldownKey: "fatal_log",
+          payload: {
+            msg,
+            ...(fields !== undefined ? (redact(fields) as Record<string, unknown>) : {}),
+          },
+        });
+      });
+    }
   }
 
   return {

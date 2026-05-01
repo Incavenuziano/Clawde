@@ -11,6 +11,7 @@
  * Nível 3: bwrap nivel 2 + applyNetnsToConfig (loopback-only, custom resolv.conf).
  */
 
+import { sendAlertBestEffort } from "@clawde/alerts";
 import type { AgentSandboxConfig } from "./agent-config.ts";
 import type { BwrapConfig, SandboxLevel } from "./bwrap.ts";
 import { applyNetnsToConfig, generateLoopbackResolvConf } from "./netns.ts";
@@ -38,39 +39,53 @@ export interface MaterializedSandbox {
  * Materializa sandbox para uso no worker.
  */
 export function materializeSandbox(input: MaterializeInput): MaterializedSandbox {
-  if (input.agent.level === 1) {
-    return { level: 1, runDirect: true, bwrap: null };
+  try {
+    if (input.agent.level === 1) {
+      return { level: 1, runDirect: true, bwrap: null };
+    }
+
+    // Base config nivel 2.
+    const baseConfig: BwrapConfig = {
+      bwrapPath: input.bwrapPath ?? "/usr/bin/bwrap",
+      readOnlyMounts: [...input.agent.read_only_mounts],
+      readWritePaths: [
+        // Worktree ephemeral é o único path RW.
+        { host: input.workspacePath, sandbox: "/workspace" },
+      ],
+      network: input.agent.network,
+      allowlistBackendAvailable: false,
+      workdir: "/workspace",
+      env: {
+        HOME: "/workspace",
+        PATH: "/usr/bin:/bin",
+        LANG: "C.UTF-8",
+      },
+    };
+
+    if (input.agent.level === 2) {
+      return { level: 2, runDirect: false, bwrap: baseConfig };
+    }
+
+    // Nível 3: aplica netns isolation.
+    const resolvConfPath = generateLoopbackResolvConf(input.stateDir);
+    const netnsConfig = applyNetnsToConfig(baseConfig, {
+      allowedEgress: input.agent.allowed_egress,
+      resolvConfPath,
+    });
+    return { level: 3, runDirect: false, bwrap: netnsConfig };
+  } catch (err) {
+    void sendAlertBestEffort({
+      severity: "high",
+      trigger: "sandbox_violation",
+      cooldownKey: "sandbox_violation",
+      payload: {
+        error: (err as Error).message,
+        level: input.agent.level,
+        network: input.agent.network,
+      },
+    });
+    throw err;
   }
-
-  // Base config nivel 2.
-  const baseConfig: BwrapConfig = {
-    bwrapPath: input.bwrapPath ?? "/usr/bin/bwrap",
-    readOnlyMounts: [...input.agent.read_only_mounts],
-    readWritePaths: [
-      // Worktree ephemeral é o único path RW.
-      { host: input.workspacePath, sandbox: "/workspace" },
-    ],
-    network: input.agent.network,
-    allowlistBackendAvailable: false,
-    workdir: "/workspace",
-    env: {
-      HOME: "/workspace",
-      PATH: "/usr/bin:/bin",
-      LANG: "C.UTF-8",
-    },
-  };
-
-  if (input.agent.level === 2) {
-    return { level: 2, runDirect: false, bwrap: baseConfig };
-  }
-
-  // Nível 3: aplica netns isolation.
-  const resolvConfPath = generateLoopbackResolvConf(input.stateDir);
-  const netnsConfig = applyNetnsToConfig(baseConfig, {
-    allowedEgress: input.agent.allowed_egress,
-    resolvConfPath,
-  });
-  return { level: 3, runDirect: false, bwrap: netnsConfig };
 }
 
 /**
