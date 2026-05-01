@@ -54,7 +54,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P3.5 | `task/P3.5-smoke-service` | T-116..T-121 | codex | claude | merged, PR #24, 2026-04-30 | #24 |
 | P3.6 | `task/P3.6-sdk-real-ci` | T-122..T-124 | codex | claude | merged, PR #26, 2026-05-01 | #26 |
 | P6.1 | `task/P6.1-ci-security-gates` | T-125..T-127 | codex | claude (+ operador em T-125) | merged, PR #29, 2026-05-01 | #29 |
-| P6.2 | `task/P6.2-db-integrity` | T-128..T-130 | codex | claude | pending | — |
+| P6.2 | `task/P6.2-db-integrity` | T-128..T-130 | codex | claude | in-progress, codex | — |
 | P6.3 | `task/P6.3-events-retention` | T-131..T-133 | codex | claude (+ operador em T-132) | pending | — |
 | P6.4 | `task/P6.4-alerts-system` | T-134..T-137 | codex | claude | pending | — |
 | P6.5 | `task/P6.5-backup-cadence` | T-138..T-140 | codex | claude | pending | — |
@@ -264,9 +264,9 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 - [x] T-127 — merged, PR #29, 2026-05-01 — coverage gate
 
 ### P6.2 — DB integrity automation
-- [ ] T-128 — pending
-- [ ] T-129 — pending
-- [ ] T-130 — pending
+- [ ] T-128 — in-progress, codex
+- [ ] T-129 — in-progress, codex
+- [ ] T-130 — in-progress, codex
 
 ### P6.3 — Events retention
 - [ ] T-131 — pending
