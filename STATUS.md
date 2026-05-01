@@ -57,7 +57,7 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 | P6.2 | `task/P6.2-db-integrity` | T-128..T-130 | codex | claude | merged, PR #30, 2026-05-01 | #30 |
 | P6.3 | `task/P6.3-events-retention` | T-131..T-133 | codex | claude (+ operador em T-132) | merged, PR #31, 2026-05-01 | #31 |
 | P6.4 | `task/P6.4-alerts-system` | T-134..T-137 | codex | claude | merged, PR #32, 2026-05-01 | #32 |
-| P6.5 | `task/P6.5-backup-cadence` | T-138..T-140 | codex | claude | in-progress, codex | — |
+| P6.5 | `task/P6.5-backup-cadence` | T-138..T-140 | codex | claude | in-review, PR #33 | #33 |
 | P6.6 | `task/P6.6-restore-drill` | T-141..T-143 | codex | claude | pending | — |
 
 **Cross-wave dependencies**:
@@ -280,9 +280,9 @@ agrupa tasks relacionadas em commits atômicos (1 commit por T-NNN), com
 - [x] T-137 — merged, PR #32, 2026-05-01
 
 ### P6.5 — Backup cadenciado
-- [ ] T-138 — in-progress, codex
-- [ ] T-139 — in-progress, codex
-- [ ] T-140 — in-progress, codex
+- [x] T-138 — in-review, PR #33
+- [x] T-139 — in-review, PR #33
+- [x] T-140 — in-review, PR #33
 
 ### P6.6 — Restore drill
 - [ ] T-141 — pending
