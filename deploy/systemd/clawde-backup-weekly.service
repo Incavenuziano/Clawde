@@ -5,7 +5,7 @@ Description=Clawde backup snapshot semanal
 Type=oneshot
 WorkingDirectory=%h/.clawde
 EnvironmentFile=-%h/.clawde/config/clawde.env
-ExecStart=%h/.clawde/scripts/backup-snapshot.sh %h/.clawde/backups/weekly/
+ExecStart=/bin/bash -lc "%h/.clawde/scripts/backup-snapshot.sh %h/.clawde/backups/weekly/ && %h/.clawde/scripts/backup-prune.sh %h/.clawde/backups/"
 
 # Hardening idêntico ao worker (BEST_PRACTICES §10.4)
 PrivateTmp=yes

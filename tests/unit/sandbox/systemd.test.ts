@@ -138,4 +138,37 @@ describe("deploy/systemd unit files reais", () => {
     expect(content).toContain("clawde events export --since-cutoff 90d &&");
     expect(content).toContain("clawde events purge --before $(date -d '90 days ago' -I) --confirm");
   });
+
+  test("clawde-backup-hourly.timer roda hourly", () => {
+    const content = readUnit("clawde-backup-hourly.timer");
+    expect(content).toContain("OnCalendar=hourly");
+    expect(content).toContain("Unit=clawde-backup-hourly.service");
+  });
+
+  test("clawde-backup-daily.timer roda diariamente às 03:00", () => {
+    const content = readUnit("clawde-backup-daily.timer");
+    expect(content).toContain("OnCalendar=*-*-* 03:00:00");
+    expect(content).toContain("Unit=clawde-backup-daily.service");
+  });
+
+  test("clawde-backup-weekly.timer roda domingos às 03:30", () => {
+    const content = readUnit("clawde-backup-weekly.timer");
+    expect(content).toContain("OnCalendar=Sun *-*-* 03:30:00");
+    expect(content).toContain("Unit=clawde-backup-weekly.service");
+  });
+
+  test("backup services executam snapshot + prune", () => {
+    const hourly = readUnit("clawde-backup-hourly.service");
+    const daily = readUnit("clawde-backup-daily.service");
+    const weekly = readUnit("clawde-backup-weekly.service");
+
+    expect(hourly).toContain("backup-snapshot.sh %h/.clawde/backups/hourly/");
+    expect(hourly).toContain("backup-prune.sh %h/.clawde/backups/");
+
+    expect(daily).toContain("backup-snapshot.sh %h/.clawde/backups/daily/");
+    expect(daily).toContain("backup-prune.sh %h/.clawde/backups/");
+
+    expect(weekly).toContain("backup-snapshot.sh %h/.clawde/backups/weekly/");
+    expect(weekly).toContain("backup-prune.sh %h/.clawde/backups/");
+  });
 });
