@@ -299,9 +299,9 @@ e produz `docs/wave-summaries/wave-N.md`.
 
 - [x] Wave 1 audit — done (reviewer: codex, docs/wave-summaries/wave-1.md, PR #27, 2026-05-01)
 - [x] Wave 2 audit — done (reviewer: claude, docs/wave-summaries/wave-2.md)
-- [ ] Wave 3 audit — pending (reviewer: codex)
+- [ ] Wave 3 audit — in-review (reviewer: codex, docs/wave-summaries/wave-3.md, PR #28, 2026-05-01)
 - [x] Wave 4 audit — done (reviewer: claude, docs/wave-summaries/wave-4.md, PR #23, 2026-04-30)
-- [ ] Wave 5 audit — pending (reviewer: codex)
+- [ ] Wave 5 audit — in-review (reviewer: codex, docs/wave-summaries/wave-5.md, PR #28, 2026-05-01)
 - [ ] Wave 6 audit — pending (reviewer: claude)
 
 ---
