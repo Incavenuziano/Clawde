@@ -1,0 +1,37 @@
+[Unit]
+Description=Clawde deferred task check (oneshot)
+Documentation=https://github.com/Incavenuziano/Clawde/issues/44
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h
+EnvironmentFile=-%h/.clawde/config/clawde.env
+
+# Usa o binario compilado. Ver issue #43 sobre resolucao do SDK fora do
+# diretorio do projeto: se o binario nao for encontrado, configurar
+# worker.claude_executable_path no clawde.toml.
+ExecStart=%h/.bun/bin/bun run %h/.clawde/dist/worker-main.js
+
+# Hardening nivel 1 (ADR 0005, BEST_PRACTICES sec.10.4).
+# MemoryDenyWriteExecute omitido: Bun usa JIT (necessita paginas W+X).
+PrivateTmp=yes
+ProtectHome=read-only
+ProtectSystem=strict
+NoNewPrivileges=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+ReadWritePaths=%h/.clawde /tmp
