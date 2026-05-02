@@ -13,7 +13,7 @@
 - **Wave 5** alinhamento (CLI ops `panic-stop`/`panic-resume`/`diagnose`/`sessions`/`config`, reflect job estruturado, smoke service alinhado, SDK real validation)
 - **Wave 6** hardening operacional (CI security gates: gitleaks/bun-audit/coverage; DB integrity automation; events retention 90d; alerts via Telegram+SMTP com 7 triggers; backup 3-2-1 cadenciado; restore drill mensal)
 
-**719 testes passando** (0 falhas em rodada estável; 1 reprodução intermitente do flaky histórico `findExpiredLeases` é conhecida), TypeScript strict clean. Pronto pra uso pessoal Linux. Para deploy, ver [`docs/wave-summaries/`](docs/wave-summaries/) pra o que cada wave entregou + STATUS.md pra estado atual.
+**719 testes** (717 pass, 2 skip, 0 fail em rodada estável), TypeScript strict clean. Pronto pra uso pessoal Linux. Para deploy, ver [`docs/wave-summaries/`](docs/wave-summaries/) pra o que cada wave entregou + STATUS.md pra estado atual.
 
 ## O que é
 
@@ -255,15 +255,14 @@ significa que o daemon (worker/receiver) consome ativamente o componente em runt
 | OAuth refresh + Datasette | ✅ | ✅ | (Fase 7 original — auto-refresh em 401) |
 | Multi-host (Litestream) | ✅ | ⚠️ opt-in | (Fase 8 original — config-gated) |
 | Two-stage review pipeline | ✅ | ✅ | (Fase 9 + P2.4 fresh context) |
-| Allowlist real de egress sandbox 2/3 | ✅ lib | ❌ não wirado | T-092..T-096 (P2.6, **pending**) |
-| Redact em events | ✅ lib | ❌ não wirado | T-097..T-100 (P2.7, **pending**) |
-| JSON validity em outras colunas TEXT | — | ❌ | T-086..T-091 (P1.5, **pending**) |
-| CLI ops (panic-stop, diagnose, sessions, reflect) | ❌ | ❌ | T-104..T-115 (P3.2/P3.4, **pending**) |
-| Smoke service + SDK real CI | ❌ | ❌ | T-116..T-124 (P3.5/P3.6, **pending**) |
-| Ops hardening (CI gates, alerts, backup, restore drill) | ❌ | ❌ | T-125..T-143 (Wave 6, **pending**) |
+| Allowlist real de egress sandbox 2/3 | ⚠️ roadmap | ✅ fail-closed | T-092..T-096 (P2.6, merged PR #21) |
+| Redact em events | ✅ | ✅ | T-097..T-100 (P2.7, merged PR #22) |
+| JSON validity em outras colunas TEXT | ✅ | ✅ | T-086..T-091 (P1.5, merged PR #19) |
+| CLI ops (panic-stop, diagnose, sessions, reflect) | ✅ | ✅ | T-104..T-115 (P3.2/P3.4, merged PRs #25/#20) |
+| Smoke service + SDK real CI | ✅ | ✅ | T-116..T-124 (P3.5/P3.6, merged PRs #24/#26) |
+| Ops hardening (CI gates, alerts, backup, restore drill) | ✅ | ✅ | T-125..T-143 (Wave 6, merged PRs #29..#34) |
 
-Sub-fases ainda em flight: **2 followups Wave 3** (Read allowlist, agent Bash level) — ver
-[STATUS.md](STATUS.md). Estado live de cada sub-fase + tasks atômicas em
+Backlog de remediação fechado: 143/143 tasks merged. Estado live de cada sub-fase + tasks atômicas em
 [STATUS.md](STATUS.md) + [EXECUTION_BACKLOG.md](EXECUTION_BACKLOG.md).
 
 ### Roadmap original (9 fases) — bibliotecas
@@ -283,7 +282,7 @@ Backlog histórico de implementação inicial em [`docs/BACKLOG.md`](docs/BACKLO
 | **8** Multi-host (Litestream) | ✅ | `src/replica/`, `deploy/litestream/`, `clawde replica` |
 | **9** Two-stage review pipeline | ✅ | `src/review/` (implementer + spec + code-quality) + fresh context (P2.4) |
 
-608+ testes / 0 falhas / ~16K LOC TS + 15 ADRs + 9 docs estruturais.
+719 testes (717 pass, 2 skip, 0 fail) / ~16K LOC TS + 15 ADRs + 9 docs estruturais.
 
 ## Licença
 

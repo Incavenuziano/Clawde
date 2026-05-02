@@ -55,7 +55,9 @@ Foram adicionados testes reais condicionais (`CLAWDE_TEST_REAL_SDK=1` + token) e
 
 - Documentar de forma explícita a convenção de `CLAWDE_CONFIG=\"\"` usada em ambiente de smoke.
 - Endurecer comportamento do workflow real-SDK em forks sem secret (pular explicitamente vs falhar).
-- Continuar monitorando o flaky histórico de lease expiry até estabilização completa.
+
+Resolvido após a wave: o flaky histórico de lease expiry foi estabilizado no
+final sweep PR #39.
 
 ## Resultado
 

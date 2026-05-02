@@ -100,11 +100,11 @@ Alert em falha: o service usa um hack — invoca `clawde smoke-test --db /nonexi
 
 ## Critérios de validação
 
-### CI em main após todos os merges (commit `3632e60`)
+### CI em main após todos os merges (commit `2c30598`)
 
 - `bun run typecheck` ✅ (`tsc --noEmit` clean).
-- `bun run lint` ⚠️ 12 erros + 2 warnings em arquivos do P3.2 (`config.ts`, `diagnose.ts`, `panic.ts`, `sessions.ts` + 4 testes do Claude); pré-existentes ao Wave 6, reconhecidos pelo Codex em todos os PR bodies. Followup `task/P3.2-followup-lint` (Claude) ainda aberto.
-- `bun test` 719 / 719 ✅ (1 reprodução do flaky histórico `findExpiredLeases` em rodadas isoladas — comportamento conhecido).
+- `bun run lint` ✅ (`biome check src tests` clean após followup PR #37).
+- `bun test` 719 / 719 ✅ (717 pass, 2 skip, 0 fail; `findExpiredLeases` estabilizado no final sweep PR #39).
 
 ### Smoke E2E
 
@@ -129,7 +129,6 @@ Alert em falha: o service usa um hack — invoca `clawde smoke-test --db /nonexi
 
 | Item | Origem | Severidade |
 |------|--------|------------|
-| **Lint debt do P3.2** — 12 errors + 2 warnings em `config.ts`/`diagnose.ts`/`panic.ts`/`sessions.ts` + 4 testes (format, organizeImports, noDelete, noNonNullAssertion, noUnusedTemplateLiteral). | P3.2 (claude introduziu) | followup planejado `task/P3.2-followup-lint` |
 | Auto-bump coverage baseline em `push:main` se HEAD > baseline | P6.1 review | tech-debt; mitigação atual aceita |
 | Convenção documentada de bumping baseline em `REVIEW_PROTOCOL.md` quando feature PR genuinamente sobe cobertura | P6.1 review | doc gap |
 | `bunfig.coverage.toml` separado fragmenta config — vale unificar em `bunfig.toml` quando bun resolver bug do `coverage=false` suprimindo `--coverage` | P6.1 review | upstream-blocked |
@@ -148,7 +147,6 @@ Alert em falha: o service usa um hack — invoca `clawde smoke-test --db /nonexi
 | **Restore-drill alert mislabeled** — service força `clawde smoke-test --db /nonexistent/...` pra disparar alert via P6.4, mas operator vê `smoke_test_fail` em vez de `restore_drill_fail`. Fix: adicionar trigger dedicado (migration 008 + nova entry em EVENT_KIND_VALUES) ou direct dispatch via bun --eval no script | P6.6 review | observability gap |
 | Restore drill `bun --eval` inline TS (~50 linhas em shell) frágil — extrair pra `scripts/restore-drill-verify.mjs` | P6.6 review | tech-debt |
 | Drill sem teste de falsos negativos (drill OK quando backup corrompido) — difícil simular sem corromper de propósito | P6.6 review | cobertura |
-| Flaky histórico `findExpiredLeases` reproduz raramente em ext4 — fix conhecido: trocar `1500` → `2500` em `tests/unit/db/task-runs.repo.test.ts:116` | cross-wave (Wave 1 origin) | tech-debt; fix conhecido |
 
 ## Resultado
 

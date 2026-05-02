@@ -12,7 +12,7 @@ O projeto Clawde teve seu código revisado independentemente por duas IAs em
 2026-04-29 (Claude Opus 4.7 e Codex). As auditorias produziram **21 itens**
 de remediação consolidados em `CONSOLIDATED_FIX_PLAN.md` e
 `PRODUCTION_READINESS_PLAN.md`. Esses 21 itens foram decompostos em
-**124 tasks atômicas** organizadas em **5 waves** dentro de
+**143 tasks atômicas** organizadas em **6 waves** dentro de
 `EXECUTION_BACKLOG.md`.
 
 O operador (Incavenuziano) aprovou três decisões fixadas:
@@ -34,7 +34,7 @@ Em ordem de leitura, ~30min total:
    estado atual de cada uma. Sua "tela de operações".
 2. **[`docs/REVIEW_PROTOCOL.md`](REVIEW_PROTOCOL.md)** — fluxo de PR, branches
    por sub-fase, convenções de commit/PR, dupla revisão em security.
-3. **[`EXECUTION_BACKLOG.md`](../EXECUTION_BACKLOG.md)** — 124 tasks com
+3. **[`EXECUTION_BACKLOG.md`](../EXECUTION_BACKLOG.md)** — 143 tasks com
    critérios de aceite, snippets, dependências. Não precisa ler tudo — pule
    pra sub-fase que vai trabalhar.
 4. **[`CONSOLIDATED_FIX_PLAN.md`](../CONSOLIDATED_FIX_PLAN.md)** — contexto
