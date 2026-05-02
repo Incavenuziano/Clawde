@@ -150,7 +150,7 @@ mkdir -p ~/.config/systemd/user
 cp deploy/systemd/clawde-*.{service,timer,path} ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable --now clawde-receiver clawde-worker.path \
-  clawde-smoke.timer clawde-oauth-check.timer clawde-reflect.timer \n  clawde-deferred-check.timer
+  clawde-smoke.timer clawde-oauth-check.timer clawde-reflect.timer \n  clawde-deferred-check.timer \n  clawde-deferred-check.timer
 
 # Enfileirar primeira task
 clawde queue --priority NORMAL "explica o que esse repo faz"
