@@ -7,6 +7,8 @@
 - `ideas/interactive-layer` em `27a4b73`.
 - `ideas/adversarial-pre-flight` em `eedb3a1`.
 
+**Plano de implementacao:** [`propostas-para-o-clawde-implementation-plan.md`](./propostas-para-o-clawde-implementation-plan.md).
+
 Este documento consolida tres conversas que convergiram para o mesmo eixo:
 
 1. O Clawde precisa parecer mais direto quando o operador esta presente.
