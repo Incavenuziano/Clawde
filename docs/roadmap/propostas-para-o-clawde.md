@@ -8,6 +8,7 @@
 - `ideas/adversarial-pre-flight` em `eedb3a1`.
 
 **Plano de implementacao:** [`propostas-para-o-clawde-implementation-plan.md`](./propostas-para-o-clawde-implementation-plan.md).
+**Roadmap separado:** [`memory-context.md`](./memory-context.md).
 
 Este documento consolida tres conversas que convergiram para o mesmo eixo:
 
@@ -16,6 +17,8 @@ Este documento consolida tres conversas que convergiram para o mesmo eixo:
 3. Acoes de alto risco precisam de uma "prova de fogo" antes da execucao, nao so review depois que o trabalho ja comecou.
 
 O objetivo e definir um proximo roadmap sem desmontar as garantias conquistadas nas Waves 1-6: fila transacional, eventos append-only, sandbox, approval gates, alertas, backups, restore drill, testes e auditoria.
+
+O MVP interativo fica focado em Fases 0-7: ADR/RFC, Direct Mode, cancelamento, conversations, approvals, war room experimental, pre-flight foundations e adversarial pre-flight runtime. Policy hardening para quick tasks, Telegram, jobs/crons e dashboard ficam pos-MVP. Memoria, skills, templates e contexto ficam no roadmap proprio [`memory-context.md`](./memory-context.md).
 
 ---
 
@@ -204,7 +207,9 @@ type Risk = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 
 Regras:
 
-- `CRITICAL` bloqueia automaticamente;
+- `CRITICAL` bloqueia por padrao;
+- override de `CRITICAL` exige operador autenticado via CLI/dashboard, justificativa textual e evento `pre_flight_critical_override`;
+- Telegram nunca pode executar override de `CRITICAL`;
 - `HIGH` exige humano, salvo policy explicita;
 - objeção `BLOCK` nao resolvida exige humano;
 - `LOW`/`MEDIUM` sem block pode aprovar;
@@ -215,7 +220,7 @@ Tabela:
 
 | Risco | Block adversarial | Resultado |
 |-------|-------------------|-----------|
-| CRITICAL | qualquer | `BLOCKED` |
+| CRITICAL | qualquer | `BLOCKED` por padrao; override auditado so via CLI/dashboard |
 | HIGH | qualquer | `NEEDS_HUMAN` |
 | MEDIUM | sim | `NEEDS_HUMAN` |
 | MEDIUM | nao | `APPROVED` |
@@ -239,6 +244,7 @@ Eventos candidatos:
 - `pre_flight_approved`;
 - `pre_flight_needs_human`;
 - `pre_flight_blocked`.
+- `pre_flight_critical_override`.
 
 Config:
 
@@ -320,34 +326,19 @@ Repos inspiradores:
 
 ---
 
-## Proposta G: Memoria e contexto para Claude Code e Clawde
+## Proposta G: Memoria, contexto, skills e templates
 
-Os repos externos apontam para uma lacuna importante: nao basta armazenar memoria; e preciso controlar quanto e como ela entra no contexto.
+Esta proposta continua relevante, mas foi separada do roadmap interativo para manter o MVP focado. O plano proprio esta em [`memory-context.md`](./memory-context.md).
 
-Inspiracoes:
+Direcao resumida:
 
-- `claude-mem`: progressive disclosure, citations, `<private>` tags, timeline, transcript ingestion;
-- `get-shit-done`: `STATE.md`, fase, handoff, context rot control;
-- `everything-claude-code`: catalogo de skills, continuous learning e security scan;
-- `andrej-karpathy-skills`: regras simples de comportamento;
-- `system-prompts-and-models-of-ai-tools`: pesquisa e red-team, nunca copia direta.
-
-Direcao para o Clawde:
-
-- memoria com IDs/citacoes;
-- busca em camadas: resumo curto -> timeline -> detalhe;
-- marcadores privados que nunca entram em storage/eventos;
-- importador opcional de transcript do Claude Code;
-- reflection que aprende de pre-flight objections recorrentes;
-- budget de tokens por memoria injetada.
-
-Direcao para o Claude Code do operador:
-
-- nao instalar pacotes gigantes globalmente;
-- adotar um perfil minimo e curado;
-- usar GSD/ECC como biblioteca de padroes, nao como layer obrigatoria;
-- incorporar os principios Karpathy no onboarding;
-- usar prompts vazados apenas para red-team e testes adversariais.
+- templates e documentos como capacidades curadas;
+- pesquisa local por default quando autorizada;
+- pesquisa web apenas opt-in com `--with-web`, agente habilitado, budget e citacoes;
+- memoria com IDs/citacoes e progressive disclosure;
+- private tags e redaction antes de storage;
+- transcript importer experimental, desligado por default;
+- reflection aprendendo com approvals negados, pre-flight objections, cancels e falhas recorrentes.
 
 Observacao de licenca: `claude-mem` e AGPL-3.0. Ideias sao aproveitaveis, mas copiar codigo para o Clawde deve ser evitado salvo decisao explicita.
 
@@ -355,124 +346,55 @@ Observacao de licenca: `claude-mem` e AGPL-3.0. Ideias sao aproveitaveis, mas co
 
 ## Ordem recomendada
 
-### Fase 0: ADR de interatividade e prova de fogo
+### MVP interativo
 
-Criar ADR "Interactive Layer Without Mid-Stream Injection".
+1. ADR/RFC.
+2. Direct Mode minimo.
+3. Cancelamento por task.
+4. Conversations e multi-turn base.
+5. Approval boundary.
+6. War room experimental.
+7. Pre-flight foundations.
+8. Adversarial Pre-flight runtime.
 
-Conteudo:
+### Pos-MVP
 
-- aceita direct mode, multi-turn, approvals, cancel, pre-flight;
-- rejeita mid-stream injection;
-- define invariantes de auditabilidade;
-- define quando pre-flight e obrigatorio.
+1. Policy hardening para quick tasks.
+2. Telegram quick tasks e approvals.
+3. Jobs/crons como entidade backend.
+4. Dashboard observacional.
+5. Dashboard operacional.
 
-**Tempo:** 1 dia.
+### Roadmap separado
 
-### Fase 1: Schema foundations
-
-Adicionar:
-
-- `conversations`;
-- `approval_requests`;
-- status `awaiting_approval`;
-- campos/eventos para cancel;
-- event kinds de pre-flight.
-
-**Tempo:** 3-5 dias.
-
-### Fase 2: Direct Mode CLI
-
-Implementar:
-
-- `clawde ask`;
-- `clawde chat`;
-- long-poll;
-- renderizacao de resposta;
-- timeout que degrada para async.
-
-**Tempo:** 1 semana.
-
-### Fase 3: Cancel + approvals CLI
-
-Implementar:
-
-- `clawde cancel`;
-- `clawde approvals list/show/approve/deny`;
-- hook de approval em fronteiras;
-- testes de crash/reconcile.
-
-**Tempo:** 1-2 semanas.
-
-### Fase 4: Adversarial Pre-flight
-
-Implementar:
-
-- `src/pre_flight`;
-- agentes `planner`, `adversary`, `risk-assessor`;
-- consenso;
-- eventos;
-- config;
-- Telegram/CLI para `NEEDS_HUMAN`.
-
-**Tempo:** 2-3 semanas.
-
-### Fase 5: Telegram multi-turn
-
-Implementar:
-
-- mapeamento `chat/thread -> conversation`;
-- replies como turns;
-- approve/deny por Telegram;
-- timeouts.
-
-**Tempo:** 1-2 semanas.
-
-### Fase 6: Dashboard
-
-Implementar MVP local-first:
-
-- timeline;
-- tasks;
-- sessions;
-- approvals;
-- panic;
-- health.
-
-**Tempo:** 2-3 semanas.
-
-### Fase 7: Context hygiene e memoria
-
-Implementar incrementalmente:
-
-- transcript importer;
-- citations;
-- private tags;
-- progressive memory retrieval;
-- reflection usando pre-flight outcomes.
-
-**Tempo:** continuo.
+Memoria, contexto, skills, templates, web research e transcript importer ficam em [`memory-context.md`](./memory-context.md).
 
 ---
 
 ## Prioridade pratica
 
-Se quiser o maior retorno rapido:
+Maior retorno rapido:
 
-1. ADR.
+1. ADR/RFC.
 2. `clawde ask`.
 3. `clawde cancel`.
-4. `approval_requests`.
-5. pre-flight.
+4. conversations.
+5. approvals.
+6. war room.
+7. pre-flight.
 
-Se quiser reduzir risco operacional primeiro:
+Ordem safety-first:
 
-1. ADR.
-2. `approval_requests`.
-3. pre-flight.
-4. cancel.
-5. direct mode.
+1. ADR/RFC.
+2. approvals.
+3. war room.
+4. pre-flight.
+5. cancel.
+6. direct mode.
+7. Telegram.
+8. dashboard.
 
-Minha recomendacao: comecar pelo caminho de retorno rapido, mas desenhar o schema ja sabendo que approvals e pre-flight vem logo depois. `clawde ask` vai mostrar rapidamente se a camada interativa resolve a dor real sem grande investimento em UI.
+Minha recomendacao: comecar pelo caminho de retorno rapido, mas manter approval/pre-flight como proximos marcos obrigatorios. Quick task policy deve vir depois do Direct Mode minimo gerar uso real.
 
 ---
 
@@ -482,51 +404,58 @@ Minha recomendacao: comecar pelo caminho de retorno rapido, mas desenhar o schem
 
 - T-144: ADR interactive layer sem mid-stream injection.
 - T-145: RFC pre-flight adversarial com policy de ativacao.
-- T-146: atualizar REQUIREMENTS/BLUEPRINT com direct mode e approval boundaries.
+- T-146: RFC Telegram callback verification.
+- T-147: atualizar REQUIREMENTS/BLUEPRINT com direct mode, task.profile e approval boundaries.
 
 ### P7.1 Direct Mode
 
-- T-147: schema `conversations`.
 - T-148: `clawde ask` com long-poll.
-- T-149: `clawde chat <name>`.
-- T-150: testes de timeout async fallback.
+- T-149: testes de sucesso/falha/timeout async fallback.
 
-### P7.2 Approval and cancel boundaries
+### P7.2 Cancel
 
-- T-151: schema `approval_requests`.
-- T-152: `awaiting_approval` em `task_runs`.
-- T-153: CLI approvals.
-- T-154: `clawde cancel`.
-- T-155: worker cancel/approval gates.
+- T-150: `clawde cancel`.
+- T-151: worker cancel gate.
+- T-152: stopReason/status `cancelled`.
 
-### P7.3 Adversarial Pre-flight
+### P7.3 Conversations
 
-- T-156: schemas/config/event kinds de pre-flight.
-- T-157: agentes planner/adversary/risk-assessor.
-- T-158: consensus engine.
-- T-159: runner integration antes de `processTask`.
-- T-160: Telegram/CLI human handoff.
-- T-161: testes de veto critico, high risk, max rounds e approval timeout.
+- T-153: migration `conversations`.
+- T-154: `clawde chat <name>`.
+- T-155: locks/reconcile/backfill de origins pre-existentes.
 
-### P7.4 Telegram multi-turn
+### P7.4 Approval boundary
 
-- T-162: conversation resolver para Telegram.
-- T-163: replies como turns.
-- T-164: approve/deny inline.
+- T-156: schema `approval_requests`.
+- T-157: `awaiting_approval` em `task_runs`.
+- T-158: CLI approvals.
+- T-159: worker approval gate e continuation.
 
-### P7.5 Dashboard MVP
+### P7.5 War room
 
-- T-165: Bun.serve local dashboard.
-- T-166: events timeline.
-- T-167: tasks/sessions/approvals views.
-- T-168: panic controls.
+- T-160: `.claude/skills/war-room/SKILL.md`.
+- T-161: `docs/playbooks/war-room.md`.
+- T-162: exemplos migration/purge/task simples.
 
-### P7.6 Context and memory hygiene
+### P7.6 Pre-flight foundations
 
-- T-169: memory retrieval budget.
-- T-170: citations nos memory observations.
-- T-171: private tags.
-- T-172: transcript importer experimental.
+- T-163: schemas/config/event kinds de pre-flight.
+- T-164: agentes planner/adversary/risk-assessor.
+- T-165: consensus engine e state machine com approvals.
+- T-166: testes de veto critico, high risk, max rounds e malformed output.
+
+### P7.7 Adversarial Pre-flight runtime
+
+- T-167: runner integration antes de `processTask`.
+- T-168: CRITICAL override auditado por CLI/dashboard.
+- T-169: testes de override, crash/reconcile e approval timeout.
+
+### P7.8 Quick task policy
+
+- T-170: `task.profile = quick | normal | long_running`.
+- T-171: `clawde ask` passa a criar profile `quick`.
+- T-172: web research opt-in com `--with-web` e agente habilitado.
+- T-173: budgets/limits/escalation para quick tasks.
 
 ---
 
@@ -549,9 +478,12 @@ Qualquer implementacao dessas propostas deve preservar:
 
 Antes de implementar, o operador deve escolher:
 
-1. Quer seguir pelo caminho de retorno rapido (`ask`/`cancel`) ou pelo caminho de reducao de risco (`approval`/`pre-flight`)?
-2. A prova de fogo deve bloquear `CRITICAL` sem override humano ou permitir override manual excepcional?
-3. Telegram deve ser canal de approve/deny ja no MVP ou CLI basta na primeira iteracao?
-4. Dashboard entra neste ciclo ou so depois que direct mode e approvals estiverem provados?
+1. `clawde ask` timeout default deve ser 60s, 120s ou configuravel por profile?
+2. Quick tasks podem furar fila sempre ou so quando nao houver task CRITICAL/running?
+3. Telegram pode criar normal tasks ou apenas quick tasks no MVP?
+4. Web research entra apenas com `--with-web` e agente explicitamente habilitado?
+5. CRITICAL override deve exigir reautenticacao local no dashboard?
+6. Dashboard MVP deve ser read-only puro ou ja incluir criar/cancelar tasks?
+7. Jobs/crons devem usar systemd timers gerados ou scheduler interno no Clawde?
 
-Recomendacao: bloquear `CRITICAL` sem override por config; permitir override apenas mudando a propria task/policy e reenfileirando. A prova de fogo deve ser um freio real, nao uma formalidade.
+Recomendacao: `clawde ask` timeout default de 120s; quick tasks nao interrompem CRITICAL/running; Telegram MVP cria quick tasks e approvals; web research e opt-in; CRITICAL override exige operador local e justificativa; dashboard MVP read-only; jobs/crons primeiro como entidade backend que enfileira tasks.
