@@ -1,3 +1,138 @@
+# Clawde — Handoff de sessão
+
+## Atualizacao Codex — 2026-05-02
+
+Leia esta secao primeiro ao retomar. O restante do arquivo preserva um
+handoff antigo de 2026-04-29 e pode ser usado como historico, mas o estado
+atual do projeto e o descrito aqui.
+
+### Estado atual
+
+- Workspace principal: `/home/pcdan/clawde/Clawde` (WSL2 Ubuntu 24.04,
+  ext4 nativo).
+- Branch atual: `propostas-para-o-clawde`.
+- Remote tracking: `origin/propostas-para-o-clawde`.
+- Working tree no momento do handoff: limpo.
+- `main` remoto ja contem o backlog de remediacao completo ate PR #40.
+
+Commits recentes no branch:
+
+```text
+ccb414d docs: refine Clawde proposal roadmap
+328c06a docs: add Clawde proposal implementation plan
+2360d5e docs: consolidate Clawde proposals
+b3d5b3c chore(ci): fix post-wave hygiene gaps (#40)
+```
+
+### Documentos criados/refinados
+
+- `docs/roadmap/propostas-para-o-clawde.md`
+  - documento conceitual consolidado;
+  - rejeita mid-stream injection;
+  - aceita Direct Mode, conversations, approvals, cancel, war room e
+    adversarial pre-flight.
+- `docs/roadmap/propostas-para-o-clawde-implementation-plan.md`
+  - plano executavel;
+  - MVP Fases 0-7: ADR/RFC, Direct Mode minimo, cancel, conversations,
+    approval boundary, war room experimental, pre-flight foundations,
+    pre-flight runtime;
+  - pos-MVP: quick task policy, Telegram, jobs/crons, dashboard
+    observacional, dashboard operacional.
+- `docs/roadmap/memory-context.md`
+  - roadmap separado para templates, pesquisa, memoria, private tags,
+    transcript importer e reflection operacional.
+
+### Decisoes travadas
+
+- Nao implementar inject mid-stream.
+- Toda intervencao vira task, turn, approval ou evento auditavel.
+- `CRITICAL` em pre-flight bloqueia por padrao, mas pode ter override
+  auditado somente por CLI/dashboard.
+- Telegram nunca pode executar override de `CRITICAL`.
+- `task.profile = quick | normal | long_running` e ortogonal a `Priority`.
+- Web research nao e default em quick tasks; exige `--with-web` e agente
+  habilitado.
+- War room experimental deve ser skill + playbook:
+  - `.claude/skills/war-room/SKILL.md`;
+  - `docs/playbooks/war-room.md`.
+- CLI `clawde war-room` fica fora da fase experimental.
+- Dashboard pode virar centro de controle, mas primeiro deve ser
+  observacional e local-first.
+
+### GSD instalado no Codex
+
+O operador pediu instalar `https://github.com/gsd-build/get-shit-done.git`
+no Codex. Foi instalado em modo minimo, global, em `~/.codex` usando Bun:
+
+```bash
+bun /tmp/claude-code-study/get-shit-done/bin/install.js --codex --global --minimal --no-sdk
+```
+
+Skills instaladas:
+
+```text
+gsd-new-project
+gsd-discuss-phase
+gsd-plan-phase
+gsd-execute-phase
+gsd-help
+gsd-update
+```
+
+Arquivos relevantes:
+
+```text
+~/.codex/skills/gsd-*/SKILL.md
+~/.codex/get-shit-done/
+~/.codex/gsd-file-manifest.json
+~/.gsd/defaults.json
+```
+
+Como o WSL nao tem Node Linux nativo, o instalador foi rodado via Bun e o
+SDK foi pulado com `--no-sdk`. Para compatibilidade com workflows que chamam
+`gsd-sdk query ...`, foi criado um shim:
+
+```text
+~/.local/bin/gsd-sdk
+~/.local/bin/gsd-tools -> ~/.local/bin/gsd-sdk
+```
+
+O shim traduz `gsd-sdk query X` para o `gsd-tools.cjs` instalado e executa
+via Bun. Validacao feita:
+
+```bash
+gsd-sdk query current-timestamp
+```
+
+respondeu JSON com timestamp.
+
+Importante: reiniciar Codex para carregar as skills GSD.
+
+### Validacoes feitas nesta sessao
+
+- `bun run lint` limpo apos refinamento dos docs.
+- `git diff --check` limpo antes do commit `ccb414d`.
+- gitleaks/pre-commit limpo nos commits do branch.
+- O branch `propostas-para-o-clawde` foi pushado para GitHub.
+
+### Proximo passo ao retomar
+
+1. Confirmar branch/estado:
+   ```bash
+   cd /home/pcdan/clawde/Clawde
+   git status --short --branch
+   git log --oneline -5
+   ```
+2. Se o operador pedir continuar propostas, trabalhar no branch
+   `propostas-para-o-clawde`.
+3. Se o operador reiniciou para carregar GSD, testar:
+   ```text
+   $gsd-help
+   ```
+4. Se for iniciar implementacao real, primeiro criar ADR/RFC da Fase 0.
+
+---
+
 # Clawde — Handoff de sessão (2026-04-29)
 
 > Estado da última sessão Claude Opus 4.7 antes do operador trocar pra
