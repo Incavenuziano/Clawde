@@ -91,7 +91,7 @@ em PR bodies futuros que mudam shape de evento (followup #14 abaixo).
 ### CI em main após todos os merges
 
 - `bun run typecheck` ✅ (`tsc --noEmit` clean)
-- `bun run lint` ✅ (2 warnings históricos em bootstrap tests, pré-existentes)
+- `bun run lint` ✅ (na época havia dois avisos históricos em bootstrap tests; ambos removidos depois nos followups #37/#39)
 - `bun test` 640 / 640 ✅ (uma rodada em workspace ext4 limpo)
 
 ### Smoke E2E
@@ -120,6 +120,10 @@ overhead de NTFS contribuía mas não era a causa única. Race remanescente
 provavelmente lease 1s vs sleep 1.5s margem ainda apertada — fix potencial
 sobe `1500 → 2500` em `tests/unit/db/task-runs.repo.test.ts:116`.
 
+Atualização pós-Wave 6: o final sweep PR #39 estabilizou o caso com boundary
+`lease_until <= datetime('now')` em `findExpiredLeases`, removendo este item da
+lista de followups vivos.
+
 ## Wave 3 followups (mergeados na mesma janela, escopo separado)
 
 | PR | Merge | Origem |
@@ -141,7 +145,6 @@ Wave 4 fechar. Citados aqui pra contexto cross-PR no mesmo período de trabalho.
 | Schema breaking change `tool_use {tool,input}` → `{tool_name,...}` sem flag em PR body | P2.7 review (claude) | processo (PR template) |
 | "Log eventual perda de dados úteis" em redact (T-097 acceptance) — soft requirement não implementado | P2.7 review (claude) | followup |
 | Teste para "outras tools" (`Grep`/`WebFetch` → `{tool_name}` only) ausente | P2.7 review (claude) | cobertura |
-| Flaky `findExpiredLeases` ainda reproduz em ext4 (raro) | cross-wave | tech-debt; fix conhecido |
 | Teste de regressão pra warning "Bash + level≥2" (caso negativo) | PR #13 review | cobertura |
 | `payload.toolInput.path` não-string sem teste explícito (Read allowlist) | PR #14 review | cobertura |
 | Symlinks via path prefix passam check do Read allowlist (mitigado por bwrap binds em level≥2 só) | PR #14 review | tech-debt; documentar |

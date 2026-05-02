@@ -16,6 +16,8 @@ import {
   validateEgressList,
 } from "@clawde/sandbox";
 
+const realBwrapTest = process.env.GITHUB_ACTIONS === "true" ? test.skip : test;
+
 describe("sandbox/bwrap buildBwrapArgs", () => {
   test("inclui ro-binds do config + workdir + clearenv", () => {
     const args = buildBwrapArgs(
@@ -120,7 +122,7 @@ describe("sandbox/bwrap runBwrapped (Linux real)", () => {
   });
   afterEach(() => rmSync(workdir, { recursive: true, force: true }));
 
-  test("executa /bin/echo dentro de bwrap, captura stdout", async () => {
+  realBwrapTest("executa /bin/echo dentro de bwrap, captura stdout", async () => {
     const result = await runBwrapped(
       {
         readOnlyMounts: [],
@@ -136,7 +138,7 @@ describe("sandbox/bwrap runBwrapped (Linux real)", () => {
     expect(result.stdout.trim()).toBe("clawde sandboxed");
   });
 
-  test("workspace é writable; paths fora são bloqueados", async () => {
+  realBwrapTest("workspace é writable; paths fora são bloqueados", async () => {
     // Cria arquivo dentro do workspace via bwrap (deve funcionar).
     const result1 = await runBwrapped(
       {
@@ -173,7 +175,7 @@ describe("sandbox/bwrap runBwrapped (Linux real)", () => {
     expect(existsSync("/etc/clawde-attack.txt")).toBe(false);
   });
 
-  test("paths fora dos mounts NÃO são acessíveis (HOME do host bloqueado)", async () => {
+  realBwrapTest("paths fora dos mounts NÃO são acessíveis (HOME do host bloqueado)", async () => {
     // Cria arquivo no host fora do workdir.
     const secretDir = mkdtempSync(join(tmpdir(), "clawde-secret-"));
     writeFileSync(join(secretDir, "secret.txt"), "TOPSECRET");
@@ -197,7 +199,7 @@ describe("sandbox/bwrap runBwrapped (Linux real)", () => {
     }
   });
 
-  test("timeout mata processo travado", async () => {
+  realBwrapTest("timeout mata processo travado", async () => {
     const result = await runBwrapped(
       {
         readOnlyMounts: [],

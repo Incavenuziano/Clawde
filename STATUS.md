@@ -1,6 +1,6 @@
 # Clawde — Status do Backlog de Remediação
 
-> Tracking de execução das 124 tasks em [EXECUTION_BACKLOG.md](EXECUTION_BACKLOG.md).
+> Tracking de execução das 143 tasks em [EXECUTION_BACKLOG.md](EXECUTION_BACKLOG.md).
 > Atualizado por quem trabalha em cada task — 1 linha por task.
 >
 > **Estados**: `pending` | `in-progress` | `in-review` | `merged` | `blocked`

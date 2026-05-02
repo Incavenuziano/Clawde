@@ -291,7 +291,7 @@ Operador aprova wave fechada → próxima wave começa.
 
 **Pré-requisitos** (já feitos):
 - `gh` CLI instalado e autenticado.
-- `STATUS.md` na raiz com 124 tasks listadas.
+- `STATUS.md` na raiz com 143 tasks listadas.
 - Plano consolidado em `EXECUTION_BACKLOG.md`.
 - Commit base `7ef1d98` em main com tudo o acima.
 

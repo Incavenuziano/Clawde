@@ -19,6 +19,7 @@ jobs:
       - name: Install gitleaks
         run: |
           install_dir="$(bash scripts/ci/install-gitleaks.sh)"
+          export PATH="${install_dir}:${PATH}"
           echo "${install_dir}" >> "${GITHUB_PATH}"
           gitleaks version
 

@@ -223,6 +223,6 @@ após auditoria.
 
 ---
 
-*Auditoria realizada por Claude Opus 4.7 em 2026-04-29 cruzando os 124*
-*itens originais do EXECUTION_BACKLOG.md com 1244 linhas do BEST_PRACTICES.md.*
+*Auditoria realizada por Claude Opus 4.7 em 2026-04-29 cruzando os 143*
+*itens do EXECUTION_BACKLOG.md com 1244 linhas do BEST_PRACTICES.md.*
 *Wave 6 (T-125..T-143, 19 tasks) adicionada como resultado.*
