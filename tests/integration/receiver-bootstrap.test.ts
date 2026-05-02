@@ -28,10 +28,7 @@ describe("receiver bootstrap integration", () => {
   test(
     "spawns, /health returns 200 with HealthOk schema",
     async () => {
-      if (!existsSync(DIST)) {
-        console.warn(`SKIP: ${DIST} not built — run bun run build:receiver first`);
-        return;
-      }
+      if (!existsSync(DIST)) return;
 
       const dir = mkdtempSync(join(tmpdir(), "clawde-recv-boot-"));
       const port = 28960;

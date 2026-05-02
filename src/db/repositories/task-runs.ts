@@ -167,8 +167,12 @@ export class TaskRunsRepo {
   }
 
   /**
-   * Lista task_runs com lease expirado (running com lease_until < now).
+   * Lista task_runs com lease expirado (running com lease_until <= now).
    * Usado pelo reconcile no startup do worker.
+   *
+   * Comparação inclusive (`<=`) elimina o flaky histórico onde sleep do
+   * teste deixava lease_until exatamente igual a datetime('now') por
+   * resolução de segundos do SQLite — fica fora do range estrito `<`.
    */
   findExpiredLeases(): ReadonlyArray<TaskRun> {
     const rows = this.db
@@ -176,7 +180,7 @@ export class TaskRunsRepo {
         `SELECT * FROM task_runs
          WHERE status = 'running'
            AND lease_until IS NOT NULL
-           AND lease_until < datetime('now')`,
+           AND lease_until <= datetime('now')`,
       )
       .all();
     return rows.map(rowToTaskRun);
