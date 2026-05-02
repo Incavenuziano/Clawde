@@ -1,0 +1,14 @@
+[Unit]
+Description=Clawde deferred task check - processa tasks com not_before vencido
+Documentation=https://github.com/Incavenuziano/Clawde/issues/44
+
+[Timer]
+# 5 min apos boot para garantir que o receiver esta up
+OnBootSec=5min
+# A cada 30 min: garante que tasks deferidas (quota, approval) sejam
+# processadas em ate 30 min apos o not_before virar elegivel.
+# Custo: zero se fila vazia ou quota ainda esgotada (worker sai limpo).
+OnUnitActiveSec=30min
+
+[Install]
+WantedBy=timers.target
