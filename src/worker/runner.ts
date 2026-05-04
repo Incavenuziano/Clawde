@@ -439,16 +439,27 @@ async function runAgentWithLedger(
     streamOpts.maxTurns = agentDef.frontmatter.maxTurns;
   }
 
+  // For level < 2 agents (no bwrap), sandbox.toml uses "/workspace" as a
+  // placeholder for the ephemeral worktree. Without bwrap there is no filesystem
+  // mapping, so resolve "/workspace" to the actual working directory (issue #51).
+  const rawAllowedWrites = agentDef?.sandbox?.allowed_writes ?? [];
+  const effectiveAllowedWrites =
+    sandboxLevel < 2 && workingDirectoryOverride !== null
+      ? rawAllowedWrites.map((w) => (w === "/workspace" ? workingDirectoryOverride : w))
+      : rawAllowedWrites;
+
   const preToolHandler = makePreToolUseHandler(() => {}, {
     allowedTools,
     sandbox: {
       level: agentDef?.sandbox?.level ?? 1,
-      allowed_writes: agentDef?.sandbox?.allowed_writes ?? [],
+      allowed_writes: effectiveAllowedWrites,
       // Propaga allowed_reads SOMENTE quando definido na config; senão deixa
       // undefined (comportamento legacy permissivo) — `exactOptionalPropertyTypes`.
       ...(agentDef?.sandbox?.allowed_reads !== undefined
         ? { allowed_reads: agentDef.sandbox.allowed_reads }
         : {}),
+      // cwd enables relative-path resolution in write/read checks (issue #51).
+      ...(workingDirectoryOverride !== null ? { cwd: workingDirectoryOverride } : {}),
     },
   });
   if (task.sessionId !== null) streamOpts.sessionId = task.sessionId;

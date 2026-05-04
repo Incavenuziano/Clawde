@@ -6,6 +6,7 @@
  * virão em Fase 6.
  */
 
+import { join, isAbsolute } from "node:path";
 import type { ObservationKind } from "@clawde/domain/memory";
 import type {
   HookHandler,
@@ -48,6 +49,8 @@ export interface PreToolUseAgentPolicy {
      * is auto-forwarded back.
      */
     readonly allowed_reads?: ReadonlyArray<string>;
+    /** Working directory used to resolve relative paths in write/read checks. */
+    readonly cwd?: string;
   };
 }
 
@@ -117,9 +120,17 @@ function isPathTraversal(path: string): boolean {
   return p.includes("../") || p.startsWith("..");
 }
 
-function isAllowedWritePath(path: string, allowedWrites: ReadonlyArray<string>): boolean {
-  const target = normalizePath(path);
+function isAllowedWritePath(
+  path: string,
+  allowedWrites: ReadonlyArray<string>,
+  cwd?: string,
+): boolean {
+  let target = normalizePath(path);
   if (isPathTraversal(target)) return false;
+  // Resolve relative paths against cwd so "/workspace" → "/tmp/clawde-N" mapping works.
+  if (!isAbsolute(target) && cwd !== undefined) {
+    target = normalizePath(join(cwd, target));
+  }
   for (const allowed of allowedWrites) {
     const base = normalizePath(allowed);
     if (base.length === 0) continue;
@@ -193,7 +204,7 @@ export function makePreToolUseHandler(
     if (toolName === "Edit" || toolName === "Write") {
       const path = extractPath(input.payload.toolInput);
       const allowedWrites = agent?.sandbox.allowed_writes ?? [];
-      if (allowedWrites.length > 0 && !isAllowedWritePath(path, allowedWrites)) {
+      if (allowedWrites.length > 0 && !isAllowedWritePath(path, allowedWrites, agent?.sandbox.cwd)) {
         emit("tool_blocked", {
           tool: toolName,
           reason: "write_path_not_allowed",
