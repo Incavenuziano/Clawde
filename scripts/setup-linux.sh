@@ -42,11 +42,62 @@ CONFIG_PATH="${HOME}/.clawde/config/clawde.toml"
 if [[ ! -f "${CONFIG_PATH}" ]]; then
   touch "${CONFIG_PATH}"
 fi
-if ! grep -q 'claude_executable_path' "${CONFIG_PATH}" 2>/dev/null; then
-  {
-    printf '\n[worker]\n'
-    printf 'claude_executable_path = "%s"\n' "${HOME}/.clawde/bin/claude"
-  } >> "${CONFIG_PATH}"
+
+worker_key_line="claude_executable_path = \"${HOME}/.clawde/bin/claude\""
+
+has_uncommented_key() {
+  awk '
+    /^[[:space:]]*#/ { next }
+    /^[[:space:]]*claude_executable_path[[:space:]]*=/ { found=1 }
+    END { exit found ? 0 : 1 }
+  ' "${CONFIG_PATH}"
+}
+
+has_worker_section() {
+  awk '
+    /^[[:space:]]*\[worker\][[:space:]]*$/ { found=1 }
+    END { exit found ? 0 : 1 }
+  ' "${CONFIG_PATH}"
+}
+
+insert_into_worker_section() {
+  local tmp
+  tmp="$(mktemp)"
+  awk -v line="${worker_key_line}" '
+    BEGIN {
+      in_worker = 0
+      inserted = 0
+    }
+    /^[[:space:]]*\[/ {
+      if (in_worker && !inserted) {
+        print line
+        inserted = 1
+      }
+      in_worker = ($0 ~ /^[[:space:]]*\[worker\][[:space:]]*$/)
+      print
+      next
+    }
+    {
+      print
+    }
+    END {
+      if (in_worker && !inserted) {
+        print line
+      }
+    }
+  ' "${CONFIG_PATH}" > "${tmp}"
+  mv "${tmp}" "${CONFIG_PATH}"
+}
+
+if ! has_uncommented_key; then
+  if has_worker_section; then
+    insert_into_worker_section
+  else
+    {
+      printf '\n[worker]\n'
+      printf '%s\n' "${worker_key_line}"
+    } >> "${CONFIG_PATH}"
+  fi
 fi
 
 echo "setup-linux.sh: OK — claude binary at ${HOME}/.clawde/bin/claude"
