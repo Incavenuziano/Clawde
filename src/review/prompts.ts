@@ -74,6 +74,10 @@ export function buildReviewerPrompt(taskSpec: string, implementerOutput: string)
     "```",
     implementerOutput,
     "```",
+    "",
+    "Review the output above against the spec. End your response with exactly one of:",
+    "VERDICT: APPROVED",
+    "VERDICT: REJECTED",
   ].join("\n");
 }
 

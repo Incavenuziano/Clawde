@@ -6,281 +6,318 @@
  * virão em Fase 6.
  */
 
-import { join, isAbsolute } from "node:path";
+import { isAbsolute, join } from "node:path";
 import type { ObservationKind } from "@clawde/domain/memory";
 import type {
-  HookHandler,
-  HookInput,
-  HookOutput,
-  PostToolUsePayload,
-  PreToolUsePayload,
-  SessionStartPayload,
-  StopPayload,
-  UserPromptSubmitPayload,
+	HookHandler,
+	HookInput,
+	HookOutput,
+	PostToolUsePayload,
+	PreToolUsePayload,
+	SessionStartPayload,
+	StopPayload,
+	UserPromptSubmitPayload,
 } from "./types.ts";
 
-export type EventCallback = (kind: string, payload: Record<string, unknown>) => void;
+export type EventCallback = (
+	kind: string,
+	payload: Record<string, unknown>,
+) => void;
 
 /**
  * F5.T50: callback opcional pra persistir observation em memory_observations.
  * Quando undefined, hook só emite event (comportamento Fase 2).
  */
 export type MemoryCallback = (input: {
-  sessionId: string;
-  kind: ObservationKind;
-  content: string;
-  importance: number;
+	sessionId: string;
+	kind: ObservationKind;
+	content: string;
+	importance: number;
 }) => void;
 
 export interface PreToolUseAgentPolicy {
-  readonly allowedTools: ReadonlyArray<string>;
-  readonly sandbox: {
-    readonly level: 1 | 2 | 3;
-    readonly allowed_writes: ReadonlyArray<string>;
-    /**
-     * Path allowlist for `Read`. Semantics:
-     *   - `undefined`     → no enforcement (legacy behavior, all reads allowed).
-     *   - `[]` (defined)  → fail-closed, NO reads allowed.
-     *   - non-empty list  → strict allowlist (read iff target matches a prefix).
-     *
-     * The "defined empty" form is the one to use for adversarial-input agents
-     * (telegram-bot, github-pr-handler) — closes the exfiltration vector where
-     * an attacker socially engineers the agent to read secrets and the response
-     * is auto-forwarded back.
-     */
-    readonly allowed_reads?: ReadonlyArray<string>;
-    /** Working directory used to resolve relative paths in write/read checks. */
-    readonly cwd?: string;
-  };
+	readonly allowedTools: ReadonlyArray<string>;
+	readonly sandbox: {
+		readonly level: 1 | 2 | 3;
+		readonly allowed_writes: ReadonlyArray<string>;
+		/**
+		 * Path allowlist for `Read`. Semantics:
+		 *   - `undefined`     → no enforcement (legacy behavior, all reads allowed).
+		 *   - `[]` (defined)  → fail-closed, NO reads allowed.
+		 *   - non-empty list  → strict allowlist (read iff target matches a prefix).
+		 *
+		 * The "defined empty" form is the one to use for adversarial-input agents
+		 * (telegram-bot, github-pr-handler) — closes the exfiltration vector where
+		 * an attacker socially engineers the agent to read secrets and the response
+		 * is auto-forwarded back.
+		 */
+		readonly allowed_reads?: ReadonlyArray<string>;
+		/** Working directory used to resolve relative paths in write/read checks. */
+		readonly cwd?: string;
+	};
 }
 
-function summarizeBashCommand(toolInput: Readonly<Record<string, unknown>>): string {
-  const raw = toolInput.command;
-  if (typeof raw !== "string") return "";
-  return raw.slice(0, 80);
+function summarizeBashCommand(
+	toolInput: Readonly<Record<string, unknown>>,
+): string {
+	const raw = toolInput.command;
+	if (typeof raw !== "string") return "";
+	return raw.slice(0, 80);
 }
 
 function extractPath(toolInput: Readonly<Record<string, unknown>>): string {
-  const candidates = [toolInput.path, toolInput.file_path];
-  for (const candidate of candidates) {
-    if (typeof candidate === "string") return candidate;
-  }
-  return "";
+	const candidates = [toolInput.path, toolInput.file_path];
+	for (const candidate of candidates) {
+		if (typeof candidate === "string") return candidate;
+	}
+	return "";
 }
 
-function estimateWriteBytes(toolInput: Readonly<Record<string, unknown>>): number {
-  const candidates = [
-    toolInput.content,
-    toolInput.text,
-    toolInput.newText,
-    toolInput.new_str,
-    toolInput.old_str,
-    toolInput.patch,
-  ];
-  for (const candidate of candidates) {
-    if (typeof candidate === "string") {
-      return Buffer.byteLength(candidate, "utf-8");
-    }
-  }
-  return 0;
+function estimateWriteBytes(
+	toolInput: Readonly<Record<string, unknown>>,
+): number {
+	const candidates = [
+		toolInput.content,
+		toolInput.text,
+		toolInput.newText,
+		toolInput.new_str,
+		toolInput.old_str,
+		toolInput.patch,
+	];
+	for (const candidate of candidates) {
+		if (typeof candidate === "string") {
+			return Buffer.byteLength(candidate, "utf-8");
+		}
+	}
+	return 0;
 }
 
 function summarizeToolUse(
-  toolName: string,
-  toolInput: Readonly<Record<string, unknown>>,
+	toolName: string,
+	toolInput: Readonly<Record<string, unknown>>,
 ): Record<string, unknown> {
-  if (toolName === "Bash") {
-    return {
-      tool_name: "Bash",
-      command_summary: summarizeBashCommand(toolInput),
-    };
-  }
-  if (toolName === "Read") {
-    return {
-      tool_name: "Read",
-      path: extractPath(toolInput),
-    };
-  }
-  if (toolName === "Edit" || toolName === "Write") {
-    return {
-      tool_name: toolName,
-      path: extractPath(toolInput),
-      bytes_count: estimateWriteBytes(toolInput),
-    };
-  }
-  return { tool_name: toolName };
+	if (toolName === "Bash") {
+		return {
+			tool_name: "Bash",
+			command_summary: summarizeBashCommand(toolInput),
+		};
+	}
+	if (toolName === "Read") {
+		return {
+			tool_name: "Read",
+			path: extractPath(toolInput),
+		};
+	}
+	if (toolName === "Edit" || toolName === "Write") {
+		return {
+			tool_name: toolName,
+			path: extractPath(toolInput),
+			bytes_count: estimateWriteBytes(toolInput),
+		};
+	}
+	return { tool_name: toolName };
 }
 
 function normalizePath(input: string): string {
-  return input.replace(/\\/g, "/").trim();
+	return input.replace(/\\/g, "/").trim();
 }
 
 function isPathTraversal(path: string): boolean {
-  const p = normalizePath(path);
-  return p.includes("../") || p.startsWith("..");
+	const p = normalizePath(path);
+	return p.includes("../") || p.startsWith("..");
 }
 
 function isAllowedWritePath(
-  path: string,
-  allowedWrites: ReadonlyArray<string>,
-  cwd?: string,
+	path: string,
+	allowedWrites: ReadonlyArray<string>,
+	cwd?: string,
 ): boolean {
-  let target = normalizePath(path);
-  if (isPathTraversal(target)) return false;
-  // Resolve relative paths against cwd so "/workspace" → "/tmp/clawde-N" mapping works.
-  if (!isAbsolute(target) && cwd !== undefined) {
-    target = normalizePath(join(cwd, target));
-  }
-  for (const allowed of allowedWrites) {
-    const base = normalizePath(allowed);
-    if (base.length === 0) continue;
-    if (target === base || target.startsWith(`${base}/`)) return true;
-  }
-  return false;
+	let target = normalizePath(path);
+	if (isPathTraversal(target)) return false;
+	// Resolve relative paths against cwd so "/workspace" → "/tmp/clawde-N" mapping works.
+	if (!isAbsolute(target) && cwd !== undefined) {
+		target = normalizePath(join(cwd, target));
+	}
+	for (const allowed of allowedWrites) {
+		const base = normalizePath(allowed);
+		if (base.length === 0) continue;
+		if (target === base || target.startsWith(`${base}/`)) return true;
+	}
+	return false;
 }
 
-function isAllowedReadPath(path: string, allowedReads: ReadonlyArray<string>): boolean {
-  const target = normalizePath(path);
-  if (isPathTraversal(target)) return false;
-  for (const allowed of allowedReads) {
-    const base = normalizePath(allowed);
-    if (base.length === 0) continue;
-    if (target === base || target.startsWith(`${base}/`)) return true;
-  }
-  return false;
+function isAllowedReadPath(
+	path: string,
+	allowedReads: ReadonlyArray<string>,
+): boolean {
+	const target = normalizePath(path);
+	if (isPathTraversal(target)) return false;
+	for (const allowed of allowedReads) {
+		const base = normalizePath(allowed);
+		if (base.length === 0) continue;
+		if (target === base || target.startsWith(`${base}/`)) return true;
+	}
+	return false;
 }
 
 export function makeSessionStartHandler(
-  emit: EventCallback,
-): HookHandler<HookInput & { hook: "SessionStart"; payload: SessionStartPayload }> {
-  return (input) => {
-    emit("session_start_hook", { agent: input.payload.agent });
-    return { ok: true };
-  };
+	emit: EventCallback,
+): HookHandler<
+	HookInput & { hook: "SessionStart"; payload: SessionStartPayload }
+> {
+	return (input) => {
+		emit("session_start_hook", { agent: input.payload.agent });
+		return { ok: true };
+	};
 }
 
 export function makeUserPromptSubmitHandler(
-  emit: EventCallback,
-): HookHandler<HookInput & { hook: "UserPromptSubmit"; payload: UserPromptSubmitPayload }> {
-  return (input) => {
-    // No-op por padrão; prompt-guard real virá em Fase 6 (sanitização).
-    emit("user_prompt_submit_hook", {
-      source: input.payload.source ?? "unknown",
-      prompt_len: input.payload.prompt.length,
-    });
-    return { ok: true };
-  };
+	emit: EventCallback,
+): HookHandler<
+	HookInput & { hook: "UserPromptSubmit"; payload: UserPromptSubmitPayload }
+> {
+	return (input) => {
+		// No-op por padrão; prompt-guard real virá em Fase 6 (sanitização).
+		emit("user_prompt_submit_hook", {
+			source: input.payload.source ?? "unknown",
+			prompt_len: input.payload.prompt.length,
+		});
+		return { ok: true };
+	};
 }
 
 export function makePreToolUseHandler(
-  emit: EventCallback,
-  agent?: PreToolUseAgentPolicy,
+	emit: EventCallback,
+	agent?: PreToolUseAgentPolicy,
 ): HookHandler<HookInput & { hook: "PreToolUse"; payload: PreToolUsePayload }> {
-  return (input) => {
-    const toolName = input.payload.toolName;
-    const allowedTools = agent?.allowedTools ?? [];
+	return (input) => {
+		const toolName = input.payload.toolName;
+		const allowedTools = agent?.allowedTools ?? [];
 
-    if (allowedTools.length > 0 && !allowedTools.includes(toolName)) {
-      emit("tool_blocked", {
-        tool: toolName,
-        reason: "tool_not_allowlisted",
-      });
-      return { ok: false, block: true, message: `tool '${toolName}' not allowed` };
-    }
+		if (allowedTools.length > 0 && !allowedTools.includes(toolName)) {
+			emit("tool_blocked", {
+				tool: toolName,
+				reason: "tool_not_allowlisted",
+			});
+			return {
+				ok: false,
+				block: true,
+				message: `tool '${toolName}' not allowed`,
+			};
+		}
 
-    if (toolName === "Bash" && (agent?.sandbox.level ?? 1) >= 2) {
-      emit("tool_blocked", {
-        tool: toolName,
-        reason: "bash_requires_subprocess_wrapper",
-        sandbox_level: agent?.sandbox.level ?? 1,
-      });
-      return {
-        ok: false,
-        block: true,
-        message: "Bash blocked on sandbox level>=2 until subprocess wrapper is available",
-      };
-    }
+		if (toolName === "Bash" && (agent?.sandbox.level ?? 1) >= 2) {
+			emit("tool_blocked", {
+				tool: toolName,
+				reason: "bash_requires_subprocess_wrapper",
+				sandbox_level: agent?.sandbox.level ?? 1,
+			});
+			return {
+				ok: false,
+				block: true,
+				message:
+					"Bash blocked on sandbox level>=2 until subprocess wrapper is available",
+			};
+		}
 
-    if (toolName === "Edit" || toolName === "Write") {
-      const path = extractPath(input.payload.toolInput);
-      const allowedWrites = agent?.sandbox.allowed_writes ?? [];
-      if (allowedWrites.length > 0 && !isAllowedWritePath(path, allowedWrites, agent?.sandbox.cwd)) {
-        emit("tool_blocked", {
-          tool: toolName,
-          reason: "write_path_not_allowed",
-          path,
-        });
-        return { ok: false, block: true, message: `write path '${path}' is not allowed` };
-      }
-    }
+		if (toolName === "Edit" || toolName === "Write") {
+			const path = extractPath(input.payload.toolInput);
+			const allowedWrites = agent?.sandbox.allowed_writes ?? [];
+			if (
+				allowedWrites.length > 0 &&
+				!isAllowedWritePath(path, allowedWrites, agent?.sandbox.cwd)
+			) {
+				emit("tool_blocked", {
+					tool: toolName,
+					reason: "write_path_not_allowed",
+					path,
+				});
+				return {
+					ok: false,
+					block: true,
+					message: `write path '${path}' is not allowed`,
+				};
+			}
+		}
 
-    // Read path policy: enforced apenas quando `allowed_reads` está definido
-    // (mesmo que vazio). `undefined` mantém comportamento legacy permissivo.
-    // Empty array = fail-closed, evita exfiltração via Read pra agentes que
-    // processam input adversarial com auto-resposta (telegram-bot, etc).
-    if (toolName === "Read" && agent?.sandbox.allowed_reads !== undefined) {
-      const path = extractPath(input.payload.toolInput);
-      if (!isAllowedReadPath(path, agent.sandbox.allowed_reads)) {
-        emit("tool_blocked", {
-          tool: toolName,
-          reason: "read_path_not_allowed",
-          path,
-        });
-        return { ok: false, block: true, message: `read path '${path}' is not allowed` };
-      }
-    }
+		// Read path policy: enforced apenas quando `allowed_reads` está definido
+		// (mesmo que vazio). `undefined` mantém comportamento legacy permissivo.
+		// Empty array = fail-closed, evita exfiltração via Read pra agentes que
+		// processam input adversarial com auto-resposta (telegram-bot, etc).
+		if (toolName === "Read" && agent?.sandbox.allowed_reads !== undefined) {
+			const path = extractPath(input.payload.toolInput);
+			if (!isAllowedReadPath(path, agent.sandbox.allowed_reads)) {
+				emit("tool_blocked", {
+					tool: toolName,
+					reason: "read_path_not_allowed",
+					path,
+				});
+				return {
+					ok: false,
+					block: true,
+					message: `read path '${path}' is not allowed`,
+				};
+			}
+		}
 
-    emit("tool_use", summarizeToolUse(input.payload.toolName, input.payload.toolInput));
-    return { ok: true };
-  };
+		emit(
+			"tool_use",
+			summarizeToolUse(input.payload.toolName, input.payload.toolInput),
+		);
+		return { ok: true };
+	};
 }
 
 export function makePostToolUseHandler(
-  emit: EventCallback,
-  memoryCallback?: MemoryCallback,
-): HookHandler<HookInput & { hook: "PostToolUse"; payload: PostToolUsePayload }> {
-  return (input) => {
-    emit("tool_result", {
-      tool: input.payload.toolName,
-      duration_ms: input.payload.durationMs,
-      exit_code: input.payload.exitCode ?? null,
-    });
-    if (memoryCallback !== undefined) {
-      // Resumo concise do tool use pra observation searchable.
-      const summary = `tool=${input.payload.toolName} duration=${input.payload.durationMs}ms${
-        input.payload.exitCode !== undefined ? ` exit=${input.payload.exitCode}` : ""
-      }`;
-      memoryCallback({
-        sessionId: input.sessionId,
-        kind: "observation",
-        content: summary,
-        importance: 0.4, // tool calls são baixa importância por default
-      });
-    }
-    return { ok: true };
-  };
+	emit: EventCallback,
+	memoryCallback?: MemoryCallback,
+): HookHandler<
+	HookInput & { hook: "PostToolUse"; payload: PostToolUsePayload }
+> {
+	return (input) => {
+		emit("tool_result", {
+			tool: input.payload.toolName,
+			duration_ms: input.payload.durationMs,
+			exit_code: input.payload.exitCode ?? null,
+		});
+		if (memoryCallback !== undefined) {
+			// Resumo concise do tool use pra observation searchable.
+			const summary = `tool=${input.payload.toolName} duration=${input.payload.durationMs}ms${
+				input.payload.exitCode !== undefined
+					? ` exit=${input.payload.exitCode}`
+					: ""
+			}`;
+			memoryCallback({
+				sessionId: input.sessionId,
+				kind: "observation",
+				content: summary,
+				importance: 0.4, // tool calls são baixa importância por default
+			});
+		}
+		return { ok: true };
+	};
 }
 
 export function makeStopHandler(
-  emit: EventCallback,
-  memoryCallback?: MemoryCallback,
+	emit: EventCallback,
+	memoryCallback?: MemoryCallback,
 ): HookHandler<HookInput & { hook: "Stop"; payload: StopPayload }> {
-  return (input) => {
-    emit("session_stop_hook", {
-      reason: input.payload.reason,
-      msgs_consumed: input.payload.msgsConsumed,
-      total_turns: input.payload.totalTurns,
-    });
-    if (memoryCallback !== undefined && input.payload.finalText !== undefined) {
-      // Stop com finalText é summary de alto valor — importance maior.
-      const truncated = input.payload.finalText.slice(0, 2000);
-      memoryCallback({
-        sessionId: input.sessionId,
-        kind: "summary",
-        content: truncated,
-        importance: 0.6,
-      });
-    }
-    return { ok: true } as HookOutput;
-  };
+	return (input) => {
+		emit("session_stop_hook", {
+			reason: input.payload.reason,
+			msgs_consumed: input.payload.msgsConsumed,
+			total_turns: input.payload.totalTurns,
+		});
+		if (memoryCallback !== undefined && input.payload.finalText !== undefined) {
+			// Stop com finalText é summary de alto valor — importance maior.
+			const truncated = input.payload.finalText.slice(0, 2000);
+			memoryCallback({
+				sessionId: input.sessionId,
+				kind: "summary",
+				content: truncated,
+				importance: 0.6,
+			});
+		}
+		return { ok: true } as HookOutput;
+	};
 }
