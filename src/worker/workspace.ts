@@ -35,6 +35,8 @@ export interface AgentDefinitionLike {
     readonly level: 1 | 2 | 3;
     readonly allowed_writes: ReadonlyArray<string>;
     readonly allowed_reads?: ReadonlyArray<string> | undefined;
+    readonly read_only_mounts?: ReadonlyArray<string>;
+    readonly network?: string;
   };
 }
 
