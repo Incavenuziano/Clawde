@@ -89,6 +89,49 @@ describe("worker bootstrap integration", () => {
   );
 
   test(
+    "exits 0 in dry-run when worker.claude_executable_path is configured",
+    async () => {
+      if (!existsSync(DIST)) return;
+
+      const dir = mkdtempSync(join(tmpdir(), "clawde-worker-boot-path-"));
+      const dbPath = join(dir, "state.db");
+      const configPath = join(dir, "clawde.toml");
+      writeFileSync(
+        configPath,
+        `[clawde]\nhome = "${dir}"\nlog_level = "ERROR"\n\n[worker]\nclaude_executable_path = "/bin/true"\n`,
+      );
+
+      const preDb = openDb(dbPath);
+      applyPending(preDb, MIGRATIONS_DIR);
+      closeDb(preDb);
+
+      const proc = Bun.spawn([BUN_BIN, "run", DIST, "--dry-run"], {
+        env: { ...process.env, CLAWDE_CONFIG: configPath },
+        stdout: "ignore",
+        stderr: "ignore",
+      });
+
+      cleanups.push(() => {
+        try {
+          proc.kill();
+        } catch {}
+        rmSync(dir, { recursive: true, force: true });
+      });
+
+      const exitCode = await Promise.race([
+        proc.exited,
+        Bun.sleep(5000).then(() => {
+          proc.kill();
+          return -1 as number;
+        }),
+      ]);
+
+      expect(exitCode).toBe(0);
+    },
+    { timeout: 8_000 },
+  );
+
+  test(
     "exits 1 + emits db_corrupted when startup integrity check finds FK diff",
     async () => {
       if (!existsSync(DIST)) return;

@@ -26,6 +26,11 @@ function expandHome(p: string): string {
   return p;
 }
 
+export function resolveClaudeExecutablePath(configPath: string | undefined): string | undefined {
+  if (configPath === undefined || configPath.trim().length === 0) return undefined;
+  return expandHome(configPath);
+}
+
 export function parseMaxTasks(argv: ReadonlyArray<string>, fallback = DEFAULT_MAX_TASKS): number {
   const idx = argv.indexOf("--max-tasks");
   if (idx < 0 || idx + 1 >= argv.length) return fallback;
@@ -154,7 +159,12 @@ export async function bootstrap(
       }
     })();
     const agentDefByName = new Map(agentDefs.map((d) => [d.name, d] as const));
-    const agentClient = new RealAgentClient();
+    const claudeExecutablePath = resolveClaudeExecutablePath(config.worker.claude_executable_path);
+    const agentClient = new RealAgentClient(
+      claudeExecutablePath === undefined
+        ? {}
+        : { pathToClaudeCodeExecutable: claudeExecutablePath },
+    );
     const workerId = `${hostname()}-${process.pid}-${Date.now()}`;
     const reconcileResult = reconciler.reconcile(workerId);
     logger.info("startup reconcile", {

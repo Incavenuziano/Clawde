@@ -84,6 +84,7 @@ export interface RunAgentOptions {
   readonly maxTurns?: number;
   readonly appendSystemPrompt?: string;
   readonly workingDirectory?: string;
+  readonly pathToClaudeCodeExecutable?: string;
   readonly bare?: boolean;
 }
 
