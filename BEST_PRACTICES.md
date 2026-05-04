@@ -1256,3 +1256,47 @@ Resumo prático: o que olhar em cada momento.
 - **Sandbox level**: 1 (systemd hardening), 2 (+ bwrap), 3 (+ netns isolated).
 - **Hot/cold cache**: hot = última msg <5min (cache hit Anthropic); cold = miss, reprocessa prefix.
 - **Subagent**: agente em `.claude/agents/<name>/` invocado pelo agente principal (fresh context).
+
+## 14. Comportamentos validados em produção (WSL2 Ubuntu 24.04, 2026-05-02)
+
+Validados em Clawde 0.0.1 (main @ b3d5b3c), Bun 1.3.13, WSL2 Ubuntu 24.04
+kernel 6.6.87.2, systemd user services, 8 tasks, 4 bem-sucedidas, 274 msgs consumidas.
+
+### §14.1 Reconcile de lease expirado
+
+Quando worker é terminado com SIGKILL durante execução:
+
+- `task_run.status=running` com `lease_until` expirado.
+- Próximo worker: `startup reconcile` detecta, abandona o run zombie, re-enfileira.
+- Log: `{"msg":"startup reconcile","expired_count":1,"reenqueued_count":1}`.
+- Nova tentativa com `attempt_n=attempt+1` processada normalmente.
+
+### §14.2 Quota gate com deferral via `not_before`
+
+Quando quota esgotada:
+
+- Worker inicia, detecta `quota_state=esgotado`, não processa.
+- Tasks recebem `not_before` apontando para reset da janela.
+- Worker sai com `exit_reason=deferred`.
+- Tasks ficam `status=pending` com `not_before` correto.
+
+### §14.3 Health endpoint reflete estado da quota
+
+```json
+// quota normal
+{"ok":true,"db":"ok","quota":"normal","version":"0.0.1"}
+// quota esgotada
+{"ok":false,"reason":"quota_exhausted","details":"window resets at 2026-05-03 01:32:22"}
+```
+
+### §14.4 Receiver estável durante falhas do worker
+
+`clawde-receiver.service` permaneceu `active (running)` durante múltiplos ciclos
+de start/kill/reconcile do worker, quota exhaustion e SIGKILL. Nenhum restart necessário.
+
+### §14.5 Quota consumida refletida corretamente
+
+Após 4 tasks (274 msgs): `state=esgotado, consumed=274, window_start=2026-05-02 20:00:00`.
+
+Gaps identificados durante esses testes: issues #41 #42 #43 #44 (resolvidos no
+fix cycle `fixes/deploy-blockers`).

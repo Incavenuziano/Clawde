@@ -24,6 +24,7 @@ import { runQueue } from "./commands/queue.ts";
 import { runQuota } from "./commands/quota.ts";
 import { runReflect } from "./commands/reflect.ts";
 import { runReplica } from "./commands/replica.ts";
+import { runResult } from "./commands/result.ts";
 import { runReview } from "./commands/review.ts";
 import { runSessionsList, runSessionsShow } from "./commands/sessions.ts";
 import { runSmokeTest } from "./commands/smoke-test.ts";
@@ -115,6 +116,7 @@ Commands:
   panic-stop [--reason <s>]  Trava o daemon (lock + stop receiver/worker.path)
   panic-resume           Destrava após panic-stop (requer diagnose all=ok)
   sessions <list|show <id>>  Inspeciona sessões persistentes do SDK
+  result <task-id>           Exibe resultado de uma task (DB ou resumo de eventos)
   config <show|validate <path>>  Dump/valida config TOML resolvida
   events <export|purge>      Exporta/purge events antigos (retenção)
   reflect [--since 24h]   Enfileira reflection job (events+observations recentes)
@@ -287,6 +289,16 @@ export async function runMain(argv: ReadonlyArray<string>): Promise<number> {
     }
     emitErr(`unknown migrate action: ${action}`);
     return 1;
+  }
+
+  if (parsed.command === "result") {
+    const rawId = parsed.positional[0];
+    const taskId = rawId !== undefined ? Number.parseInt(rawId, 10) : Number.NaN;
+    if (!Number.isFinite(taskId) || taskId <= 0) {
+      emitErr("error: result requires a numeric task-id (clawde result <task-id>)");
+      return 1;
+    }
+    return runResult({ taskId, dbPath: getDbPath(parsed), format: getOutputFormat(parsed) });
   }
 
   if (parsed.command === "events") {
