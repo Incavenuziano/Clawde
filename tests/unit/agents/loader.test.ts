@@ -162,4 +162,16 @@ describe("agents/loader loadAllAgentDefinitions", () => {
       sandboxLevel: 2,
     });
   });
+
+  test("implementer e verifier reais não hardcodeiam /workspace em level=1", () => {
+    const projectAgentsRoot = join(import.meta.dirname, "../../../.claude/agents");
+    const implementer = loadAgentDefinition(join(projectAgentsRoot, "implementer"));
+    const verifier = loadAgentDefinition(join(projectAgentsRoot, "verifier"));
+
+    expect(implementer.sandbox.level).toBe(1);
+    expect(implementer.sandbox.allowed_writes).toEqual([]);
+
+    expect(verifier.sandbox.level).toBe(1);
+    expect(verifier.sandbox.allowed_writes).toEqual([]);
+  });
 });
