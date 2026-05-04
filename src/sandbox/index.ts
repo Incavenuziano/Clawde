@@ -32,6 +32,11 @@ export {
   validateEgressList,
 } from "./netns.ts";
 export {
+  type SandboxedWrapper,
+  makeSandboxedClaudeWrapper,
+  resolveClaudeNativeBinary,
+} from "./wrapper.ts";
+export {
   type PathUnitInput,
   type ServiceUnitInput,
   type TimerUnitInput,
