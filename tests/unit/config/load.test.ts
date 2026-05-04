@@ -87,6 +87,19 @@ max_age_minutes = 45
     expect(cfg.replica?.max_age_minutes).toBe(45);
   });
 
+  test("worker.claude_executable_path é aceito quando presente", () => {
+    writeFileSync(
+      path,
+      `
+[worker]
+claude_executable_path = "/home/test/.clawde/bin/claude"
+`,
+    );
+
+    const cfg = loadConfig({ path, env: {} });
+    expect(cfg.worker.claude_executable_path).toBe("/home/test/.clawde/bin/claude");
+  });
+
   test("valor inválido lança ConfigError com path", () => {
     writeFileSync(
       path,

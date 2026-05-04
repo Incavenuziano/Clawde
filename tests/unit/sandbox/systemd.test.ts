@@ -179,6 +179,11 @@ describe("deploy/systemd unit files reais", () => {
     expect(statSync(prunePath).mode & 0o111).toBeGreaterThan(0);
   });
 
+  test("setup-linux script tem exec bit", () => {
+    const scriptPath = join(import.meta.dirname, "../../../scripts/setup-linux.sh");
+    expect(statSync(scriptPath).mode & 0o111).toBeGreaterThan(0);
+  });
+
   test("clawde-restore-drill.timer roda mensal dia 1 às 04:30", () => {
     const content = readUnit("clawde-restore-drill.timer");
     expect(content).toContain("OnCalendar=*-*-01 04:30:00");

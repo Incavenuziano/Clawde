@@ -19,6 +19,7 @@ export const ClawdeBaseSchema = z.object({
 export const WorkerSchema = z.object({
   max_parallel: z.number().int().positive().default(1),
   cli_path: z.string().default("/usr/local/bin/claude"),
+  claude_executable_path: z.string().optional(),
   cli_min_version: z.string().default("2.0.0"),
   default_max_turns: z.number().int().positive().default(15),
   default_timeout_seconds: z.number().int().positive().default(1800),

@@ -11,6 +11,12 @@ log_level = "INFO"   # TRACE | DEBUG | INFO | WARN | ERROR | FATAL
 [worker]
 max_parallel            = 1                          # 1 worker por vez (Max evita serial cost)
 cli_path                = "/usr/local/bin/claude"
+# Opcional: caminho explícito para o binário do Claude Code usado pelo SDK.
+# Útil quando o worker roda fora do diretório do projeto ou em WSL2/systemd
+# sem acesso ao PATH do shell interativo. Configure automaticamente com:
+#   bash scripts/setup-linux.sh
+# Docs: docs/DEPLOY-LINUX.md
+# claude_executable_path = "~/.clawde/bin/claude"
 cli_min_version         = "2.0.0"
 default_max_turns       = 15
 default_timeout_seconds = 1800                        # 30min hard cap por task

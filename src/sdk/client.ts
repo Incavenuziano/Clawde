@@ -17,6 +17,10 @@ import { SdkAuthError as SdkAuthErrorClass } from "./types.ts";
 import { SdkNetworkError as SdkNetworkErrorClass } from "./types.ts";
 import { SdkRateLimitError as SdkRateLimitErrorClass } from "./types.ts";
 
+export interface RealAgentClientOptions {
+  readonly pathToClaudeCodeExecutable?: string;
+}
+
 export function mapSdkError(err: unknown): Error {
   const base = err instanceof Error ? err : new Error(String(err));
   const msg = base.message.toLowerCase();
@@ -75,6 +79,8 @@ export async function collectRun(stream: AsyncIterable<ParsedMessage>): Promise<
  * carregar o SDK em comandos que não invocam Claude (ex: `clawde quota status`).
  */
 export class RealAgentClient implements AgentClient {
+  constructor(private readonly defaults: RealAgentClientOptions = {}) {}
+
   async *stream(options: RunAgentOptions): AsyncIterable<ParsedMessage> {
     try {
       const sdk = await import("@anthropic-ai/claude-agent-sdk");
@@ -89,6 +95,11 @@ export class RealAgentClient implements AgentClient {
         queryOptions.appendSystemPrompt = options.appendSystemPrompt;
       }
       if (options.workingDirectory !== undefined) queryOptions.cwd = options.workingDirectory;
+      if (options.pathToClaudeCodeExecutable !== undefined) {
+        queryOptions.pathToClaudeCodeExecutable = options.pathToClaudeCodeExecutable;
+      } else if (this.defaults.pathToClaudeCodeExecutable !== undefined) {
+        queryOptions.pathToClaudeCodeExecutable = this.defaults.pathToClaudeCodeExecutable;
+      }
       if (options.resumeSessionId !== undefined)
         queryOptions.resumeSessionId = options.resumeSessionId;
 
