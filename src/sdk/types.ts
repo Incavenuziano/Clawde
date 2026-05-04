@@ -85,6 +85,7 @@ export interface RunAgentOptions {
   readonly appendSystemPrompt?: string;
   readonly workingDirectory?: string;
   readonly pathToClaudeCodeExecutable?: string;
+  readonly allowDangerouslySkipPermissions?: boolean;
   readonly bare?: boolean;
 }
 

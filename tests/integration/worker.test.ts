@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { EventsRepo } from "@clawde/db/repositories/events";
 import { QuotaLedgerRepo } from "@clawde/db/repositories/quota-ledger";
 import { TaskRunsRepo } from "@clawde/db/repositories/task-runs";
@@ -9,6 +12,19 @@ import { SdkRateLimitError } from "@clawde/sdk";
 import { LeaseManager, type RunnerDeps, processNextPending, processTask } from "@clawde/worker";
 import { type TestDb, makeTestDb } from "../helpers/db.ts";
 import { MockAgentClient, assistantText } from "../mocks/sdk-mock.ts";
+
+class PermissionAwareAgentClient extends MockAgentClient {
+  override async *stream(options: import("@clawde/sdk").RunAgentOptions) {
+    this.invocations.push(options);
+    if (
+      options.workingDirectory !== undefined &&
+      options.allowDangerouslySkipPermissions === true
+    ) {
+      writeFileSync(join(options.workingDirectory, "created-by-agent.txt"), "ok");
+    }
+    yield assistantText("write completed");
+  }
+}
 
 describe("worker/runner end-to-end (com SDK mocked)", () => {
   let testDb: TestDb;
@@ -296,5 +312,115 @@ describe("worker/runner end-to-end (com SDK mocked)", () => {
     expect(second.run.status).toBe("pending");
     expect(second.run.notBefore).not.toBeNull();
     expect(deps.eventsRepo.queryByKind("task_deferred").length).toBeGreaterThanOrEqual(1);
+  });
+
+  test("write-capable L1 agent recebe bypass e arquivo é criado no workspace", async () => {
+    const workingDir = mkdtempSync(join(tmpdir(), "clawde-issue-58-"));
+    const client = new PermissionAwareAgentClient();
+    deps = {
+      ...deps,
+      agentClient: client,
+      resolveAgentDefinition: async () => ({
+        frontmatter: {
+          allowedTools: ["Read", "Write"],
+        },
+        sandbox: {
+          level: 1,
+          allowed_writes: ["/workspace"],
+        },
+      }),
+    };
+    const task = deps.tasksRepo.insert({
+      priority: "NORMAL",
+      prompt: "create file",
+      agent: "implementer",
+      sessionId: null,
+      workingDir,
+      dependsOn: [],
+      source: "cli",
+      sourceMetadata: {},
+      dedupKey: null,
+    });
+
+    try {
+      const result = await processTask(deps, task);
+      expect(result.run.status).toBe("succeeded");
+      expect(client.invocations[0]?.allowDangerouslySkipPermissions).toBeTrue();
+      expect(existsSync(join(workingDir, "created-by-agent.txt"))).toBeTrue();
+    } finally {
+      rmSync(workingDir, { recursive: true, force: true });
+    }
+  });
+
+  test("sandboxLevel>=2 não recebe bypass mesmo com Write em allowedTools", async () => {
+    const workingDir = mkdtempSync(join(tmpdir(), "clawde-issue-58-l2-"));
+    const task = deps.tasksRepo.insert({
+      priority: "NORMAL",
+      prompt: "no bypass on level2",
+      agent: "implementer",
+      sessionId: null,
+      workingDir,
+      dependsOn: [],
+      source: "cli",
+      sourceMetadata: {},
+      dedupKey: null,
+    });
+    mockClient.enqueueResponse({ messages: [assistantText("ok")] });
+    deps = {
+      ...deps,
+      resolveAgentDefinition: async () => ({
+        frontmatter: {
+          allowedTools: ["Read", "Write"],
+        },
+        sandbox: {
+          level: 2,
+          allowed_writes: ["/workspace"],
+        },
+      }),
+    };
+
+    try {
+      const result = await processTask(deps, task);
+      expect(result.run.status).toBe("succeeded");
+      expect(mockClient.invocations[0]?.allowDangerouslySkipPermissions).toBeUndefined();
+    } finally {
+      rmSync(workingDir, { recursive: true, force: true });
+    }
+  });
+
+  test("agente sem Edit/Write/Bash não recebe bypass", async () => {
+    const workingDir = mkdtempSync(join(tmpdir(), "clawde-issue-58-readonly-"));
+    const task = deps.tasksRepo.insert({
+      priority: "NORMAL",
+      prompt: "readonly tools",
+      agent: "researcher",
+      sessionId: null,
+      workingDir,
+      dependsOn: [],
+      source: "cli",
+      sourceMetadata: {},
+      dedupKey: null,
+    });
+    mockClient.enqueueResponse({ messages: [assistantText("ok")] });
+    deps = {
+      ...deps,
+      resolveAgentDefinition: async () => ({
+        frontmatter: {
+          allowedTools: ["Read", "Grep", "Glob"],
+        },
+        sandbox: {
+          level: 1,
+          allowed_writes: ["/workspace"],
+        },
+      }),
+    };
+
+    try {
+      const result = await processTask(deps, task);
+      expect(result.run.status).toBe("succeeded");
+      expect(mockClient.invocations[0]?.allowDangerouslySkipPermissions).toBeUndefined();
+    } finally {
+      rmSync(workingDir, { recursive: true, force: true });
+    }
   });
 });
