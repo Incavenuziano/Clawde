@@ -40,6 +40,7 @@ export async function collectRun(stream: AsyncIterable<ParsedMessage>): Promise<
   let msgsConsumed = 0;
   let totalTurns = 0;
   const textParts: string[] = [];
+  const toolUseCounts = new Map<string, number>();
   let lastRole: ParsedMessage["role"] | null = null;
   let stopReason: StopReason = "completed";
   let error: string | null = null;
@@ -51,6 +52,12 @@ export async function collectRun(stream: AsyncIterable<ParsedMessage>): Promise<
         if (lastRole !== "assistant") totalTurns += 1;
         const text = extractText(msg);
         if (text.length > 0) textParts.push(text);
+        // Track tool uses to build summary when no text is produced (#42).
+        for (const block of msg.blocks) {
+          if (block.type === "tool_use") {
+            toolUseCounts.set(block.name, (toolUseCounts.get(block.name) ?? 0) + 1);
+          }
+        }
       }
       lastRole = msg.role;
     }
@@ -59,11 +66,21 @@ export async function collectRun(stream: AsyncIterable<ParsedMessage>): Promise<
     stopReason = "error";
   }
 
+  let finalText = textParts.join("\n").trim();
+  // When the agent completed via tool calls only (no text output), synthesise a
+  // compact summary so task_runs.result is not NULL — fixes #42.
+  if (finalText.length === 0 && toolUseCounts.size > 0) {
+    const summary = [...toolUseCounts.entries()]
+      .map(([name, count]) => `${name}${count > 1 ? `×${count}` : ""}`)
+      .join(", ");
+    finalText = `[Completed via tool calls: ${summary}]`;
+  }
+
   return {
     stopReason,
     msgsConsumed,
     totalTurns,
-    finalText: textParts.join("\n").trim(),
+    finalText,
     error,
   };
 }
