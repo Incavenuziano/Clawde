@@ -406,6 +406,7 @@ async function runAgentWithLedger(
     disallowedTools?: ReadonlyArray<string>;
     maxTurns?: number;
     pathToClaudeCodeExecutable?: string;
+    allowDangerouslySkipPermissions?: boolean;
   } = {
     prompt: effectivePrompt,
   };
@@ -437,6 +438,12 @@ async function runAgentWithLedger(
   if (disallowedTools.size > 0) streamOpts.disallowedTools = [...disallowedTools];
   if (agentDef?.frontmatter?.maxTurns !== undefined) {
     streamOpts.maxTurns = agentDef.frontmatter.maxTurns;
+  }
+  const agentHasWriteTools = allowedTools.some(
+    (tool) => tool === "Edit" || tool === "Write" || tool === "Bash",
+  );
+  if (sandboxLevel < 2 && agentHasWriteTools) {
+    streamOpts.allowDangerouslySkipPermissions = true;
   }
 
   const preToolHandler = makePreToolUseHandler(() => {}, {

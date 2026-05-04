@@ -117,6 +117,9 @@ export class RealAgentClient implements AgentClient {
       } else if (this.defaults.pathToClaudeCodeExecutable !== undefined) {
         queryOptions.pathToClaudeCodeExecutable = this.defaults.pathToClaudeCodeExecutable;
       }
+      if (options.allowDangerouslySkipPermissions !== undefined) {
+        queryOptions.allowDangerouslySkipPermissions = options.allowDangerouslySkipPermissions;
+      }
       if (options.resumeSessionId !== undefined)
         queryOptions.resumeSessionId = options.resumeSessionId;
 
