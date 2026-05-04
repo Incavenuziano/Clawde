@@ -35,13 +35,13 @@ Issues descobertos nos primeiros testes reais. Plano em `.planning/ROADMAP.md`.
 | A runtime SDK | `task/auto-runtime-sdk-resolution` | #41 #43 #47 | autonomous | codex | merged, PR #53, 2026-05-04 | #53 |
 | B quota wake-up | `task/auto-quota-wakeup` | #44 | autonomous | codex | merged, PR #54, 2026-05-04 | #54 |
 | C result visibility | `task/auto-result-visibility` | #42 | autonomous | claude | merged, PR #56, 2026-05-04 | #56 |
-| D sandbox fixes | `task/auto-sandbox-fixes` | #49 #51 | **guarded** | codex | ready-to-merge, guarded, PR #55 | #55 |
+| D sandbox fixes | `task/auto-sandbox-fixes` | #49 #51 | guarded | codex | merged, PR #55, 2026-05-04 | #55 |
 
-**PRs extras abertos pelo Codex (fora do plano):**
-- #46 `fix/deferred-check-timer` — versão anterior do WS-B; superseded por #54.
-- #48 `feat/telegram-reply-f5` — reply automático Telegram; feature nova não planejada.
-- #50 `feat/sandbox-bwrap-wiring-f6b` — bwrap OS-level wiring (#49 scope); referenciado no diagnosis.md do WS-D.
-- #52 `fix/sandbox-workspace-path-resolution` — path resolution alternativo para #51; superseded por #55.
+**Seguimento — bwrap wiring:**
+- PR #57 `fix/issue-49-bwrap-wiring` — bwrap OS-level wiring (#49); merged, 2026-05-04.
+
+**PR extra aberto (fora do plano):**
+- #48 `feat/telegram-reply-f5` — reply automático Telegram; feature nova, pendente decisão operador.
 
 ---
 
