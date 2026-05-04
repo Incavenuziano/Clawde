@@ -1,0 +1,11 @@
+[Unit]
+Description=Clawde deferred task check (a cada 30 minutos)
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=30min
+Unit=clawde-deferred-check.service
+Persistent=true
+
+[Install]
+WantedBy=timers.target

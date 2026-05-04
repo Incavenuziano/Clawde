@@ -127,6 +127,22 @@ describe("deploy/systemd unit files reais", () => {
     expect(content).toContain("ExecStart=%h/.clawde/dist/clawde diagnose db --output json");
   });
 
+  test("clawde-deferred-check.timer roda a cada 30min e no boot", () => {
+    const content = readUnit("clawde-deferred-check.timer");
+    expect(content).toContain("OnUnitActiveSec=30min");
+    expect(content).toContain("OnBootSec=5min");
+    expect(content).toContain("Persistent=true");
+    expect(content).toContain("Unit=clawde-deferred-check.service");
+  });
+
+  test("clawde-deferred-check.service invoca worker com hardening", () => {
+    const content = readUnit("clawde-deferred-check.service");
+    expect(content).toContain("ExecStart=%h/.bun/bin/bun run %h/.clawde/dist/worker-main.js");
+    expect(content).toContain("Type=oneshot");
+    expect(content).toContain("NoNewPrivileges=yes");
+    expect(content).toContain("ReadWritePaths=%h/.clawde /tmp");
+  });
+
   test("clawde-events-retention.timer roda mensal dia 1 às 04:00", () => {
     const content = readUnit("clawde-events-retention.timer");
     expect(content).toContain("OnCalendar=*-*-01 04:00:00");

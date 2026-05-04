@@ -546,6 +546,21 @@ clawde smoke-test || exit 1
 Falha → email/Telegram para operador, worker entra em quarentena (recusa novas tasks até
 operator clear).
 
+### 5.5.1 Deferred task wake-up timer
+
+Tasks deferidas por quota dependem de um timer independente do receiver para
+voltar a ser observadas quando `not_before` expira.
+
+- `clawde-deferred-check.timer` roda com `OnUnitActiveSec=30min`.
+- `OnBootSec=5min` garante retomada após reboot.
+- `Persistent=true` recupera janelas perdidas enquanto a máquina estava offline.
+
+Ativação:
+
+```bash
+systemctl --user enable --now clawde-deferred-check.timer
+```
+
 ### 5.6 Quota simulation
 
 Testa modelo de quota (§6.6 do ARCHITECTURE) sem consumir quota real:
