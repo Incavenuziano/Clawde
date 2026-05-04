@@ -4,14 +4,24 @@ import { join } from "node:path";
 import { buildBwrapArgs } from "./bwrap.ts";
 
 const CLAUDE_AGENT_SDK_LINUX_X64 = "node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude";
+const CLAUDE_LOCAL_SYMLINK = ".clawde/bin/claude";
 
 /**
- * Resolve the native claude binary bundled with the SDK, falling back to the
- * system claude if the SDK binary is not present.
+ * Resolve the claude binary path for worker sandbox wrapper.
+ *
+ * Resolution order:
+ *  1) SDK bundled binary in project node_modules
+ *  2) Clawde local symlink (~/.clawde/bin/claude) created by setup-linux.sh
+ *  3) System fallback (/usr/local/bin/claude)
  */
-export function resolveClaudeNativeBinary(projectRoot = process.cwd()): string {
+export function resolveClaudeNativeBinary(
+  projectRoot = process.cwd(),
+  homePath = homedir(),
+): string {
   const candidate = join(projectRoot, CLAUDE_AGENT_SDK_LINUX_X64);
   if (existsSync(candidate)) return candidate;
+  const localSymlink = join(homePath, CLAUDE_LOCAL_SYMLINK);
+  if (existsSync(localSymlink)) return localSymlink;
   return "/usr/local/bin/claude";
 }
 
@@ -34,9 +44,10 @@ export function makeSandboxedClaudeWrapper(
   agentName: string,
   agentReadOnlyMounts: ReadonlyArray<string>,
   env: Record<string, string | undefined>,
+  claudeBinaryOverride?: string,
   projectRoot?: string,
 ): SandboxedWrapper {
-  const claudeBinary = resolveClaudeNativeBinary(projectRoot);
+  const claudeBinary = claudeBinaryOverride ?? resolveClaudeNativeBinary(projectRoot);
   const home = homedir();
   const claudeConfigDir = env.CLAUDE_CONFIG_DIR ?? join(home, ".claude");
 

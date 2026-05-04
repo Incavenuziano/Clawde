@@ -119,8 +119,6 @@ export class RealAgentClient implements AgentClient {
       }
       if (options.resumeSessionId !== undefined)
         queryOptions.resumeSessionId = options.resumeSessionId;
-      if (options.claudeExecutablePath !== undefined)
-        queryOptions.pathToClaudeCodeExecutable = options.claudeExecutablePath;
 
       // Lazy: parser.ts re-importado para evitar circularidade.
       const { parseRawMessage } = await import("./parser.ts");

@@ -405,7 +405,7 @@ async function runAgentWithLedger(
     allowedTools?: ReadonlyArray<string>;
     disallowedTools?: ReadonlyArray<string>;
     maxTurns?: number;
-    claudeExecutablePath?: string;
+    pathToClaudeCodeExecutable?: string;
   } = {
     prompt: effectivePrompt,
   };
@@ -425,7 +425,7 @@ async function runAgentWithLedger(
         agentDef?.sandbox?.read_only_mounts ?? [],
         process.env as Record<string, string | undefined>,
       );
-      streamOpts.claudeExecutablePath = sandboxWrapper.wrapperPath;
+      streamOpts.pathToClaudeCodeExecutable = sandboxWrapper.wrapperPath;
     } catch (err) {
       deps.logger.warn("bwrap wrapper creation failed, running unsandboxed", {
         agent: task.agent,

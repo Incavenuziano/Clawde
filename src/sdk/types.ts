@@ -86,8 +86,6 @@ export interface RunAgentOptions {
   readonly workingDirectory?: string;
   readonly pathToClaudeCodeExecutable?: string;
   readonly bare?: boolean;
-  /** Path to a custom claude executable (e.g. a bwrap wrapper script for sandboxed agents). */
-  readonly claudeExecutablePath?: string;
 }
 
 /**
