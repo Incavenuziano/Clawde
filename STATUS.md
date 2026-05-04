@@ -26,6 +26,25 @@
 
 ---
 
+## Fix cycle — Deploy blockers (2026-05-03/04)
+
+Issues descobertos nos primeiros testes reais. Plano em `.planning/ROADMAP.md`.
+
+| Workstream | Branch | Issues | Lane | Implementer | Estado | PR |
+|------------|--------|--------|------|-------------|--------|----|
+| A runtime SDK | `task/auto-runtime-sdk-resolution` | #41 #43 #47 | autonomous | codex | merged, PR #53, 2026-05-04 | #53 |
+| B quota wake-up | `task/auto-quota-wakeup` | #44 | autonomous | codex | merged, PR #54, 2026-05-04 | #54 |
+| C result visibility | `task/auto-result-visibility` | #42 | autonomous | claude | merged, PR #56, 2026-05-04 | #56 |
+| D sandbox fixes | `task/auto-sandbox-fixes` | #49 #51 | **guarded** | codex | ready-to-merge, guarded, PR #55 | #55 |
+
+**PRs extras abertos pelo Codex (fora do plano):**
+- #46 `fix/deferred-check-timer` — versão anterior do WS-B; superseded por #54.
+- #48 `feat/telegram-reply-f5` — reply automático Telegram; feature nova não planejada.
+- #50 `feat/sandbox-bwrap-wiring-f6b` — bwrap OS-level wiring (#49 scope); referenciado no diagnosis.md do WS-D.
+- #52 `fix/sandbox-workspace-path-resolution` — path resolution alternativo para #51; superseded por #55.
+
+---
+
 ## Branches
 
 Estratégia: **1 branch por sub-fase** (~22 branches no total). Cada branch
