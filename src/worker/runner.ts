@@ -29,6 +29,11 @@ import type { Logger } from "@clawde/log";
 import type { MemoryAwareConfig, buildMemoryContext as buildMemoryContextFn } from "@clawde/memory";
 import type { QuotaTracker } from "@clawde/quota";
 import type { PipelineConfig, runReviewPipeline as runReviewPipelineFn } from "@clawde/review";
+import {
+  type SandboxedWrapper,
+  isBwrapAvailable,
+  makeSandboxedClaudeWrapper,
+} from "@clawde/sandbox";
 import { composeAppendSystemPrompt } from "@clawde/sanitize";
 import {
   type AgentClient,
@@ -400,13 +405,33 @@ async function runAgentWithLedger(
     allowedTools?: ReadonlyArray<string>;
     disallowedTools?: ReadonlyArray<string>;
     maxTurns?: number;
+    pathToClaudeCodeExecutable?: string;
   } = {
     prompt: effectivePrompt,
   };
   const allowedTools = agentDef?.frontmatter?.allowedTools ?? [];
   const disallowedTools = new Set(agentDef?.frontmatter?.disallowedTools ?? []);
-  if ((agentDef?.sandbox?.level ?? 1) >= 2) {
+  const sandboxLevel = agentDef?.sandbox?.level ?? 1;
+  if (sandboxLevel >= 2) {
     disallowedTools.add("Bash");
+  }
+
+  // OS-level filesystem sandbox for level >= 2 agents via bwrap.
+  let sandboxWrapper: SandboxedWrapper | null = null;
+  if (sandboxLevel >= 2 && isBwrapAvailable()) {
+    try {
+      sandboxWrapper = makeSandboxedClaudeWrapper(
+        task.agent,
+        agentDef?.sandbox?.read_only_mounts ?? [],
+        process.env as Record<string, string | undefined>,
+      );
+      streamOpts.pathToClaudeCodeExecutable = sandboxWrapper.wrapperPath;
+    } catch (err) {
+      deps.logger.warn("bwrap wrapper creation failed, running unsandboxed", {
+        agent: task.agent,
+        error: (err as Error).message,
+      });
+    }
   }
   if (allowedTools.length > 0) streamOpts.allowedTools = allowedTools;
   if (disallowedTools.size > 0) streamOpts.disallowedTools = [...disallowedTools];
@@ -505,6 +530,8 @@ async function runAgentWithLedger(
     }
     error = (err as Error).message;
     stopReason = "error";
+  } finally {
+    sandboxWrapper?.cleanup();
   }
 
   return {

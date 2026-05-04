@@ -159,11 +159,11 @@ export async function bootstrap(
       }
     })();
     const agentDefByName = new Map(agentDefs.map((d) => [d.name, d] as const));
-    const claudeExecutablePath = resolveClaudeExecutablePath(config.worker.claude_executable_path);
+    const pathToClaudeCodeExecutable = resolveClaudeExecutablePath(
+      config.worker.claude_executable_path,
+    );
     const agentClient = new RealAgentClient(
-      claudeExecutablePath === undefined
-        ? {}
-        : { pathToClaudeCodeExecutable: claudeExecutablePath },
+      pathToClaudeCodeExecutable === undefined ? {} : { pathToClaudeCodeExecutable },
     );
     const workerId = `${hostname()}-${process.pid}-${Date.now()}`;
     const reconcileResult = reconciler.reconcile(workerId);
