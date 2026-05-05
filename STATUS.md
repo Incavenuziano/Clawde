@@ -49,6 +49,13 @@ Issues descobertos nos primeiros testes reais. Plano em `.planning/ROADMAP.md`.
 - Issue #63 resolvida em `main` (commit `dae79f1`): migrations path resiliente no binário compilado + teste e2e `smoke-test-binary`.
 - Seção 6 do `docs/TEST-HARDENING-PLAN.md` registrada; item 6.7 permanece pendente de execução manual em janela controlada do operador.
 
+**War Room V1 (2026-05-05):**
+- Plano mestre: `docs/WAR_ROOM_IMPLEMENTATION_PLAN.md`.
+- Implementado: CLI `clawde war-room open|status|note|collect|plan|execute|verify|gate|report|close`.
+- Persistência file-first em `~/.clawde/state/war-room/`, com timeline, decisions, evidence, plan, verification e report.
+- Safety: lanes `green|yellow|guarded|blocked`; comandos guarded criam gate e só executam com gate aprovado + `--confirm`.
+- Docs: ADR 0017 + runbooks em `docs/runbooks/`.
+
 **PR extra aberto (fora do plano):**
 - #48 `feat/telegram-reply-f5` — reply automático Telegram; feature nova, pendente decisão operador.
 

@@ -1,10 +1,12 @@
 # Clawde — War Room Implementation Plan
 
-**Status:** proposed  
+**Status:** implemented (V1 file-first)  
 **Data:** 2026-05-05  
 **Executor padrão:** Codex  
 **Modo desejado:** máximo de automação possível, com gates explícitos para riscos operacionais  
 **Escopo:** implementação, testes, verificação, refatoração e documentação da ideia de War Room no Clawde
+
+**Implementação V1:** `clawde war-room open|status|note|collect|plan|execute|verify|gate|report|close`
 
 ---
 

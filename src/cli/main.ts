@@ -29,6 +29,7 @@ import { runReview } from "./commands/review.ts";
 import { runSessionsList, runSessionsShow } from "./commands/sessions.ts";
 import { runSmokeTest } from "./commands/smoke-test.ts";
 import { runTrace } from "./commands/trace.ts";
+import { runWarRoom } from "./commands/war-room.ts";
 import { type OutputFormat, emit, emitErr } from "./output.ts";
 
 export interface ParsedArgs {
@@ -120,6 +121,7 @@ Commands:
   config <show|validate <path>>  Dump/valida config TOML resolvida
   events <export|purge>      Exporta/purge events antigos (retenção)
   reflect [--since 24h]   Enfileira reflection job (events+observations recentes)
+  war-room <action>       Coordena incidentes/hardening com evidências e gates
   version                Mostra semver
   help                   Esta mensagem
 
@@ -139,6 +141,9 @@ Migrate options:
 Events options:
   export --since-cutoff 90d
   purge --before YYYY-MM-DD --confirm
+
+War room actions:
+  open|status|note|collect|plan|execute|verify|gate|report|close
 `;
 
 export async function runMain(argv: ReadonlyArray<string>): Promise<number> {
@@ -370,6 +375,16 @@ export async function runMain(argv: ReadonlyArray<string>): Promise<number> {
       format: getOutputFormat(parsed),
     };
     return await runReflect(reflectOpts);
+  }
+
+  if (parsed.command === "war-room") {
+    return await runWarRoom({
+      action: parsed.positional[0] ?? "status",
+      positional: parsed.positional.slice(1),
+      flags: parsed.flags,
+      format: getOutputFormat(parsed),
+      dbPath: getDbPath(parsed),
+    });
   }
 
   if (parsed.command === "logs") {

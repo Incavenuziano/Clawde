@@ -136,9 +136,11 @@ auditoria externa de compliance exigida.
 `oauth-expired`, `sandbox-breach`, `prompt-injection-detected`,
 `migration-failed`.
 
-**Por que adiar**: operador é solo dev com contexto profundo do
-sistema. Runbooks viram úteis quando há rotação de operador ou time.
-`clawde diagnose` (T-106) cobre triagem básica em comando único.
+**Status 2026-05-05**: parcialmente endereçado por War Room V1:
+`docs/runbooks/war-room.md`, `incident-response.md`,
+`hardening-session.md` e `war-room-safety.md`. Runbooks específicos por
+subtipo de incidente ainda ficam para follow-up após o primeiro incidente
+real de cada classe.
 
 **Trigger pra implementar**: primeiro incidente onde operador precisou
 mais de 30min pra triar (postmortem deveria gerar runbook).
@@ -148,8 +150,9 @@ mais de 30min pra triar (postmortem deveria gerar runbook).
 **BP §12.1, §12.4**: SLA por SEV1-SEV4. Status em `~/.clawde/state/incident.md`.
 Mensagem de status no canal Telegram quando bot down.
 
-**Por que adiar**: single-user sem usuários externos consumindo serviço.
-SEV1-SEV4 fica óbvio pelo próprio operador (tem outro trabalho?).
+**Status 2026-05-05**: War Room V1 cria `~/.clawde/state/war-room/`
+com sala ativa, timeline, decisões, gates, evidências e relatório. Ainda
+não há SLA formal SEV1-SEV4 nem broadcast Telegram de status.
 
 **Trigger pra implementar**: bot público OU 2º host operacional.
 

@@ -12,8 +12,9 @@
 - **Wave 4** hardening (EventKind CHECK constraint, JSON validity, fail-closed allowlist, redact em events)
 - **Wave 5** alinhamento (CLI ops `panic-stop`/`panic-resume`/`diagnose`/`sessions`/`config`, reflect job estruturado, smoke service alinhado, SDK real validation)
 - **Wave 6** hardening operacional (CI security gates: gitleaks/bun-audit/coverage; DB integrity automation; events retention 90d; alerts via Telegram+SMTP com 7 triggers; backup 3-2-1 cadenciado; restore drill mensal)
+- **War Room V1** camada operacional file-first para incidentes/hardening com evidências, gates, dry-run, verificação e relatório auditável
 
-**719 testes** (717 pass, 2 skip, 0 fail em rodada estável), TypeScript strict clean. Pronto pra uso pessoal Linux. Para deploy, ver [`docs/wave-summaries/`](docs/wave-summaries/) pra o que cada wave entregou + STATUS.md pra estado atual.
+**755+ testes** (com 2 skip de SDK real quando sem credencial), TypeScript strict clean. Pronto pra uso pessoal Linux. Para deploy, ver [`docs/wave-summaries/`](docs/wave-summaries/) pra o que cada wave entregou + STATUS.md pra estado atual.
 
 ## O que é
 
@@ -75,8 +76,10 @@ bilateral por design.
 | [`CONSOLIDATED_FIX_PLAN.md`](CONSOLIDATED_FIX_PLAN.md) | ~1200 | Plano de remediação consolidado pós-auditoria dupla (Claude + Codex) — 21 itens P0..P3 |
 | [`PRODUCTION_READINESS_PLAN.md`](PRODUCTION_READINESS_PLAN.md) | ~700 | Versão Codex do plano de readiness — origem dos itens P-X.Y |
 | [`EXECUTION_BACKLOG.md`](EXECUTION_BACKLOG.md) | ~1100 | Backlog atômico: 143 tasks em 6 waves, com critérios de aceite e snippets |
+| [`docs/WAR_ROOM_IMPLEMENTATION_PLAN.md`](docs/WAR_ROOM_IMPLEMENTATION_PLAN.md) | ~860 | Plano e backlog WR-001..WR-075 da camada War Room |
+| [`docs/runbooks/war-room.md`](docs/runbooks/war-room.md) | live | Runbook operacional de War Room |
 | [`STATUS.md`](STATUS.md) | live | Estado de cada sub-fase + check-list de tasks; atualizado por PR |
-| [`docs/adr/`](docs/adr/) | 15 ADRs | Decisões arquiteturais imutáveis (formato MADR simplificado) |
+| [`docs/adr/`](docs/adr/) | 16 ADRs | Decisões arquiteturais imutáveis (formato MADR simplificado) |
 | [`docs/wave-summaries/`](docs/wave-summaries/) | live | Audit de cada wave após fechamento (wave-N.md) |
 | [`docs/BACKLOG.md`](docs/BACKLOG.md) | ~660 | Tasks atômicas das 9 fases originais (entregues como bibliotecas) |
 | [`docs/KNOWN_GAPS.md`](docs/KNOWN_GAPS.md) | ~250 | Gaps documentados que viraram débito pós-MVP |
