@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type ClawdeDatabase, closeDb, openDb } from "@clawde/db/client";
@@ -8,6 +8,7 @@ import {
   currentVersion,
   defaultMigrationsDir,
   discoverMigrations,
+  resolveMigrationsDir,
   rollbackTo,
   status,
 } from "@clawde/db/migrations";
@@ -213,5 +214,42 @@ describe("db/migrations real schema (defaultMigrationsDir)", () => {
     expect(tables).toContain("events");
     expect(tables).toContain("_retention_grant");
     expect(tables).toContain("_migrations");
+  });
+});
+
+describe("db/migrations resolveMigrationsDir", () => {
+  let rootDir: string;
+
+  beforeEach(() => {
+    rootDir = mkdtempSync(join(tmpdir(), "clawde-migrations-resolve-"));
+  });
+
+  afterEach(() => {
+    rmSync(rootDir, { recursive: true, force: true });
+  });
+
+  test("usa override do env CLAWDE_MIGRATIONS_DIR quando definido", () => {
+    const custom = join(rootDir, "custom-migrations");
+    const resolved = resolveMigrationsDir({
+      env: { CLAWDE_MIGRATIONS_DIR: custom },
+      cwd: rootDir,
+      importMetaUrl: "file:///$bunfs/root/runner.ts",
+    });
+    expect(resolved).toBe(custom);
+  });
+
+  test("caminho virtual do bundle cai para cwd/src/db/migrations quando disponível", () => {
+    const migrationsDir = join(rootDir, "src", "db", "migrations");
+    mkdirSync(migrationsDir, { recursive: true });
+    writeFileSync(join(migrationsDir, "001_initial.up.sql"), "SELECT 1;");
+    writeFileSync(join(migrationsDir, "001_initial.down.sql"), "SELECT 1;");
+
+    const resolved = resolveMigrationsDir({
+      env: {},
+      cwd: rootDir,
+      execPath: join(rootDir, "bin", "clawde"),
+      importMetaUrl: "file:///$bunfs/root/runner.ts",
+    });
+    expect(resolved).toBe(migrationsDir);
   });
 });

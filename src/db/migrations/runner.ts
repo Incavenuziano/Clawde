@@ -6,8 +6,9 @@
  * inteiro 0-padded (3+ dígitos).
  */
 
-import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { sendAlertBestEffort } from "@clawde/alerts";
 import type { ClawdeDatabase } from "../client.ts";
 
@@ -26,6 +27,58 @@ export interface MigrationStatus {
 }
 
 const FILENAME_RE = /^(\d{3,})_([a-z0-9_-]+)\.(up|down)\.sql$/;
+const MIGRATIONS_DIR_ENV = "CLAWDE_MIGRATIONS_DIR";
+
+function hasMigrationFiles(dir: string): boolean {
+  try {
+    if (!existsSync(dir) || !statSync(dir).isDirectory()) return false;
+    return readdirSync(dir).some((filename) => FILENAME_RE.test(filename));
+  } catch {
+    return false;
+  }
+}
+
+function isVirtualBundlePath(dir: string): boolean {
+  return dir.startsWith("/$bunfs/");
+}
+
+export interface ResolveMigrationsDirInput {
+  readonly importMetaUrl?: string;
+  readonly cwd?: string;
+  readonly execPath?: string;
+  readonly env?: Record<string, string | undefined>;
+}
+
+export function resolveMigrationsDir(input: ResolveMigrationsDirInput = {}): string {
+  const env = input.env ?? (process.env as Record<string, string | undefined>);
+  const envOverride = env[MIGRATIONS_DIR_ENV]?.trim();
+  if (envOverride !== undefined && envOverride.length > 0) {
+    return envOverride;
+  }
+
+  const importMetaUrl = input.importMetaUrl ?? import.meta.url;
+  const fromModuleDir = fileURLToPath(new URL(".", importMetaUrl));
+  if (!isVirtualBundlePath(fromModuleDir) && hasMigrationFiles(fromModuleDir)) {
+    return fromModuleDir;
+  }
+
+  const cwd = input.cwd ?? process.cwd();
+  const execPath = input.execPath ?? process.execPath;
+  const candidates = [
+    join(cwd, "src", "db", "migrations"),
+    join(cwd, "db", "migrations"),
+    join(cwd, "dist", "migrations"),
+    join(dirname(execPath), "migrations"),
+    join(dirname(execPath), "src", "db", "migrations"),
+  ];
+  for (const candidate of candidates) {
+    if (hasMigrationFiles(candidate)) {
+      return candidate;
+    }
+  }
+
+  return fromModuleDir;
+}
 
 /**
  * Lê o diretório de migrations e retorna lista validada (up+down par a par).
@@ -229,5 +282,5 @@ export function rollbackTo(
  * Resolvido relativo a este arquivo: `src/db/migrations/`.
  */
 export function defaultMigrationsDir(): string {
-  return new URL(".", import.meta.url).pathname;
+  return resolveMigrationsDir();
 }

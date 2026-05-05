@@ -94,14 +94,14 @@
 
 | # | Caso | Resultado esperado | Data | Resultado | Executado por | Notas |
 |---|------|--------------------|------|-----------|---------------|-------|
-| 6.1 | `clawde-backup-hourly.service` dispara manualmente | Arquivo `backups/hourly/state-*.db` criado com timestamp correto | | | | |
-| 6.2 | `clawde-integrity.service` | `integrity_check=ok`, exit 0, nenhum alerta falso positivo | | | | |
-| 6.3 | `scripts/restore-drill.sh` | exit 0, linha `"restore-drill: OK snapshot_ts=..."` no stdout | | | | |
-| 6.4 | `clawde events export --since-cutoff 90d` | JSONL gerado, rows corretos, DB não modificado | | | | |
-| 6.5 | `clawde events purge --before <data> --confirm` | Rows apagados; trigger `events_no_delete` bloqueou sem `_retention_grant` | | | | |
-| 6.6 | `clawde-deferred-check.timer` com fila vazia | Exit 0 sem erro; nenhuma task gerada espúria | | | | |
-| 6.7 | Sequência `panic-stop → diagnose → panic-resume` | panic-stop cria lock, resume requer diagnose ok; unlock e receiver reiniciado | | | | |
-| 6.8 | `panic-resume` com diagnose com warnings | Resume **recusado**; lock mantido; mensagem de erro clara | | | | |
+| 6.1 | `clawde-backup-hourly.service` dispara manualmente | Arquivo `backups/hourly/state-*.db` criado com timestamp correto | 2026-05-04 | ✅ | Codex | Execução equivalente ao `ExecStart` do unit (`backup-snapshot.sh` + `backup-prune.sh`) em ambiente isolado; criado `state-20260505T011637Z.db`. |
+| 6.2 | `clawde-integrity.service` | `integrity_check=ok`, exit 0, nenhum alerta falso positivo | 2026-05-04 | ✅ | Codex | Execução equivalente ao `ExecStart` (`clawde diagnose db --output json`): status `ok`, `integrity_check=ok`, exit 0. |
+| 6.3 | `scripts/restore-drill.sh` | exit 0, linha `"restore-drill: OK snapshot_ts=..."` no stdout | 2026-05-04 | ✅ | Codex | Exit 0 com `restore-drill: OK snapshot_ts=20260505T011637Z`. |
+| 6.4 | `clawde events export --since-cutoff 90d` | JSONL gerado, rows corretos, DB não modificado | 2026-05-04 | ✅ | Codex | JSONL gerado em `.clawde/exports/events-2026-05.jsonl` com 2 eventos; hash SHA-256 do DB idêntico antes/depois. |
+| 6.5 | `clawde events purge --before <data> --confirm` | Rows apagados; trigger `events_no_delete` bloqueou sem `_retention_grant` | 2026-05-04 | ✅ | Codex | `DELETE` direto bloqueado pelo trigger (`append-only...`); comando `events purge` removeu 2 rows com `_retention_grant` controlado. |
+| 6.6 | `clawde-deferred-check.timer` com fila vazia | Exit 0 sem erro; nenhuma task gerada espúria | 2026-05-04 | ✅ | Codex | Execução equivalente ao `ExecStart` do unit (`bun run dist/worker-main.js --max-tasks 1`) retornou `exit_reason=empty`, exit 0. |
+| 6.7 | Sequência `panic-stop → diagnose → panic-resume` | panic-stop cria lock, resume requer diagnose ok; unlock e receiver reiniciado | 2026-05-04 | ⚠️ | Codex | Validado por testes automatizados (`tests/integration/panic-stop.test.ts`, `panic-resume.test.ts`) com fake systemd. Sequência real em serviços do operador não foi executada para evitar impacto no daemon ativo. |
+| 6.8 | `panic-resume` com diagnose com warnings | Resume **recusado**; lock mantido; mensagem de erro clara | 2026-05-04 | ✅ | Codex | Coberto por teste automatizado: diagnose=`warn` retorna exit 1, lock mantido, mensagem de recusa presente. |
 
 ---
 
@@ -173,16 +173,14 @@
 **Setup:** carga leve contínua automatizada
 
 ```bash
-# Script sugerido — rodar em background durante o soak
-while true; do
-  clawde queue "retorna a hora UTC atual" --priority LOW
-  sleep 300   # task a cada 5 min
-done
+# Script pronto no repo (não iniciar antes da aprovação final do soak):
+scripts/soak-test.sh
 
-# Burst a cada 2h (em cron ou loop com sleep 7200)
-for i in $(seq 1 10); do
-  clawde queue "lista os 5 primeiros arquivos de $PWD" --priority NORMAL
-done
+# Sanity check sem loop contínuo:
+scripts/soak-test.sh --once
+
+# Execução de soak real (24h+), exemplo:
+nohup scripts/soak-test.sh > /tmp/clawde-soak.log 2>&1 &
 ```
 
 **Métricas a coletar (a cada 4h):**
@@ -235,4 +233,4 @@ Para quem precisar liberar features mais rápido, execute pelo menos:
 
 | Issue | Seção | Caso | Severidade | Status |
 |-------|-------|------|------------|--------|
-| | | | | |
+| [#63](https://github.com/Incavenuziano/Clawde/issues/63) | 1 / 6 | `smoke-test` via binário compilado não encontrava migrations (`/$bunfs/root`) | alta | em andamento (fix + testes adicionados nesta rodada) |
