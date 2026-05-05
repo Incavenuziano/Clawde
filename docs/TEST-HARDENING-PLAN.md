@@ -1,6 +1,6 @@
 # Clawde — Test Hardening Plan
 
-**Status:** pending  
+**Status:** in-progress (seções 6.1–6.8 executadas; 6.7 real pendente de janela manual)  
 **Duração recomendada:** 2 semanas (corte enxuto: 7 dias)  
 **Base:** main @ c9dd0df (pós fix cycle deploy blockers)  
 **Critério de saída:** ver seção [Gate de qualidade](#gate-de-qualidade)
@@ -225,7 +225,7 @@ Para quem precisar liberar features mais rápido, execute pelo menos:
 
 | Data início | Data fim | Executado por | Gate atingido? | Issues abertos | Observações |
 |-------------|----------|---------------|---------------|----------------|-------------|
-| | | | | | |
+| 2026-05-04 | 2026-05-05 | Codex | Não (hardening parcial) | #63 fechado | Seção 6 executada e registrada; 6.7 validada por teste automatizado e execução real permanece pendente de janela manual controlada do operador. |
 
 ---
 
@@ -233,4 +233,4 @@ Para quem precisar liberar features mais rápido, execute pelo menos:
 
 | Issue | Seção | Caso | Severidade | Status |
 |-------|-------|------|------------|--------|
-| [#63](https://github.com/Incavenuziano/Clawde/issues/63) | 1 / 6 | `smoke-test` via binário compilado não encontrava migrations (`/$bunfs/root`) | alta | em andamento (fix + testes adicionados nesta rodada) |
+| [#63](https://github.com/Incavenuziano/Clawde/issues/63) | 1 / 6 | `smoke-test` via binário compilado não encontrava migrations (`/$bunfs/root`) | alta | resolvido (commit `dae79f1`, com teste e2e `smoke-test-binary`) |
