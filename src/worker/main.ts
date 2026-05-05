@@ -16,8 +16,10 @@ import { TaskRunsRepo } from "@clawde/db/repositories/task-runs";
 import { TasksRepo } from "@clawde/db/repositories/tasks";
 import { createLogger, setMinLevel } from "@clawde/log";
 import { QuotaTracker, makeQuotaPolicy } from "@clawde/quota";
+import { runReviewPipeline } from "@clawde/review";
 import { RealAgentClient } from "@clawde/sdk";
 import { LeaseManager, type RunnerDeps, makeReconciler, processNextPending } from "./index.ts";
+import type { ReviewPipelineDeps } from "./runner.ts";
 
 const DEFAULT_MAX_TASKS = 50;
 
@@ -192,6 +194,16 @@ export async function bootstrap(
       return;
     }
 
+    const reviewDeps: ReviewPipelineDeps | undefined = config.review?.review_required
+      ? {
+          config: {
+            stages: config.review.stages as import("@clawde/review").ReviewRole[],
+            maxRetriesPerStage: config.review.max_retries_per_stage,
+          },
+          run: runReviewPipeline,
+        }
+      : undefined;
+
     const loop = await runProcessLoop(
       {
         tasksRepo,
@@ -205,6 +217,7 @@ export async function bootstrap(
         workerId,
         workspaceConfig: { tmpRoot: "/tmp", baseBranch: "main" },
         resolveAgentDefinition: async (agent) => agentDefByName.get(agent) ?? null,
+        ...(reviewDeps !== undefined ? { review: reviewDeps } : {}),
       },
       maxTasks,
     );
