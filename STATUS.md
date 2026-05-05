@@ -40,6 +40,11 @@ Issues descobertos nos primeiros testes reais. Plano em `.planning/ROADMAP.md`.
 **Seguimento — bwrap wiring:**
 - PR #57 `fix/issue-49-bwrap-wiring` — bwrap OS-level wiring (#49); merged, 2026-05-04.
 
+**G3 — Issues #58/#59 (2026-05-04/05):**
+- PR #61 `fix/issue-58-headless-write` — `allowDangerouslySkipPermissions` para agentes write-capable L1; merged, 2026-05-04.
+- PR #62 `fix/issue-59-review-wiring-clean` — review pipeline wired em `worker/main.ts`; merged, 2026-05-05.
+- PR #60 `fix/worker: mixed-scope` — closed as superseded por #61 + #62.
+
 **PR extra aberto (fora do plano):**
 - #48 `feat/telegram-reply-f5` — reply automático Telegram; feature nova, pendente decisão operador.
 
